@@ -1,2 +1,2 @@
 # HabiTooth_FE
-React.js + Next.js
+React.js + Nest.js
