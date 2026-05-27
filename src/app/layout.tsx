@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
-import StyledComponentsRegistry from './registry';
+import Providers from './providers';
 
 export const metadata: Metadata = {
   title: 'HabiTooth',
@@ -14,8 +14,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko">
+      <head>
+        <link
+          rel="stylesheet"
+          href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/variable/pretendardvariable.css"
+        />
+      </head>
       <body>
-        <StyledComponentsRegistry>{children}</StyledComponentsRegistry>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );
