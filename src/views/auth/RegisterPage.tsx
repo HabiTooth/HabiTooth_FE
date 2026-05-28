@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import styled from 'styled-components';
+import { ChevronLeft, Eye, EyeOff } from 'lucide-react';
 import Input from '@/components/atoms/Input';
 import Button from '@/components/atoms/Button';
 import Checkbox from '@/components/atoms/Checkbox';
@@ -108,25 +109,6 @@ const LoginLink = styled.p`
   }
 `;
 
-const BackArrow = () => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-    <path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
-
-const EyeOpenIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-    <path d="M10 4C5 4 1.73 8 1.73 10S5 16 10 16s8.27-4 8.27-6S15 4 10 4z" stroke="currentColor" strokeWidth="1.5" />
-    <circle cx="10" cy="10" r="2.5" stroke="currentColor" strokeWidth="1.5" />
-  </svg>
-);
-
-const EyeOffIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-    <path d="M3 3l14 14M8.5 8.6A2.5 2.5 0 0012.4 12.5M6.5 5.5C4.5 6.8 2.5 8.7 2 10c1 2.7 4.4 6 8 6 1.5 0 2.9-.5 4-1.3M10 4c3.6 0 7 3.3 8 6-.3.8-.8 1.6-1.5 2.4"
-      stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-  </svg>
-);
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -168,7 +150,7 @@ export default function RegisterPage() {
     <PageWrapper>
       <Header>
         <BackButton type="button" onClick={() => router.back()}>
-          <BackArrow />
+          <ChevronLeft size={24} />
         </BackButton>
         <PageTitle>회원가입</PageTitle>
       </Header>
@@ -184,7 +166,7 @@ export default function RegisterPage() {
           onChange={setPassword}
           rightIcon={
             <EyeButton type="button" onClick={() => setShowPw((v) => !v)}>
-              {showPw ? <EyeOffIcon /> : <EyeOpenIcon />}
+              {showPw ? <EyeOff size={20} /> : <Eye size={20} />}
             </EyeButton>
           }
         />
@@ -197,7 +179,7 @@ export default function RegisterPage() {
           error={passwordError}
           rightIcon={
             <EyeButton type="button" onClick={() => setShowConfirm((v) => !v)}>
-              {showConfirm ? <EyeOffIcon /> : <EyeOpenIcon />}
+              {showConfirm ? <EyeOff size={20} /> : <Eye size={20} />}
             </EyeButton>
           }
         />

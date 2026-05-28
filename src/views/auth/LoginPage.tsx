@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import styled from 'styled-components';
+import { Eye, EyeOff } from 'lucide-react';
 import Input from '@/components/atoms/Input';
 import Button from '@/components/atoms/Button';
 
@@ -123,20 +124,6 @@ const AppleIcon = () => (
   </svg>
 );
 
-const EyeOpenIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-    <path d="M10 4C5 4 1.73 8 1.73 10S5 16 10 16s8.27-4 8.27-6S15 4 10 4z" stroke="currentColor" strokeWidth="1.5" />
-    <circle cx="10" cy="10" r="2.5" stroke="currentColor" strokeWidth="1.5" />
-  </svg>
-);
-
-const EyeOffIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-    <path d="M3 3l14 14M8.5 8.6A2.5 2.5 0 0012.4 12.5M6.5 5.5C4.5 6.8 2.5 8.7 2 10c1 2.7 4.4 6 8 6 1.5 0 2.9-.5 4-1.3M10 4c3.6 0 7 3.3 8 6-.3.8-.8 1.6-1.5 2.4"
-      stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-  </svg>
-);
-
 const ToothIcon = () => (
   <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
     <path
@@ -187,7 +174,7 @@ export default function LoginPage() {
           onChange={setPassword}
           rightIcon={
             <EyeButton type="button" onClick={() => setShowPassword((v) => !v)}>
-              {showPassword ? <EyeOffIcon /> : <EyeOpenIcon />}
+              {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
             </EyeButton>
           }
         />

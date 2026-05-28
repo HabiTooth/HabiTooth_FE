@@ -1,6 +1,7 @@
 'use client';
 
 import styled from 'styled-components';
+import { Check } from 'lucide-react';
 import type { CheckboxProps } from './Checkbox.types';
 
 const Wrapper = styled.label`
@@ -25,17 +26,6 @@ const Box = styled.span<{ $checked: boolean }>`
   transition: background 0.15s, border-color 0.15s;
 `;
 
-const CheckMark = () => (
-  <svg width="12" height="9" viewBox="0 0 12 9" fill="none">
-    <path
-      d="M1 4.5L4.5 8L11 1"
-      stroke="white"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
 
 const LabelText = styled.span<{ $bold?: boolean }>`
   font-size: 14px;
@@ -47,7 +37,7 @@ const LabelText = styled.span<{ $bold?: boolean }>`
 export default function Checkbox({ label, checked, onChange, bold }: CheckboxProps) {
   return (
     <Wrapper onClick={() => onChange(!checked)}>
-      <Box $checked={checked}>{checked && <CheckMark />}</Box>
+      <Box $checked={checked}>{checked && <Check size={13} color="white" strokeWidth={2.5} />}</Box>
       <LabelText $bold={bold}>{label}</LabelText>
     </Wrapper>
   );

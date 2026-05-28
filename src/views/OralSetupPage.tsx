@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import styled, { keyframes } from 'styled-components';
+import { Check } from 'lucide-react';
 import Button from '@/components/atoms/Button';
 
 type Step = 1 | 2 | 3;
@@ -269,11 +270,6 @@ const CompleteDesc = styled.p`
   text-align: center;
 `;
 
-const CheckIcon = () => (
-  <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
-    <path d="M8 18l7 7 13-13" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
 
 export default function OralSetupPage() {
   const router = useRouter();
@@ -349,9 +345,7 @@ export default function OralSetupPage() {
                 <ScanStepItem key={i} $last={i === scanSteps.length - 1}>
                   <ScanStepBadge $status={s.status} $index={i}>
                     {s.status === 'done' ? (
-                      <svg width="14" height="11" viewBox="0 0 14 11" fill="none">
-                        <path d="M1 5.5L5 9.5L13 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
+                      <Check size={14} color="white" strokeWidth={2.5} />
                     ) : (
                       i + 1
                     )}
@@ -381,7 +375,7 @@ export default function OralSetupPage() {
         {step === 3 && (
           <CompleteContainer>
             <CheckCircle>
-              <CheckIcon />
+              <Check size={36} color="white" strokeWidth={2.5} />
             </CheckCircle>
             <CompleteTitle>구강 구조가 등록되었습니다</CompleteTitle>
             <CompleteDesc>이제 AI가 구강 상태를 정확하게 분석할 수 있어요</CompleteDesc>

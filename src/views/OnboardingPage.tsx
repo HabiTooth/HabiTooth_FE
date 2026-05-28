@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import styled from 'styled-components';
+import { Camera, Bluetooth } from 'lucide-react';
 import Checkbox from '@/components/atoms/Checkbox';
 import Button from '@/components/atoms/Button';
 
@@ -100,7 +101,7 @@ const PermissionIcon = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
+  color: ${({ theme }) => theme.colors.primary};
   flex-shrink: 0;
 `;
 
@@ -179,14 +180,14 @@ export default function OnboardingPage() {
       <Card>
         <CardTitle>권한 안내</CardTitle>
         <PermissionRow>
-          <PermissionIcon>📷</PermissionIcon>
+          <PermissionIcon><Camera size={20} /></PermissionIcon>
           <PermissionText>
             <PermissionTitle>카메라</PermissionTitle>
             <PermissionDesc>구강 촬영에 필요합니다</PermissionDesc>
           </PermissionText>
         </PermissionRow>
         <PermissionRow>
-          <PermissionIcon>📡</PermissionIcon>
+          <PermissionIcon><Bluetooth size={20} /></PermissionIcon>
           <PermissionText>
             <PermissionTitle>블루투스</PermissionTitle>
             <PermissionDesc>디바이스 연결에 필요합니다</PermissionDesc>
