@@ -156,7 +156,7 @@ export default function OnboardingPage() {
           <ToothIcon />
         </IconBox>
         <AppTitle>HabiTooth</AppTitle>
-        <Subtitle>AI 구강 케어 어시스턴트</Subtitle>
+        <Subtitle>가정용 AI 구강 모니터링 디바이스</Subtitle>
       </LogoSection>
 
       <Card>
