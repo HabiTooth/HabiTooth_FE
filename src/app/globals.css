@@ -1,6 +1,7 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
 *,
 *::before,
 *::after {
@@ -13,4 +14,87 @@ body {
   padding: 0;
   font-family: 'Pretendard Variable', Pretendard, -apple-system, sans-serif;
   background-color: #eef2ff;
+}
+
+.splash-page {
+  width: 100%;
+  max-width: 430px;
+  height: 100vh;
+  height: 100svh;
+  margin: 0 auto;
+  background: linear-gradient(160deg, #3a6ff5 0%, #5b8fff 50%, #7eb3ff 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.splash-wrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 28px;
+  animation: splash-float 7s ease-in-out 2.4s infinite;
+}
+
+.splash-title {
+  display: flex;
+  justify-content: center;
+  font-family: 'Fredoka', sans-serif;
+  font-size: 38px;
+  font-weight: 600;
+  color: white;
+  letter-spacing: 2px;
+  line-height: 1;
+}
+
+.splash-tagline {
+  margin: 8px 0 0;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.8);
+  animation: splash-fade-in 0.6s ease 2.2s both;
+}
+
+@keyframes splash-draw {
+  from { stroke-dashoffset: var(--len); }
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes splash-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes splash-slide-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes splash-float {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-8px); }
+}
+
+.splash-outline.active {
+  animation: splash-draw 1.5s ease both;
+}
+
+.splash-stem.active {
+  animation: splash-draw 0.45s ease 1s both;
+}
+
+.splash-dot-lower {
+  opacity: 0;
+  animation: splash-fade-in 0.1s linear 1.44s both;
+}
+
+.splash-dot-upper {
+  opacity: 0;
+  animation: splash-fade-in 0.1s linear 1.49s both;
+}
+
+.splash-letter {
+  animation: splash-slide-up 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) var(--delay) both;
 }
