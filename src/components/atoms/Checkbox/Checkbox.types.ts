@@ -1,5 +1,5 @@
 export interface CheckboxProps {
-  label: string | React.ReactNode;
+  label: string;
   checked: boolean;
   onChange: (v: boolean) => void;
   bold?: boolean;

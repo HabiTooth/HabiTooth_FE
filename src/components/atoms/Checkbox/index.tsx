@@ -3,6 +3,8 @@
 import { Check } from 'lucide-react';
 import type { CheckboxProps } from './Checkbox.types';
 
+export type { CheckboxProps } from './Checkbox.types';
+
 export default function Checkbox({ label, checked, onChange, bold }: CheckboxProps) {
   return (
     <button

@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import type { InputProps } from './Input.types';
 
+export type { InputProps } from './Input.types';
+
 export default function Input({ label, type, placeholder, value, onChange, error, rightIcon, shake }: InputProps) {
   const [focused, setFocused] = useState(false);
   const active = focused || !!value;

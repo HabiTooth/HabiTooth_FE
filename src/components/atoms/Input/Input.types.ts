@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+
 export interface InputProps {
   label: string;
   type: 'text' | 'email' | 'password';
@@ -5,6 +7,6 @@ export interface InputProps {
   value: string;
   onChange: (v: string) => void;
   error?: string;
-  rightIcon?: React.ReactNode;
+  rightIcon?: ReactNode;
   shake?: boolean;
 }
