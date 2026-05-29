@@ -1,10 +1,8 @@
 'use client';
 
-import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import styled from 'styled-components';
-import { Camera, Bluetooth } from 'lucide-react';
-import Checkbox from '@/components/atoms/Checkbox';
+import { Camera, Bluetooth, Bot, BarChart3 } from 'lucide-react';
 import Button from '@/components/atoms/Button';
 
 const PageWrapper = styled.div`
@@ -64,22 +62,43 @@ const CardTitle = styled.h3`
   color: ${({ theme }) => theme.colors.textPrimary};
 `;
 
-const Divider = styled.hr`
-  border: none;
-  border-top: 1px solid ${({ theme }) => theme.colors.hairline};
-  margin: 12px 0;
+const FeatureRow = styled.div`
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 10px 0;
+
+  & + & {
+    border-top: 1px solid ${({ theme }) => theme.colors.hairline};
+  }
 `;
 
-const TermRow = styled.div`
+const FeatureIconBox = styled.div`
+  width: 40px;
+  height: 40px;
+  background: ${({ theme }) => theme.colors.primaryLight};
+  border-radius: ${({ theme }) => theme.radius.sm};
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 4px 0;
+  justify-content: center;
+  color: ${({ theme }) => theme.colors.primary};
+  flex-shrink: 0;
 `;
 
-const RequiredTag = styled.span`
+const FeatureInfo = styled.div``;
+
+const FeatureTitle = styled.p`
+  margin: 0 0 2px;
+  font-size: 14px;
+  font-weight: 600;
+  color: ${({ theme }) => theme.colors.textPrimary};
+`;
+
+const FeatureDesc = styled.p`
+  margin: 0;
   font-size: 12px;
   color: ${({ theme }) => theme.colors.textSecondary};
+  line-height: 1.5;
 `;
 
 const PermissionRow = styled.div`
@@ -136,18 +155,6 @@ const ToothIcon = () => (
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const [terms, setTerms] = useState(false);
-  const [privacy, setPrivacy] = useState(false);
-  const [marketing, setMarketing] = useState(false);
-
-  const allChecked = terms && privacy && marketing;
-  const requiredChecked = terms && privacy;
-
-  const toggleAll = (v: boolean) => {
-    setTerms(v);
-    setPrivacy(v);
-    setMarketing(v);
-  };
 
   return (
     <PageWrapper>
@@ -160,21 +167,28 @@ export default function OnboardingPage() {
       </LogoSection>
 
       <Card>
-        <CardTitle>약관 동의</CardTitle>
-        <Checkbox label="전체 동의" checked={allChecked} onChange={toggleAll} bold />
-        <Divider />
-        <TermRow>
-          <Checkbox label="이용약관 동의" checked={terms} onChange={setTerms} />
-          <RequiredTag>필수</RequiredTag>
-        </TermRow>
-        <TermRow>
-          <Checkbox label="개인정보 처리방침 동의" checked={privacy} onChange={setPrivacy} />
-          <RequiredTag>필수</RequiredTag>
-        </TermRow>
-        <TermRow>
-          <Checkbox label="마케팅 수신 동의" checked={marketing} onChange={setMarketing} />
-          <RequiredTag>선택</RequiredTag>
-        </TermRow>
+        <CardTitle>주요 기능</CardTitle>
+        <FeatureRow>
+          <FeatureIconBox><Camera size={20} /></FeatureIconBox>
+          <FeatureInfo>
+            <FeatureTitle>UV 듀얼 촬영</FeatureTitle>
+            <FeatureDesc>치태·치석을 눈에 보이지 않던 영역까지 감지해요</FeatureDesc>
+          </FeatureInfo>
+        </FeatureRow>
+        <FeatureRow>
+          <FeatureIconBox><Bot size={20} /></FeatureIconBox>
+          <FeatureInfo>
+            <FeatureTitle>AI 구강 모니터링</FeatureTitle>
+            <FeatureDesc>AI가 관리 위험 부위를 정밀하게 분석해요</FeatureDesc>
+          </FeatureInfo>
+        </FeatureRow>
+        <FeatureRow>
+          <FeatureIconBox><BarChart3 size={20} /></FeatureIconBox>
+          <FeatureInfo>
+            <FeatureTitle>3D 리포트</FeatureTitle>
+            <FeatureDesc>구강 상태를 3D로 시각화하고 관리 가이드를 제공해요</FeatureDesc>
+          </FeatureInfo>
+        </FeatureRow>
       </Card>
 
       <Card>
@@ -183,20 +197,20 @@ export default function OnboardingPage() {
           <PermissionIcon><Camera size={20} /></PermissionIcon>
           <PermissionText>
             <PermissionTitle>카메라</PermissionTitle>
-            <PermissionDesc>구강 촬영에 필요합니다</PermissionDesc>
+            <PermissionDesc>구강 촬영에 필요해요</PermissionDesc>
           </PermissionText>
         </PermissionRow>
         <PermissionRow>
           <PermissionIcon><Bluetooth size={20} /></PermissionIcon>
           <PermissionText>
             <PermissionTitle>블루투스</PermissionTitle>
-            <PermissionDesc>디바이스 연결에 필요합니다</PermissionDesc>
+            <PermissionDesc>디바이스 연결에 필요해요</PermissionDesc>
           </PermissionText>
         </PermissionRow>
       </Card>
 
       <Spacer />
-      <Button variant="primary" fullWidth disabled={!requiredChecked} onClick={() => router.push('/login')}>
+      <Button variant="primary" fullWidth onClick={() => router.push('/login')}>
         시작하기
       </Button>
     </PageWrapper>
