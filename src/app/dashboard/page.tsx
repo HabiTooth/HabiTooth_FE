@@ -2,10 +2,10 @@
 
 import ScoreCard from '@/components/molecules/ScoreCard';
 import NavBar from '@/components/organisms/NavBar';
-import ToothStatusItem from '@/components/molecules/ToothStatusItem';
 import AnalysisResult from '@/components/molecules/AnalysisResult';
 import ScanBanner from '@/components/molecules/ScanBanner';
 import QuickMenu from '@/components/organisms/QuickMenu';
+import RiskSummary from '@/components/organisms/RiskSummary';
 
 export default function DashboardPage() {
   return (
@@ -18,11 +18,14 @@ export default function DashboardPage() {
         plaqueRisk="normal"
         calculusRisk="high"
       />
-      <div className="grid grid-cols-3 gap-3 mt-4">
-        <ToothStatusItem label="치태" score={52} riskLevel="normal" />
-        <ToothStatusItem label="치석" score={68} riskLevel="high" />
-        <ToothStatusItem label="잇몸 건강" score={85} riskLevel="low" />
-      </div>
+      <RiskSummary
+        plaqueScore={52}
+        calculusScore={68}
+        gumScore={85}
+        plaqueRisk="normal"
+        calculusRisk="high"
+        gumRisk="low"
+      />
       <ScanBanner
         title="AI 구강 분석을 시작해보세요"
         description={"실시간 스캔 후 AI가\n구강 상태를 분석해드려요"}
