@@ -29,16 +29,16 @@ export default function ToothStatusItem({ label, score, riskLevel }: ToothStatus
 
   return (
     <div
-      className="rounded-2xl p-4 flex flex-col gap-2"
+      className="rounded-2xl p-3 flex flex-col gap-2"
       style={{ backgroundColor: getBgColor(riskLevel) }}
     >
-      <div className="flex items-center gap-2">
-        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
-        <span className="text-sm font-medium text-gray-700">{label}</span>
-        <span className="text-xs text-gray-400">{getRiskLabel(riskLevel)}</span>
+      <div className="flex items-center gap-1 whitespace-nowrap overflow-hidden">
+        <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
+        <span className="text-[11px] font-medium text-gray-700 truncate">{label}</span>
+        <span className="text-[10px] text-gray-400 flex-shrink-0">{getRiskLabel(riskLevel)}</span>
       </div>
       <div className="flex justify-center">
-        <ScoreRing score={score} color={color} size={100} strokeWidth={10} />
+        <ScoreRing score={score} color={color} size={80} strokeWidth={8} />
       </div>
     </div>
   );
