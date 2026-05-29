@@ -6,10 +6,12 @@ import AnalysisResult from '@/components/molecules/AnalysisResult';
 import ScanBanner from '@/components/molecules/ScanBanner';
 import QuickMenu from '@/components/organisms/QuickMenu';
 import RiskSummary from '@/components/organisms/RiskSummary';
+import Header from '@/components/organisms/Header';
 
 export default function DashboardPage() {
   return (
     <main className="p-6 bg-[#E8ECF4] min-h-screen pb-20">
+      <Header hasNotification={true} />
       <ScoreCard score={82} prevScore={76} />
       <AnalysisResult
         date="2025.05.15"
