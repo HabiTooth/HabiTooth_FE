@@ -3,107 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import styled from 'styled-components';
-import { Eye, EyeOff } from 'lucide-react';
-import Input from '@/components/atoms/Input';
-import Button from '@/components/atoms/Button';
-
-const PageWrapper = styled.div`
-  max-width: 430px;
-  min-height: 100svh;
-  margin: 0 auto;
-  background: ${({ theme }) => theme.colors.background};
-  padding: 60px 20px 40px;
-  display: flex;
-  flex-direction: column;
-`;
-
-const LogoSection = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 40px;
-`;
-
-const IconBox = styled.div`
-  width: 72px;
-  height: 72px;
-  background: ${({ theme }) => theme.colors.primaryGradient};
-  border-radius: ${({ theme }) => theme.radius.xl};
-  display: flex;
-  align-items: center;
-  justify-content: center;
-`;
-
-const AppTitle = styled.h1`
-  margin: 0;
-  font-size: 26px;
-  font-weight: 700;
-  color: ${({ theme }) => theme.colors.textPrimary};
-`;
-
-const Subtitle = styled.p`
-  margin: 0;
-  font-size: 14px;
-  color: ${({ theme }) => theme.colors.textSecondary};
-`;
-
-const FormSection = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  margin-bottom: 24px;
-`;
-
-const EyeButton = styled.button`
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0;
-  display: flex;
-  align-items: center;
-  color: ${({ theme }) => theme.colors.textSecondary};
-`;
-
-const RegisterLink = styled.p`
-  margin: 16px 0 0;
-  text-align: center;
-  font-size: 14px;
-  color: ${({ theme }) => theme.colors.textSecondary};
-
-  a {
-    color: ${({ theme }) => theme.colors.primary};
-    font-weight: 600;
-    text-decoration: none;
-  }
-`;
-
-const Divider = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin: 24px 0;
-
-  &::before,
-  &::after {
-    content: '';
-    flex: 1;
-    height: 1px;
-    background: ${({ theme }) => theme.colors.hairline};
-  }
-`;
-
-const DividerText = styled.span`
-  font-size: 12px;
-  color: ${({ theme }) => theme.colors.textSecondary};
-`;
-
-const SocialSection = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-`;
+import { Eye, EyeOff, Check, Loader2 } from 'lucide-react';
 
 const KakaoIcon = () => (
   <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -123,12 +23,25 @@ const GoogleIcon = () => (
   </svg>
 );
 
-const ToothIcon = () => (
-  <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
-    <path
-      d="M18 4C13.6 4 10 7.6 10 12c0 3 1.6 5.6 4 7.1 1 .7 1.7 1.8 1.7 3.2V28c0 .6.4 1 1 1h2.6c.6 0 1-.4 1-1v-5.7c0-1.4.7-2.5 1.7-3.2 2.4-1.5 4-4.1 4-7.1 0-4.4-3.6-8-8-8z"
-      fill="white"
-    />
+const OUTLINE_D = 'M 194 79 C 171 59 138 58 116 76 C 95 94 91 122 100 151 C 106 171 115 194 126 219 L 147 268 C 152 281 160 286 174 283 L 174 221 C 174 202 185 190 200 190 C 215 190 226 202 226 221 L 226 283 C 240 286 248 281 253 268 L 274 219 C 285 194 294 171 300 151 C 309 122 305 94 284 76 C 267 62 245 58 225 64';
+const STEM_D = 'M 194 79 L 194 143';
+
+const LogoIcon = () => (
+  <svg width="40" height="40" viewBox="75 45 255 258" fill="none">
+    <defs>
+      <linearGradient id="loginLogoGrad" x1="75" y1="0" x2="330" y2="0" gradientUnits="userSpaceOnUse">
+        <stop offset="0" stopColor="#4A86D9" />
+        <stop offset="0.4" stopColor="#93C5FD" />
+        <stop offset="0.5" stopColor="#BFDBFE" />
+        <stop offset="0.6" stopColor="#93C5FD" />
+        <stop offset="1" stopColor="#4A86D9" />
+        <animateTransform attributeName="gradientTransform" type="translate" from="-255 0" to="255 0" dur="2.6s" repeatCount="indefinite" />
+      </linearGradient>
+    </defs>
+    <path d={OUTLINE_D} stroke="url(#loginLogoGrad)" strokeWidth="15.5" strokeLinecap="round" strokeLinejoin="round" />
+    <path d={STEM_D} stroke="url(#loginLogoGrad)" strokeWidth="15.5" strokeLinecap="round" />
+    <circle cx={194} cy={143} r={16.5} fill="url(#loginLogoGrad)" />
+    <circle cx={222} cy={70} r={16.5} fill="url(#loginLogoGrad)" />
   </svg>
 );
 
@@ -137,85 +50,160 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [emailFocused, setEmailFocused] = useState(false);
+  const [passwordFocused, setPasswordFocused] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [shakeEmail, setShakeEmail] = useState(false);
+  const [shakePassword, setShakePassword] = useState(false);
+
+  const emailActive = emailFocused || !!email;
+  const passwordActive = passwordFocused || !!password;
+  const canLogin = !!email && !!password;
 
   const handleLogin = () => {
+    if (isLoading) return;
+    let hasError = false;
+    if (!email) {
+      setShakeEmail(true);
+      hasError = true;
+      setTimeout(() => setShakeEmail(false), 500);
+    }
+    if (!password) {
+      setShakePassword(true);
+      hasError = true;
+      setTimeout(() => setShakePassword(false), 500);
+    }
+    if (hasError) return;
     setIsLoading(true);
     setTimeout(() => {
       setIsLoading(false);
       router.push('/pairing');
-    }, 1000);
+    }, 1500);
   };
 
   return (
-    <PageWrapper>
-      <LogoSection>
-        <IconBox>
-          <ToothIcon />
-        </IconBox>
-        <AppTitle>HabiTooth</AppTitle>
-        <Subtitle>가정용 AI 구강 모니터링 디바이스</Subtitle>
-      </LogoSection>
+    <div className="max-w-[430px] min-h-svh mx-auto bg-background px-5 pt-[60px] pb-10 flex flex-col relative z-10">
+      <div className="aurora-blob-1" />
+      <div className="aurora-blob-2" />
+      <div className="aurora-blob-3" />
 
-      <FormSection>
-        <Input
-          label="이메일"
-          type="email"
-          placeholder="example@email.com"
-          value={email}
-          onChange={setEmail}
-        />
-        <Input
-          label="비밀번호"
-          type={showPassword ? 'text' : 'password'}
-          placeholder="비밀번호를 입력해주세요"
-          value={password}
-          onChange={setPassword}
-          rightIcon={
-            <EyeButton type="button" onClick={() => setShowPassword((v) => !v)}>
+      <div className="flex flex-col items-center gap-2.5 mb-8 relative z-10">
+        <div className="w-[72px] h-[72px] bg-white rounded-[24px] flex items-center justify-center shadow-card border border-hairline">
+          <LogoIcon />
+        </div>
+        <h1 className="m-0 text-[26px] font-bold text-content">
+          <span className="text-primary">Habi</span>Tooth
+        </h1>
+        <p className="m-0 text-sm text-muted">가정용 AI 구강 모니터링 디바이스</p>
+      </div>
+
+      <div className="bg-white/90 backdrop-blur-sm rounded-[20px] shadow-card p-6 mb-5 relative z-10">
+        <div className="flex flex-col gap-4 mb-4">
+          <div
+            className={`float-field ${emailActive ? 'active' : ''} ${emailFocused ? 'focused' : ''} ${shakeEmail ? 'shake' : ''}`}
+          >
+            <label className="float-label">이메일</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              onFocus={() => setEmailFocused(true)}
+              onBlur={() => setEmailFocused(false)}
+              className="float-input"
+            />
+          </div>
+
+          <div
+            className={`float-field ${passwordActive ? 'active' : ''} ${passwordFocused ? 'focused' : ''} ${shakePassword ? 'shake' : ''}`}
+          >
+            <label className="float-label">비밀번호</label>
+            <input
+              type={showPassword ? 'text' : 'password'}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              onFocus={() => setPasswordFocused(true)}
+              onBlur={() => setPasswordFocused(false)}
+              className="float-input"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              className="flex items-center text-muted bg-transparent border-none cursor-pointer p-0 ml-2 flex-shrink-0"
+            >
               {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-            </EyeButton>
-          }
-        />
-      </FormSection>
+            </button>
+          </div>
+        </div>
 
-      <Button
-        variant="primary"
-        fullWidth
-        isLoading={isLoading}
-        disabled={!email || !password}
-        onClick={handleLogin}
-      >
-        로그인
-      </Button>
+        <div className="flex items-center justify-between mb-5">
+          <button
+            type="button"
+            onClick={() => setRememberMe((v) => !v)}
+            className="flex items-center gap-2 bg-transparent border-none cursor-pointer p-0"
+          >
+            <span
+              className={`w-[18px] h-[18px] rounded-[4px] border flex items-center justify-center flex-shrink-0 transition-colors duration-150 ${
+                rememberMe ? 'bg-primary border-primary' : 'bg-white border-hairline'
+              }`}
+            >
+              <span className={`transition-transform duration-150 ${rememberMe ? 'scale-100' : 'scale-0'}`}>
+                <Check size={11} color="white" strokeWidth={2.5} />
+              </span>
+            </span>
+            <span className="text-[13px] text-content">로그인 유지</span>
+          </button>
+          <div className="flex items-center gap-1.5 text-[13px]">
+            <Link href="/forgot-email" className="text-primary no-underline">이메일 찾기</Link>
+            <span className="text-muted">·</span>
+            <Link href="/forgot-password" className="text-primary no-underline">비밀번호 찾기</Link>
+          </div>
+        </div>
 
-      <RegisterLink>
-        아직 계정이 없으신가요?{' '}
-        <Link href="/register">회원가입</Link>
-      </RegisterLink>
-
-      <Divider>
-        <DividerText>또는</DividerText>
-      </Divider>
-
-      <SocialSection>
-        <Button
-          variant="social"
-          fullWidth
-          leftIcon={<KakaoIcon />}
-          onClick={() => {}}
+        <button
+          type="button"
+          onClick={handleLogin}
+          disabled={isLoading}
+          className={`w-full h-[54px] rounded-[14px] text-white text-base font-semibold bg-primary-gradient shadow-button relative flex items-center justify-center cursor-pointer disabled:cursor-not-allowed transition-opacity ${
+            !canLogin ? 'opacity-50' : ''
+          }`}
         >
+          <span className={`transition-opacity duration-150 ${isLoading ? 'opacity-0' : 'opacity-100'}`}>
+            로그인
+          </span>
+          <span className={`absolute transition-opacity duration-150 ${isLoading ? 'opacity-100' : 'opacity-0'}`}>
+            <Loader2 size={20} className="animate-spin" />
+          </span>
+        </button>
+
+        <p className="mt-4 mb-0 text-center text-sm text-muted">
+          아직 계정이 없으신가요?{' '}
+          <Link href="/register" className="text-primary font-semibold no-underline">회원가입</Link>
+        </p>
+      </div>
+
+      <div className="flex items-center gap-3 mb-4 relative z-10">
+        <div className="flex-1 h-px bg-hairline" />
+        <span className="text-xs text-muted">또는</span>
+        <div className="flex-1 h-px bg-hairline" />
+      </div>
+
+      <div className="flex flex-col gap-3 relative z-10">
+        <button
+          type="button"
+          className="w-full h-[50px] bg-white border border-hairline rounded-[14px] flex items-center justify-center gap-2 text-[15px] font-medium text-content cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-card"
+        >
+          <KakaoIcon />
           카카오로 시작하기
-        </Button>
-        <Button
-          variant="social"
-          fullWidth
-          leftIcon={<GoogleIcon />}
-          onClick={() => {}}
+        </button>
+        <button
+          type="button"
+          className="w-full h-[50px] bg-white border border-hairline rounded-[14px] flex items-center justify-center gap-2 text-[15px] font-medium text-content cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-card"
         >
+          <GoogleIcon />
           Google로 시작하기
-        </Button>
-      </SocialSection>
-    </PageWrapper>
+        </button>
+      </div>
+    </div>
   );
 }
