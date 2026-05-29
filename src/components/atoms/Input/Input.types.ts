@@ -1,9 +1,10 @@
 export interface InputProps {
   label: string;
   type: 'text' | 'email' | 'password';
-  placeholder: string;
+  placeholder?: string;
   value: string;
   onChange: (v: string) => void;
   error?: string;
   rightIcon?: React.ReactNode;
+  shake?: boolean;
 }
