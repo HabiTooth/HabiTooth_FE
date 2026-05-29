@@ -5,6 +5,7 @@ import NavBar from '@/components/organisms/NavBar';
 import ToothStatusItem from '@/components/molecules/ToothStatusItem';
 import AnalysisResult from '@/components/molecules/AnalysisResult';
 import ScanBanner from '@/components/molecules/ScanBanner';
+import QuickMenu from '@/components/organisms/QuickMenu';
 
 export default function DashboardPage() {
   return (
@@ -27,6 +28,7 @@ export default function DashboardPage() {
         description={"실시간 스캔 후 AI가\n구강 상태를 분석해드려요"}
         onClick={() => {}}
       />
+      <QuickMenu />
       <NavBar activeTab="home" />
     </main>
   );
