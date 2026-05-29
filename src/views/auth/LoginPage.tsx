@@ -3,14 +3,13 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Eye, EyeOff, Check, Loader2 } from 'lucide-react';
+import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import Input from '@/components/atoms/Input';
+import Checkbox from '@/components/atoms/Checkbox';
 
 const KakaoIcon = () => (
   <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-    <path
-      d="M10 2C5.58 2 2 4.9 2 8.44c0 2.26 1.46 4.25 3.68 5.37l-.94 3.5 4.08-2.69c.38.05.77.08 1.18.08 4.42 0 8-2.9 8-6.44S14.42 2 10 2z"
-      fill="#3A1D1D"
-    />
+    <path d="M10 2C5.58 2 2 4.9 2 8.44c0 2.26 1.46 4.25 3.68 5.37l-.94 3.5 4.08-2.69c.38.05.77.08 1.18.08 4.42 0 8-2.9 8-6.44S14.42 2 10 2z" fill="#3A1D1D" />
   </svg>
 );
 
@@ -50,36 +49,19 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [emailFocused, setEmailFocused] = useState(false);
-  const [passwordFocused, setPasswordFocused] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [shakeEmail, setShakeEmail] = useState(false);
   const [shakePassword, setShakePassword] = useState(false);
 
-  const emailActive = emailFocused || !!email;
-  const passwordActive = passwordFocused || !!password;
-  const canLogin = !!email && !!password;
-
   const handleLogin = () => {
     if (isLoading) return;
     let hasError = false;
-    if (!email) {
-      setShakeEmail(true);
-      hasError = true;
-      setTimeout(() => setShakeEmail(false), 500);
-    }
-    if (!password) {
-      setShakePassword(true);
-      hasError = true;
-      setTimeout(() => setShakePassword(false), 500);
-    }
+    if (!email) { setShakeEmail(true); hasError = true; setTimeout(() => setShakeEmail(false), 500); }
+    if (!password) { setShakePassword(true); hasError = true; setTimeout(() => setShakePassword(false), 500); }
     if (hasError) return;
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      router.push('/pairing');
-    }, 1500);
+    setTimeout(() => { setIsLoading(false); router.push('/pairing'); }, 1500);
   };
 
   return (
@@ -100,59 +82,23 @@ export default function LoginPage() {
 
       <div className="bg-white/90 backdrop-blur-sm rounded-[20px] shadow-card p-6 mb-5 relative z-10">
         <div className="flex flex-col gap-4 mb-4">
-          <div
-            className={`float-field ${emailActive ? 'active' : ''} ${emailFocused ? 'focused' : ''} ${shakeEmail ? 'shake' : ''}`}
-          >
-            <label className="float-label">이메일</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              onFocus={() => setEmailFocused(true)}
-              onBlur={() => setEmailFocused(false)}
-              className="float-input"
-            />
-          </div>
-
-          <div
-            className={`float-field ${passwordActive ? 'active' : ''} ${passwordFocused ? 'focused' : ''} ${shakePassword ? 'shake' : ''}`}
-          >
-            <label className="float-label">비밀번호</label>
-            <input
-              type={showPassword ? 'text' : 'password'}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              onFocus={() => setPasswordFocused(true)}
-              onBlur={() => setPasswordFocused(false)}
-              className="float-input"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword((v) => !v)}
-              className="flex items-center text-muted bg-transparent border-none cursor-pointer p-0 ml-2 flex-shrink-0"
-            >
-              {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-            </button>
-          </div>
+          <Input label="이메일" type="email" value={email} onChange={setEmail} shake={shakeEmail} />
+          <Input
+            label="비밀번호"
+            type={showPassword ? 'text' : 'password'}
+            value={password}
+            onChange={setPassword}
+            shake={shakePassword}
+            rightIcon={
+              <button type="button" onClick={() => setShowPassword((v) => !v)} className="flex items-center text-muted bg-transparent border-none cursor-pointer p-0">
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            }
+          />
         </div>
 
         <div className="flex items-center justify-between mb-5">
-          <button
-            type="button"
-            onClick={() => setRememberMe((v) => !v)}
-            className="flex items-center gap-2 bg-transparent border-none cursor-pointer p-0"
-          >
-            <span
-              className={`w-[18px] h-[18px] rounded-[4px] border flex items-center justify-center flex-shrink-0 transition-colors duration-150 ${
-                rememberMe ? 'bg-primary border-primary' : 'bg-white border-hairline'
-              }`}
-            >
-              <span className={`transition-transform duration-150 ${rememberMe ? 'scale-100' : 'scale-0'}`}>
-                <Check size={11} color="white" strokeWidth={2.5} />
-              </span>
-            </span>
-            <span className="text-[13px] text-content">로그인 유지</span>
-          </button>
+          <Checkbox label="로그인 유지" checked={rememberMe} onChange={setRememberMe} />
           <div className="flex items-center gap-1.5 text-[13px]">
             <Link href="/forgot-email" className="text-primary no-underline">이메일 찾기</Link>
             <span className="text-muted">·</span>
@@ -164,13 +110,9 @@ export default function LoginPage() {
           type="button"
           onClick={handleLogin}
           disabled={isLoading}
-          className={`w-full h-[54px] rounded-[14px] text-white text-base font-semibold bg-primary-gradient shadow-button relative flex items-center justify-center cursor-pointer disabled:cursor-not-allowed transition-opacity ${
-            !canLogin ? 'opacity-50' : ''
-          }`}
+          className={`w-full h-[54px] rounded-[14px] text-white text-base font-semibold bg-primary-gradient shadow-button relative flex items-center justify-center cursor-pointer disabled:cursor-not-allowed transition-opacity ${!email || !password ? 'opacity-50' : ''}`}
         >
-          <span className={`transition-opacity duration-150 ${isLoading ? 'opacity-0' : 'opacity-100'}`}>
-            로그인
-          </span>
+          <span className={`transition-opacity duration-150 ${isLoading ? 'opacity-0' : 'opacity-100'}`}>로그인</span>
           <span className={`absolute transition-opacity duration-150 ${isLoading ? 'opacity-100' : 'opacity-0'}`}>
             <Loader2 size={20} className="animate-spin" />
           </span>
@@ -189,17 +131,11 @@ export default function LoginPage() {
       </div>
 
       <div className="flex flex-col gap-3 relative z-10">
-        <button
-          type="button"
-          className="w-full h-[50px] bg-white border border-hairline rounded-[14px] flex items-center justify-center gap-2 text-[15px] font-medium text-content cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-card"
-        >
+        <button type="button" className="w-full h-[50px] bg-white border border-hairline rounded-[14px] flex items-center justify-center gap-2 text-[15px] font-medium text-content cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-card">
           <KakaoIcon />
           카카오로 시작하기
         </button>
-        <button
-          type="button"
-          className="w-full h-[50px] bg-white border border-hairline rounded-[14px] flex items-center justify-center gap-2 text-[15px] font-medium text-content cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-card"
-        >
+        <button type="button" className="w-full h-[50px] bg-white border border-hairline rounded-[14px] flex items-center justify-center gap-2 text-[15px] font-medium text-content cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-card">
           <GoogleIcon />
           Google로 시작하기
         </button>
