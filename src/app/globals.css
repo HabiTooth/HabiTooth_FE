@@ -2,6 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  color-scheme: light;
+}
+
 *,
 *::before,
 *::after {
@@ -213,6 +217,51 @@ body {
   40%       { transform: translateX(6px); }
   60%       { transform: translateX(-4px); }
   80%       { transform: translateX(4px); }
+}
+
+/* ── Scan Page Animations ───────────────────── */
+@keyframes pulse-tooth {
+  0%, 100% { transform: scale(1);    opacity: 1; }
+  50%       { transform: scale(1.1); opacity: 0.8; }
+}
+@keyframes bounce-in {
+  0%   { transform: scale(0);    opacity: 0; }
+  60%  { transform: scale(1.25); opacity: 1; }
+  80%  { transform: scale(0.92); }
+  100% { transform: scale(1); }
+}
+@keyframes fade-banner {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-pulse-tooth { animation: pulse-tooth 2.4s ease-in-out infinite; }
+.animate-bounce-in   { animation: bounce-in 0.55s cubic-bezier(0.34,1.56,0.64,1) both; }
+.animate-fade-banner { animation: fade-banner 0.3s ease both; }
+
+/* ── Hero Decorations ────────────────────────── */
+@keyframes glow-pulse {
+  0%, 100% { transform: scale(1);    opacity: 1; }
+  50%       { transform: scale(1.1); opacity: 0.8; }
+}
+@keyframes orbit-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+@keyframes sparkle-twinkle {
+  0%, 100% { transform: scale(1);   opacity: 0.9; }
+  50%       { transform: scale(0.5); opacity: 0.25; }
+}
+.glow-orb    { animation: glow-pulse 2s ease-in-out infinite; }
+.orbit-ring  { animation: orbit-spin 7s linear infinite; }
+
+/* ── Progress Bar Shimmer ─────────────────────── */
+@keyframes progress-shimmer {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(300%); }
+}
+.progress-shimmer {
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.38) 50%, transparent 100%);
+  animation: progress-shimmer 1.8s ease-in-out infinite;
 }
 
 /* ── Scan Rings (PairingPage) ────────────────── */
