@@ -102,6 +102,7 @@ body {
   animation: splash-slide-up 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) var(--delay) both;
 }
 
+/* ── Aurora Blobs ───────────────────────────── */
 .aurora-blob-1,
 .aurora-blob-2,
 .aurora-blob-3 {
@@ -147,6 +148,7 @@ body {
   to   { transform: translate(-30px, 50px); }
 }
 
+/* ── Floating Label ─────────────────────────── */
 .float-field {
   position: relative;
   height: 58px;
@@ -207,6 +209,7 @@ body {
   transition: color 0.15s ease;
 }
 
+/* ── Shake ──────────────────────────────────── */
 @keyframes shake {
   0%, 100% { transform: translateX(0); }
   20%       { transform: translateX(-6px); }
@@ -215,6 +218,7 @@ body {
   80%       { transform: translateX(4px); }
 }
 
+/* ── Scan Rings (PairingPage) ────────────────── */
 .scan-ring {
   position: absolute;
   width: 110px;

@@ -1,5 +1,4 @@
 'use client';
-
 import ScoreCard from '@/components/molecules/ScoreCard';
 import NavBar from '@/components/organisms/NavBar';
 import AnalysisResult from '@/components/molecules/AnalysisResult';
@@ -7,7 +6,6 @@ import ScanBanner from '@/components/molecules/ScanBanner';
 import QuickMenu from '@/components/organisms/QuickMenu';
 import RiskSummary from '@/components/organisms/RiskSummary';
 import Header from '@/components/organisms/Header';
-
 export default function DashboardPage() {
   return (
     <main className="p-6 bg-[#E8ECF4] min-h-screen pb-20">
