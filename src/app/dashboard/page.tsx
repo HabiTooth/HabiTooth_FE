@@ -1,4 +1,6 @@
 'use client';
+
+import { useRouter } from 'next/navigation';
 import ScoreCard from '@/components/molecules/ScoreCard';
 import NavBar from '@/components/organisms/NavBar';
 import AnalysisResult from '@/components/molecules/AnalysisResult';
@@ -6,7 +8,10 @@ import ScanBanner from '@/components/molecules/ScanBanner';
 import QuickMenu from '@/components/organisms/QuickMenu';
 import RiskSummary from '@/components/organisms/RiskSummary';
 import Header from '@/components/organisms/Header';
+
 export default function DashboardPage() {
+  const router = useRouter();
+
   return (
     <main className="p-6 bg-[#E8ECF4] min-h-screen pb-20">
       <Header hasNotification={true} />
@@ -31,7 +36,11 @@ export default function DashboardPage() {
         description={"실시간 스캔 후 AI가\n구강 상태를 분석해드려요"}
         onClick={() => {}}
       />
-      <QuickMenu />
+      <QuickMenu
+        onReportClick={() => router.push('/report/1')}
+        onGuideClick={() => {}}
+        on3DClick={() => {}}
+      />
       <NavBar activeTab="home" />
     </main>
   );

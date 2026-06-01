@@ -14,7 +14,6 @@ export default function RiskAnalysisSection({ plaque, calculus }: RiskAnalysisSe
 
       {/* 탐지 항목 */}
       <div className="space-y-3">
-        {/* 치태 */}
         <div>
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center gap-2">
@@ -24,14 +23,10 @@ export default function RiskAnalysisSection({ plaque, calculus }: RiskAnalysisSe
             <span className="text-xs font-semibold text-gray-800">{plaque}%</span>
           </div>
           <div className="w-full bg-gray-100 rounded-full h-2">
-            <div
-              className="h-2 rounded-full bg-[#F5A623]"
-              style={{ width: `${plaque}%` }}
-            />
+            <div className="h-2 rounded-full bg-[#F5A623]" style={{ width: `${plaque}%` }} />
           </div>
         </div>
 
-        {/* 치석 */}
         <div>
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center gap-2">
@@ -41,10 +36,7 @@ export default function RiskAnalysisSection({ plaque, calculus }: RiskAnalysisSe
             <span className="text-xs font-semibold text-gray-800">{calculus}%</span>
           </div>
           <div className="w-full bg-gray-100 rounded-full h-2">
-            <div
-              className="h-2 rounded-full bg-[#E8542A]"
-              style={{ width: `${calculus}%` }}
-            />
+            <div className="h-2 rounded-full bg-[#E8542A]" style={{ width: `${calculus}%` }} />
           </div>
         </div>
       </div>

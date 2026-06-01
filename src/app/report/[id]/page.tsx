@@ -6,6 +6,8 @@ import ReportSummary from '@/components/organisms/ReportSummary';
 import LLMGuideSection from '@/components/organisms/LLMGuideSection';
 import RiskAnalysisSection from '@/components/organisms/RiskAnalysisSection';
 import CareGuideSection from '@/components/organisms/CareGuideSection';
+import TrendChartSection from '@/components/organisms/TrendChartSection';
+import HistoryListSection from '@/components/organisms/HistoryListSection';
 
 export default function ReportPage() {
   return (
@@ -16,6 +18,14 @@ export default function ReportPage() {
         prevScore={69}
         grade="B"
         status="주의 필요"
+      />
+      <TrendChartSection
+        data={[
+          { date: '4/15', score: 68 },
+          { date: '4/29', score: 76 },
+          { date: '5/08', score: 82 },
+          { date: '5/15', score: 82 },
+        ]}
       />
       <RiskAnalysisSection
         plaque={12}
@@ -60,6 +70,14 @@ export default function ReportPage() {
             description: '치석 제거를 위해 6개월 내 내원 추천드려요.',
             buttonLabel: '예약하기',
           },
+        ]}
+      />
+      <HistoryListSection
+        items={[
+          { date: '2025.05.15', time: '14:30', score: 72, grade: 'B' },
+          { date: '2025.05.08', time: '09:15', score: 68, grade: 'C' },
+          { date: '2025.04.29', time: '11:00', score: 76, grade: 'B' },
+          { date: '2025.04.15', time: '10:30', score: 65, grade: 'C' },
         ]}
       />
       <NavBar activeTab="history" />

@@ -1,10 +1,13 @@
 'use client';
 
 import { FileText, Calendar, Smile, ShieldCheck } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import QuickMenuItem from '@/components/molecules/QuickMenuItem';
 import type { QuickMenuProps } from './QuickMenu.types';
 
-export default function QuickMenu({ onReportClick, onHistoryClick, on3DClick, onGuideClick }: QuickMenuProps) {
+export default function QuickMenu({ onReportClick, on3DClick, onGuideClick }: QuickMenuProps) {
+  const router = useRouter();
+
   return (
     <div className="grid grid-cols-4 gap-3 mt-4">
       <QuickMenuItem
@@ -15,7 +18,7 @@ export default function QuickMenu({ onReportClick, onHistoryClick, on3DClick, on
       <QuickMenuItem
         label="기록 관리"
         icon={<Calendar size={24} className="text-[#4A86D9]" />}
-        onClick={onHistoryClick}
+        onClick={() => router.push('/mypage/history')}
       />
       <QuickMenuItem
         label="3D 뷰어"
