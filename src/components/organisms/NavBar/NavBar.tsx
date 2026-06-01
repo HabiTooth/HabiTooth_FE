@@ -1,14 +1,15 @@
 'use client';
 
 import { Home, ScanLine, BookOpen, User } from 'lucide-react';
+import Link from 'next/link';
 import type { NavBarProps } from './NavBar.types';
 
 export default function NavBar({ activeTab = 'home' }: NavBarProps) {
   const tabs = [
-    { id: 'home', label: '홈', icon: Home },
-    { id: 'scan', label: '스캔', icon: ScanLine },
-    { id: 'history', label: '기록', icon: BookOpen },
-    { id: 'mypage', label: '마이페이지', icon: User },
+    { id: 'home', label: '홈', icon: Home, href: '/dashboard' },
+    { id: 'scan', label: '스캔', icon: ScanLine, href: '/scan' },
+    { id: 'history', label: '기록', icon: BookOpen, href: '/mypage/history' },
+    { id: 'mypage', label: '마이페이지', icon: User, href: '/mypage' },
   ];
 
   return (
@@ -17,15 +18,16 @@ export default function NavBar({ activeTab = 'home' }: NavBarProps) {
         const Icon = tab.icon;
         const isActive = activeTab === tab.id;
         return (
-          <button
+          <Link
             key={tab.id}
+            href={tab.href}
             className={`flex flex-col items-center gap-1 text-xs font-medium ${
               isActive ? 'text-[#4A86D9]' : 'text-gray-400'
             }`}
           >
             <Icon size={22} strokeWidth={isActive ? 2.5 : 1.8} />
             <span>{tab.label}</span>
-          </button>
+          </Link>
         );
       })}
     </nav>
