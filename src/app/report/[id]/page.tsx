@@ -4,6 +4,7 @@ import Header from '@/components/organisms/Header';
 import NavBar from '@/components/organisms/NavBar';
 import ReportSummary from '@/components/organisms/ReportSummary';
 import LLMGuideSection from '@/components/organisms/LLMGuideSection';
+import RiskAnalysisSection from '@/components/organisms/RiskAnalysisSection';
 
 export default function ReportPage() {
   return (
@@ -14,6 +15,10 @@ export default function ReportPage() {
         prevScore={69}
         grade="B"
         status="주의 필요"
+      />
+      <RiskAnalysisSection
+        plaque={12}
+        calculus={5}
       />
       <LLMGuideSection
         items={[
