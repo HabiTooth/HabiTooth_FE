@@ -1,12 +1,9 @@
 'use client';
-
 import styled, { keyframes, css } from 'styled-components';
 import type { ButtonProps } from './Button.types';
-
 const spin = keyframes`
   to { transform: rotate(360deg); }
 `;
-
 const SpinnerRing = styled.span`
   display: inline-block;
   width: 16px;
@@ -16,7 +13,6 @@ const SpinnerRing = styled.span`
   border-radius: 50%;
   animation: ${spin} 0.7s linear infinite;
 `;
-
 const StyledButton = styled.button<{
   $variant: string;
   $size: string;
@@ -32,16 +28,13 @@ const StyledButton = styled.button<{
   border-radius: ${({ theme }) => theme.radius.md};
   transition: opacity 0.2s, transform 0.1s;
   white-space: nowrap;
-
   ${({ $fullWidth }) => $fullWidth && css`width: 100%;`}
-
   ${({ $size }) =>
     $size === 'sm'
       ? css`height: 40px; padding: 0 16px; font-size: 14px;`
       : $size === 'lg'
         ? css`height: 56px; padding: 0 24px; font-size: 17px;`
         : css`height: 50px; padding: 0 20px; font-size: 15px;`}
-
   ${({ $variant, theme }) =>
     $variant === 'primary'
       ? css`
@@ -67,19 +60,16 @@ const StyledButton = styled.button<{
               color: ${theme.colors.textPrimary};
               border: 1px solid ${theme.colors.hairline};
             `}
-
   &:disabled {
     opacity: 0.45;
     cursor: not-allowed;
     box-shadow: none;
   }
-
   &:not(:disabled):active {
     transform: scale(0.98);
     opacity: 0.9;
   }
 `;
-
 export default function Button({
   variant = 'primary',
   size = 'md',
