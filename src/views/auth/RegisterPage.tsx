@@ -30,10 +30,22 @@ export default function RegisterPage() {
     setMarketing(v);
   };
 
-  const passwordError =
-    confirmPassword && password !== confirmPassword ? '비밀번호가 일치하지 않습니다' : undefined;
+  const emailError =
+    email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? '올바른 이메일 형식이 아니에요' : undefined;
 
-  const canSubmit = !!(name && email && password.length >= 8 && !passwordError && requiredChecked);
+  const passwordLengthError =
+    password && password.length < 8 ? '비밀번호는 8자 이상이어야 해요' : undefined;
+
+  const passwordError =
+    confirmPassword && password !== confirmPassword ? '비밀번호가 일치하지 않아요' : undefined;
+
+  const canSubmit = !!(
+    name &&
+    email && !emailError &&
+    password.length >= 8 &&
+    !passwordError &&
+    requiredChecked
+  );
 
   const handleRegister = () => {
     setIsLoading(true);
@@ -65,13 +77,14 @@ export default function RegisterPage() {
       <div className="bg-white/90 backdrop-blur-sm rounded-[20px] shadow-card p-6 mb-4 relative z-10">
         <div className="flex flex-col gap-4">
           <Input label="이름" type="text" placeholder="이름을 입력해주세요" value={name} onChange={setName} />
-          <Input label="이메일" type="email" placeholder="example@email.com" value={email} onChange={setEmail} />
+          <Input label="이메일" type="email" placeholder="example@email.com" value={email} onChange={setEmail} error={emailError} />
           <Input
             label="비밀번호"
             type={showPw ? 'text' : 'password'}
             placeholder="8자 이상 입력해주세요"
             value={password}
             onChange={setPassword}
+            error={passwordLengthError}
             rightIcon={
               <button type="button" onClick={() => setShowPw((v) => !v)} className="flex items-center text-muted bg-transparent border-none cursor-pointer p-0">
                 {showPw ? <EyeOff size={20} /> : <Eye size={20} />}
