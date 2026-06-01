@@ -5,6 +5,7 @@ import NavBar from '@/components/organisms/NavBar';
 import ReportSummary from '@/components/organisms/ReportSummary';
 import LLMGuideSection from '@/components/organisms/LLMGuideSection';
 import RiskAnalysisSection from '@/components/organisms/RiskAnalysisSection';
+import CareGuideSection from '@/components/organisms/CareGuideSection';
 
 export default function ReportPage() {
   return (
@@ -36,6 +37,28 @@ export default function ReportPage() {
             type: 'good',
             title: '전반적으로 양호한 상태입니다!',
             description: '대부분의 치아 표면이 깨끗하게 관리되고 있어요. 지금처럼 꾸준히 관리하면 더 건강한 구강을 유지할 수 있어요.',
+          },
+        ]}
+      />
+      <CareGuideSection
+        items={[
+          {
+            icon: '🪥',
+            title: '칫솔질 가이드',
+            description: '앞니 안쪽은 45도 각도로 작은 원을 그리며 닦아주세요.',
+            buttonLabel: '자세히 보기',
+          },
+          {
+            icon: '🧵',
+            title: '치실 사용',
+            description: '치아 사이에 낀 음식물과 치태를 제거해 주세요.',
+            buttonLabel: '자세히 보기',
+          },
+          {
+            icon: '🗓️',
+            title: '스케일링 추천',
+            description: '치석 제거를 위해 6개월 내 내원 추천드려요.',
+            buttonLabel: '예약하기',
           },
         ]}
       />
