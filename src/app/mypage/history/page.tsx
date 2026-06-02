@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft, ChevronDown, ChevronRight } from 'lucide-react';
+import NavBar from '@/components/organisms/NavBar';
 
 const ALL_HISTORY = Array.from({ length: 35 }, (_, i) => {
   const date = new Date('2026-05-28');
@@ -94,7 +95,7 @@ export default function HistoryPage() {
     ) : null;
 
   return (
-    <div className="max-w-[430px] min-h-svh mx-auto bg-background flex flex-col relative">
+    <div className="max-w-[430px] min-h-svh mx-auto bg-background flex flex-col relative pb-16">
       <div className="aurora-blob-1" />
       <div className="aurora-blob-2" />
       <div className="aurora-blob-3" />
@@ -130,18 +131,12 @@ export default function HistoryPage() {
         </div>
 
         <div className="grid grid-cols-4 px-4 py-2.5 bg-primary-light border-b border-hairline">
-          <button
-            type="button"
-            onClick={() => toggleSort('date')}
-            className="text-[11px] font-bold text-primary text-left bg-transparent border-none cursor-pointer p-0"
-          >
+          <button type="button" onClick={() => toggleSort('date')}
+            className="text-[11px] font-bold text-primary text-left bg-transparent border-none cursor-pointer p-0">
             날짜 <SortIcon k="date" />
           </button>
-          <button
-            type="button"
-            onClick={() => toggleSort('score')}
-            className="text-[11px] font-bold text-primary text-center bg-transparent border-none cursor-pointer p-0"
-          >
+          <button type="button" onClick={() => toggleSort('score')}
+            className="text-[11px] font-bold text-primary text-center bg-transparent border-none cursor-pointer p-0">
             점수 <SortIcon k="score" />
           </button>
           <span className="text-[11px] font-bold text-primary text-center">치태</span>
@@ -165,39 +160,26 @@ export default function HistoryPage() {
 
         {totalPages > 1 && (
           <div className="bg-white border-t border-hairline px-4 py-3 flex items-center justify-center gap-1">
-            <button
-              type="button"
-              onClick={() => setPage(p => Math.max(1, p - 1))}
-              disabled={page === 1}
-              className="w-8 h-8 flex items-center justify-center rounded-full bg-transparent border-none cursor-pointer disabled:opacity-30 hover:bg-hairline transition-colors"
-            >
+            <button type="button" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
+              className="w-8 h-8 flex items-center justify-center rounded-full bg-transparent border-none cursor-pointer disabled:opacity-30 hover:bg-hairline transition-colors">
               <ChevronLeft size={16} className="text-content" />
             </button>
-
             {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-              <button
-                key={p}
-                type="button"
-                onClick={() => setPage(p)}
+              <button key={p} type="button" onClick={() => setPage(p)}
                 className={`w-8 h-8 rounded-full text-[13px] font-semibold border-none cursor-pointer transition-colors ${
                   p === page ? 'bg-primary text-white' : 'bg-transparent text-muted hover:bg-hairline'
-                }`}
-              >
+                }`}>
                 {p}
               </button>
             ))}
-
-            <button
-              type="button"
-              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
-              className="w-8 h-8 flex items-center justify-center rounded-full bg-transparent border-none cursor-pointer disabled:opacity-30 hover:bg-hairline transition-colors"
-            >
+            <button type="button" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
+              className="w-8 h-8 flex items-center justify-center rounded-full bg-transparent border-none cursor-pointer disabled:opacity-30 hover:bg-hairline transition-colors">
               <ChevronRight size={16} className="text-content" />
             </button>
           </div>
         )}
       </div>
+      <NavBar activeTab="history" />
     </div>
   );
 }

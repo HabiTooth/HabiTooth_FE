@@ -6,6 +6,7 @@ import {
   User, ChevronLeft, ChevronRight, Bell, Shield, FileText,
   Smartphone, Clock, LogOut, UserX, Lock,
 } from 'lucide-react';
+import NavBar from '@/components/organisms/NavBar';
 
 function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
   return (
@@ -18,6 +19,7 @@ function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
     </button>
   );
 }
+
 
 function MenuItem({
   icon, label, right, onClick,
@@ -82,7 +84,7 @@ export default function MyPage() {
 
   return (
     <div
-      className="max-w-[430px] min-h-svh mx-auto px-5 pt-14 pb-10 flex flex-col relative"
+      className="max-w-[430px] min-h-svh mx-auto px-5 pt-14 pb-20 flex flex-col relative"
       style={{ backgroundColor: '#EEF2FF' }}
     >
       <div className="aurora-blob-1" />
@@ -194,8 +196,8 @@ export default function MyPage() {
             onClick={() => {}}
           />
         </Section>
-      </div>
-
+        </div>
+      <NavBar activeTab="mypage" />
     </div>
   );
 }

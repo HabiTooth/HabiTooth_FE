@@ -8,10 +8,11 @@ import RiskAnalysisSection from '@/components/organisms/RiskAnalysisSection';
 import CareGuideSection from '@/components/organisms/CareGuideSection';
 import TrendChartSection from '@/components/organisms/TrendChartSection';
 import HistoryListSection from '@/components/organisms/HistoryListSection';
+import { Brush, Scissors, Calendar } from 'lucide-react';
 
 export default function ReportPage() {
   return (
-    <main className="p-6 bg-[#E8ECF4] min-h-screen pb-20">
+    <main className="max-w-[430px] mx-auto p-6 bg-[#EEF2FF] min-h-screen pb-20">
       <Header />
       <ReportSummary
         score={72}
@@ -51,27 +52,27 @@ export default function ReportPage() {
         ]}
       />
       <CareGuideSection
-        items={[
-          {
-            icon: '🪥',
-            title: '칫솔질 가이드',
-            description: '앞니 안쪽은 45도 각도로 작은 원을 그리며 닦아주세요.',
-            buttonLabel: '자세히 보기',
-          },
-          {
-            icon: '🧵',
-            title: '치실 사용',
-            description: '치아 사이에 낀 음식물과 치태를 제거해 주세요.',
-            buttonLabel: '자세히 보기',
-          },
-          {
-            icon: '🗓️',
-            title: '스케일링 추천',
-            description: '치석 제거를 위해 6개월 내 내원 추천드려요.',
-            buttonLabel: '예약하기',
-          },
-        ]}
-      />
+  items={[
+    {
+      icon: <Brush size={20} className="text-[#4A86D9]" />,
+      title: '칫솔질 가이드',
+      description: '앞니 안쪽은 45도 각도로 작은 원을 그리며 닦아주세요.',
+      buttonLabel: '자세히 보기',
+    },
+    {
+      icon: <Scissors size={20} className="text-[#4A86D9]" />,
+      title: '치실 사용',
+      description: '치아 사이에 낀 음식물과 치태를 제거해 주세요.',
+      buttonLabel: '자세히 보기',
+    },
+    {
+      icon: <Calendar size={20} className="text-[#4A86D9]" />,
+      title: '스케일링 추천',
+      description: '치석 제거를 위해 6개월 내 내원 추천드려요.',
+      buttonLabel: '예약하기',
+    },
+  ]}
+/>
       <HistoryListSection
         items={[
           { date: '2025.05.15', time: '14:30', score: 72, grade: 'B' },
