@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import type { AnalysisResultProps } from './AnalysisResult.types';
 
 const getRiskLabel = (risk: 'low' | 'normal' | 'high' | 'very-high') => {
@@ -21,7 +22,7 @@ export default function AnalysisResult({ date, time, score, plaqueRisk, calculus
     <div className="bg-white rounded-2xl p-4 mt-4">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold text-gray-800">최근 분석 결과</h3>
-        <button className="text-xs text-gray-400">전체 보기 &gt;</button>
+        <Link href="/report/1" className="text-xs text-gray-400">전체 보기 &gt;</Link>
       </div>
       <div className="flex gap-3">
         <div className="w-20 h-20 bg-[#E8ECF4] rounded-xl flex items-center justify-center flex-shrink-0">
