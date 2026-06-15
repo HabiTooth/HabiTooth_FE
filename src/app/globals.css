@@ -212,6 +212,13 @@ body {
   color: #8A94A6;
   transition: color 0.15s ease;
 }
+input[type='date'] {
+  color-scheme: light;
+  color: transparent;
+}
+.float-field.active input[type='date'] {
+  color: #1A1F36;
+}
 
 /* ── Shake ──────────────────────────────────── */
 @keyframes shake {

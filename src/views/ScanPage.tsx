@@ -23,12 +23,14 @@ import {
 } from 'lucide-react';
 import StepIndicator from '@/components/molecules/StepIndicator';
 import type { ScanStatusType } from '@/components/molecules/ScanStatusBanner';
-import { useCameraStream } from '@/hooks/useCameraStream';
+import { useCameraStream, type CameraMode } from '@/hooks/useCameraStream';
 import { useScanDetection } from '@/hooks/useScanDetection';
+import { scanApi, type ViewType } from '@/lib/api/scan';
+import { aiApi, type AiAnalyzeResult } from '@/lib/api/ai';
+import { useAuthStore } from '@/stores/authStore';
 
 type Step = 1 | 2 | 3 | 4;
 type ScanPhase = 'guide' | 'white' | 'uv';
-type ToothZone = 'ur' | 'ul' | 'lr' | 'll';
 
 const STEP_LABELS = ['준비', '스캔 중', '분석 중', '완료'];
 const ANALYZE_STEPS = [
@@ -39,11 +41,16 @@ const ANALYZE_STEPS = [
   '맞춤 리포트 생성',
 ];
 const PHASE_LABELS = ['가이드 정렬', '백색광 촬영', 'UV 촬영'];
-const ZONES: { id: ToothZone; label: string }[] = [
-  { id: 'ur', label: '상악 우측' },
-  { id: 'ul', label: '상악 좌측' },
-  { id: 'lr', label: '하악 우측' },
-  { id: 'll', label: '하악 좌측' },
+const ZONES: { viewType: ViewType; label: string }[] = [
+  { viewType: 'UPPER_LEFT',   label: '상악 좌' },
+  { viewType: 'UPPER_CENTER', label: '상악 중' },
+  { viewType: 'UPPER_RIGHT',  label: '상악 우' },
+  { viewType: 'OUTER_LEFT',   label: '외측 좌' },
+  { viewType: 'OUTER_CENTER', label: '외측 중' },
+  { viewType: 'OUTER_RIGHT',  label: '외측 우' },
+  { viewType: 'LOWER_LEFT',   label: '하악 좌' },
+  { viewType: 'LOWER_CENTER', label: '하악 중' },
+  { viewType: 'LOWER_RIGHT',  label: '하악 우' },
 ];
 
 function PageHeader({
@@ -98,62 +105,48 @@ function PhaseTabs({ phase }: { phase: ScanPhase }) {
   );
 }
 
-function ZoneArchIcon({ zone, className = '' }: { zone: ToothZone; className?: string }) {
-  const isUpper = zone === 'ur' || zone === 'ul';
-  const isRight = zone === 'ur' || zone === 'lr';
+function ZoneArchIcon({ viewType, className = '' }: { viewType: ViewType; className?: string }) {
+  const isUpper = viewType.startsWith('UPPER_');
+  const isLower = viewType.startsWith('LOWER_');
+  const isLeft = viewType.endsWith('_LEFT');
+  const isCenter = viewType.endsWith('_CENTER');
+
   if (isUpper) {
     return (
       <svg width="26" height="14" viewBox="0 0 26 14" fill="none" className={className}>
-        <path
-          d="M2 13 C2 5 6 2 13 2 C20 2 24 5 24 13"
-          stroke="#D0D8E5"
-          strokeWidth="2"
-          strokeLinecap="round"
-        />
-        {isRight ? (
-          <path
-            d="M13 2 C20 2 24 5 24 13"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-          />
-        ) : (
-          <path
-            d="M2 13 C2 5 6 2 13 2"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-          />
-        )}
+        <path d="M2 13 C2 5 6 2 13 2 C20 2 24 5 24 13" stroke="#D0D8E5" strokeWidth="2" strokeLinecap="round" />
+        {isLeft   && <path d="M2 13 C2 5 6 2 9 2" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />}
+        {isCenter && <path d="M9 2 C11 2 13 2 17 2" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />}
+        {!isLeft && !isCenter && <path d="M17 2 C20 2 24 5 24 13" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />}
       </svg>
     );
   }
+  if (isLower) {
+    return (
+      <svg width="26" height="14" viewBox="0 0 26 14" fill="none" className={className}>
+        <path d="M2 1 C2 9 6 12 13 12 C20 12 24 9 24 1" stroke="#D0D8E5" strokeWidth="2" strokeLinecap="round" />
+        {isLeft   && <path d="M2 1 C2 9 6 12 9 12" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />}
+        {isCenter && <path d="M9 12 C11 12 13 12 17 12" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />}
+        {!isLeft && !isCenter && <path d="M17 12 C20 12 24 9 24 1" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />}
+      </svg>
+    );
+  }
+  // OUTER: 앞니 정면 가로 바
   return (
-    <svg width="26" height="14" viewBox="0 0 26 14" fill="none" className={className}>
-      <path
-        d="M2 1 C2 9 6 12 13 12 C20 12 24 9 24 1"
-        stroke="#D0D8E5"
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
-      {isRight ? (
-        <path
-          d="M13 12 C20 12 24 9 24 1"
-          stroke="currentColor"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-        />
-      ) : (
-        <path
-          d="M2 1 C2 9 6 12 13 12"
-          stroke="currentColor"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-        />
-      )}
+    <svg width="26" height="10" viewBox="0 0 26 10" fill="none" className={className}>
+      <rect x="1" y="3" width="24" height="4" rx="2" stroke="#D0D8E5" strokeWidth="1.5" />
+      {isLeft   && <rect x="1" y="3" width="8" height="4" rx="2" stroke="currentColor" strokeWidth="2" />}
+      {isCenter && <rect x="9" y="3" width="8" height="4" rx="1" stroke="currentColor" strokeWidth="2" />}
+      {!isLeft && !isCenter && <rect x="17" y="3" width="8" height="4" rx="2" stroke="currentColor" strokeWidth="2" />}
     </svg>
   );
 }
+
+const ZONE_GROUPS = [
+  { label: '상악', range: [0, 1, 2] },
+  { label: '외측', range: [3, 4, 5] },
+  { label: '하악', range: [6, 7, 8] },
+];
 
 function ZoneSelector({
   currentZoneIdx,
@@ -163,44 +156,39 @@ function ZoneSelector({
   completedZones: number[];
 }) {
   return (
-    <div className="flex items-stretch bg-white border-t border-hairline flex-shrink-0">
-      {ZONES.map(({ id, label }, i) => {
-        const isDone = completedZones.includes(i);
-        const isActive = i === currentZoneIdx && !isDone;
-        return (
-          <div
-            key={id}
-            className={`flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-colors
-              ${i < ZONES.length - 1 ? 'border-r border-hairline' : ''}
-              ${isActive ? 'bg-primary-light' : ''}`}
-          >
-            <ZoneArchIcon
-              zone={id}
-              className={isDone || isActive ? 'text-primary' : 'text-muted/30'}
-            />
-            <span
-              className={`text-[10px] font-bold mt-0.5 ${isDone || isActive ? 'text-primary' : 'text-muted/40'}`}
-            >
-              {isDone ? '✓' : `${i + 1}`}
-            </span>
-            <span
-              className={`text-[9px] font-medium leading-none ${
-                isActive ? 'text-primary' : isDone ? 'text-primary/70' : 'text-muted/40'
-              }`}
-            >
-              {label}
-            </span>
-          </div>
-        );
-      })}
+    <div className="flex items-center bg-white border-t border-hairline px-3 py-2 gap-2 flex-shrink-0">
+      {ZONE_GROUPS.map(({ label, range }, gi) => (
+        <div key={label} className="flex items-center gap-1.5 flex-1">
+          {gi > 0 && <div className="h-4 w-px bg-hairline flex-shrink-0" />}
+          <span className="text-[9px] font-semibold text-muted/60 w-5 flex-shrink-0 text-center">{label}</span>
+          {range.map((i) => {
+            const isDone = completedZones.includes(i);
+            const isActive = i === currentZoneIdx && !isDone;
+            return (
+              <div
+                key={i}
+                className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 transition-colors
+                  ${isDone ? 'bg-primary text-white' : isActive ? 'bg-primary/10 text-primary border-2 border-primary' : 'bg-hairline text-muted/40'}`}
+              >
+                {isDone ? <Check size={10} strokeWidth={3} /> : i + 1}
+              </div>
+            );
+          })}
+        </div>
+      ))}
+      <span className="text-[10px] font-bold text-muted ml-auto flex-shrink-0">
+        {completedZones.length}/9
+      </span>
     </div>
   );
 }
 
 function CameraView({
   videoRef,
+  imgRef,
   isReady,
   cameraError,
+  cameraMode,
   phase,
   isPaused,
   lightOn,
@@ -208,10 +196,15 @@ function CameraView({
   onLightToggle,
   onCameraFlip,
   onPauseToggle,
+  onCapture,
+  isCapturing,
+  onRetry,
 }: {
   videoRef: React.RefObject<HTMLVideoElement | null>;
+  imgRef: React.RefObject<HTMLImageElement | null>;
   isReady: boolean;
   cameraError: string | null;
+  cameraMode: CameraMode;
   phase: ScanPhase;
   isPaused: boolean;
   lightOn: boolean;
@@ -219,19 +212,31 @@ function CameraView({
   onLightToggle: () => void;
   onCameraFlip: () => void;
   onPauseToggle: () => void;
+  onCapture: () => void;
+  isCapturing: boolean;
+  onRetry: () => void;
 }) {
   const uvMode = phase === 'uv';
+  const streamVisible = isReady && !cameraError;
   return (
     <div
       className={`relative w-full flex-1 overflow-hidden ${uvMode ? 'bg-[#1A0A2E]' : 'bg-[#1A1A2E]'}`}
     >
+      {/* device 카메라: MediaStream → video */}
       <video
         ref={videoRef}
         autoPlay
         playsInline
         muted
         className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300
-          ${isReady && !cameraError ? 'opacity-100' : 'opacity-0'}`}
+          ${cameraMode === 'device' && streamVisible ? 'opacity-100' : 'opacity-0'}`}
+      />
+      {/* ESP32 MJPEG 스트림: img 태그만 지원 */}
+      <img
+        ref={imgRef}
+        alt=""
+        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300
+          ${cameraMode === 'esp32' && streamVisible ? 'opacity-100' : 'opacity-0'}`}
       />
 
       {(!isReady || cameraError) && (
@@ -242,6 +247,12 @@ function CameraView({
               <span className="text-white/50 text-[12px] text-center px-6 leading-relaxed whitespace-pre-line">
                 {cameraError}
               </span>
+              <button
+                onClick={onRetry}
+                className="mt-6 px-6 py-3 bg-primary text-white text-[14px] font-bold rounded-[12px] shadow-lg"
+              >
+                다시 시도하기
+              </button>
             </>
           ) : (
             <>
@@ -377,18 +388,32 @@ function CameraView({
         </button>
       </div>
 
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10">
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-4">
         <button
           type="button"
           onClick={onPauseToggle}
-          className="w-14 h-14 rounded-full bg-primary-gradient flex items-center justify-center shadow-button"
+          className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center"
         >
           {isPaused ? (
-            <Play size={22} className="text-white ml-0.5" />
+            <Play size={18} className="text-white ml-0.5" />
           ) : (
-            <Pause size={22} className="text-white" />
+            <Pause size={18} className="text-white" />
           )}
         </button>
+        {/* 수동 촬영 셔터 */}
+        <button
+          type="button"
+          onClick={onCapture}
+          disabled={isCapturing || isPaused}
+          className="w-16 h-16 rounded-full bg-white border-4 border-primary flex items-center justify-center shadow-button disabled:opacity-50"
+        >
+          {isCapturing ? (
+            <Loader2 size={22} className="text-primary animate-spin" />
+          ) : (
+            <Camera size={22} className="text-primary" />
+          )}
+        </button>
+        <div className="w-10 h-10" />
       </div>
 
       {isPaused && (
@@ -752,8 +777,10 @@ function CheckboxRow({
 
 function Step2({
   videoRef,
+  imgRef,
   isReady,
   cameraError,
+  cameraMode,
   phase,
   status,
   progress,
@@ -764,12 +791,17 @@ function Step2({
   onExit,
   onHelp,
   onPauseToggle,
+  onCapture,
+  isCapturing,
   onLightToggle,
   onCameraFlip,
+  onRetry,
 }: {
   videoRef: React.RefObject<HTMLVideoElement | null>;
+  imgRef: React.RefObject<HTMLImageElement | null>;
   isReady: boolean;
   cameraError: string | null;
+  cameraMode: CameraMode;
   phase: ScanPhase;
   status: ScanStatusType;
   progress: number;
@@ -780,8 +812,11 @@ function Step2({
   onExit: () => void;
   onHelp: () => void;
   onPauseToggle: () => void;
+  onCapture: () => void;
+  isCapturing: boolean;
   onLightToggle: () => void;
   onCameraFlip: () => void;
+  onRetry: () => void;
 }) {
   return (
     <div className="max-w-[430px] mx-auto h-svh flex flex-col">
@@ -792,8 +827,10 @@ function Step2({
       <PhaseTabs phase={phase} />
       <CameraView
         videoRef={videoRef}
+        imgRef={imgRef}
         isReady={isReady}
         cameraError={cameraError}
+        cameraMode={cameraMode}
         phase={phase}
         isPaused={isPaused}
         lightOn={lightOn}
@@ -801,14 +838,66 @@ function Step2({
         onLightToggle={onLightToggle}
         onCameraFlip={onCameraFlip}
         onPauseToggle={onPauseToggle}
+        onCapture={onCapture}
+        isCapturing={isCapturing}
+        onRetry={onRetry}
       />
-      <ZoneSelector currentZoneIdx={currentZoneIdx} completedZones={completedZones} />
-      <ScanProgressBar progress={progress} phase={phase} zoneIdx={currentZoneIdx} />
+      {isReady && !cameraError && (
+        <>
+          <ZoneSelector currentZoneIdx={currentZoneIdx} completedZones={completedZones} />
+          <ScanProgressBar progress={progress} phase={phase} zoneIdx={currentZoneIdx} />
+        </>
+      )}
     </div>
   );
 }
 
-function Step3({ analyzeStep, analyzeProgress }: { analyzeStep: number; analyzeProgress: number }) {
+function Step3({
+  analyzeStep,
+  analyzeProgress,
+  analyzeError,
+  onRetry,
+  onReset,
+}: {
+  analyzeStep: number;
+  analyzeProgress: number;
+  analyzeError: string | null;
+  onRetry: () => void;
+  onReset: () => void;
+}) {
+  if (analyzeError) {
+    return (
+      <div className="max-w-[430px] min-h-svh mx-auto bg-background flex flex-col items-center justify-center px-6 gap-5 relative z-10">
+        <div className="aurora-blob-1" />
+        <div className="aurora-blob-2" />
+        <div className="aurora-blob-3" />
+        <div className="relative z-10">
+          <AlertTriangle size={64} className="text-warning" />
+        </div>
+        <div className="text-center relative z-10">
+          <h2 className="m-0 text-[22px] font-bold text-content">분석 실패</h2>
+          <p className="m-0 mt-2 text-[13px] text-muted leading-relaxed whitespace-pre-line">{analyzeError}</p>
+        </div>
+        <div className="w-full relative z-10 flex flex-col gap-3">
+          <button
+            type="button"
+            onClick={onRetry}
+            className="w-full h-14 rounded-[14px] bg-primary-gradient text-white text-[15px] font-semibold shadow-button"
+          >
+            분석 다시 시도
+          </button>
+          <button
+            type="button"
+            onClick={onReset}
+            className="w-full h-11 text-[14px] font-semibold text-muted bg-transparent border-none cursor-pointer"
+          >
+            처음부터 다시 스캔
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-[430px] min-h-svh mx-auto bg-background flex flex-col items-center justify-center px-6 gap-5 relative z-10">
       <div className="aurora-blob-1" />
@@ -915,7 +1004,15 @@ function SandRevealImage({ src, alt, className }: { src: string; alt: string; cl
   );
 }
 
-function Step4({ onNext, onReset }: { onNext: () => void; onReset: () => void }) {
+function Step4({
+  onNext,
+  onReset,
+  analysisResult,
+}: {
+  onNext: () => void;
+  onReset: () => void;
+  analysisResult: AiAnalyzeResult | null;
+}) {
   const [showCheck, setShowCheck] = useState(false);
 
   useEffect(() => {
@@ -942,23 +1039,32 @@ function Step4({ onNext, onReset }: { onNext: () => void; onReset: () => void })
         <div className="text-center">
           <h2 className="m-0 text-[26px] font-bold text-content">스캔 완료!</h2>
           <p className="m-0 mt-2 text-[13px] text-muted leading-relaxed">
-            4개 구역 스캔이 모두 완료됐어요.
+            9개 구역 스캔이 모두 완료됐어요.
             <br />
-            AI 분석을 시작할 준비가 됐어요.
+            AI 분석이 완료되었어요.
           </p>
+          {analysisResult && (
+            <div className="mt-4 text-center">
+              <div className="text-[14px] font-semibold text-content mb-1">건강도 점수</div>
+              <div className="text-[28px] font-bold text-primary">{analysisResult.totalScore}</div>
+              {analysisResult.recommendation && (
+                <p className="m-0 mt-2 text-[12px] text-muted leading-relaxed">{analysisResult.recommendation}</p>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="w-full bg-white/90 backdrop-blur-sm rounded-[20px] shadow-card px-4 pt-3.5 pb-4">
           <p className="m-0 text-[11px] font-bold text-muted uppercase tracking-widest mb-3">
             스캔 완료 구역
           </p>
-          <div className="grid grid-cols-4 gap-2">
-            {ZONES.map(({ id, label }) => (
+          <div className="grid grid-cols-3 gap-2">
+            {ZONES.map(({ viewType, label }) => (
               <div
-                key={id}
-                className="flex flex-col items-center gap-1.5 py-3 bg-primary-light rounded-[14px]"
+                key={viewType}
+                className="flex flex-col items-center gap-1.5 py-2.5 bg-primary-light rounded-[14px]"
               >
-                <ZoneArchIcon zone={id} className="text-primary" />
+                <ZoneArchIcon viewType={viewType} className="text-primary" />
                 <span className="text-[9px] font-semibold text-primary leading-none">{label}</span>
                 <CheckCircle2 size={11} className="text-success" />
               </div>
@@ -1120,6 +1226,7 @@ export default function ScanPage() {
   const [phase, setPhase] = useState<ScanPhase>('white');
   const [progress, setProgress] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+  const [isCapturing, setIsCapturing] = useState(false);
   const [currentZoneIdx, setCurrentZoneIdx] = useState(0);
   const [completedZones, setCompletedZones] = useState<number[]>([]);
   const [checked, setChecked] = useState(false);
@@ -1127,21 +1234,68 @@ export default function ScanPage() {
   const [showHelp, setShowHelp] = useState(false);
   const [analyzeStep, setAnalyzeStep] = useState(0);
   const [analyzeProgress, setAnalyzeProgress] = useState(0);
+  const [sessionId, setSessionId] = useState<number | null>(null);
+  const [analysisResult, setAnalysisResult] = useState<AiAnalyzeResult | null>(null);
+  const [analyzeError, setAnalyzeError] = useState<string | null>(null);
+  const [analyzeKey, setAnalyzeKey] = useState(0);
+
+  const { deviceId, deviceIp } = useAuthStore();
+  const uploadedImageIds = useRef<number[]>([]);
+  const progressRef = useRef(0);
+  const completedCountRef = useRef(0);
+  const capturedZonesRef = useRef<Set<number>>(new Set());
 
   const {
     videoRef,
+    imgRef,
     isReady,
     error: cameraError,
     lightOn,
+    cameraMode,
     startCamera,
     stopCamera,
     toggleLight,
     flipCamera,
   } = useCameraStream();
 
+  const captureAndUpload = async (zoneIdx: number) => {
+    if (!sessionId) { console.error('세션이 없습니다'); return; }
+
+    let file: File;
+    try {
+      if (cameraMode === 'esp32' && deviceIp) {
+        // ESP32: 서버 프록시를 통해 /capture 엔드포인트에서 단일 프레임 취득 (CORS 우회)
+        const host = deviceIp.split(':')[0];
+        const res = await fetch(`/api/camera/capture?ip=${host}`);
+        if (!res.ok) throw new Error('capture proxy failed');
+        const blob = await res.blob();
+        file = new File([blob], `scan_zone${zoneIdx}.jpg`, { type: 'image/jpeg' });
+      } else {
+        const video = videoRef.current;
+        const canvas = document.createElement('canvas');
+        canvas.width = video?.videoWidth || 640;
+        canvas.height = video?.videoHeight || 480;
+        if (video) canvas.getContext('2d')?.drawImage(video, 0, 0);
+        const blob = await new Promise<Blob>((resolve) =>
+          canvas.toBlob((b) => resolve(b ?? new Blob()), 'image/jpeg', 0.85),
+        );
+        file = new File([blob], `scan_zone${zoneIdx}.jpg`, { type: 'image/jpeg' });
+      }
+
+      const res = await scanApi.uploadImageToSession(sessionId, {
+        file,
+        viewType: ZONES[zoneIdx]?.viewType ?? 'UPPER_LEFT',
+        lightType: 'WHITE_LIGHT',
+      });
+      uploadedImageIds.current.push(res.data.result.imageId);
+    } catch (e) {
+      console.error('scan upload failed zone', zoneIdx, e);
+    }
+  };
+
   const { detectedStatus } = useScanDetection({
     videoRef,
-    enabled: step === 2 && !isPaused && isReady,
+    enabled: step === 2 && isReady,
   });
 
   // ref에 저장해서 useEffect 의존성 없이 항상 최신 함수 참조 유지
@@ -1155,64 +1309,131 @@ export default function ScanPage() {
   });
 
   useEffect(() => {
-    if (step === 2) startCameraRef.current();
-    else stopCameraRef.current();
-  }, [step]);
+    if (step === 2) {
+      console.log('deviceIp:', deviceIp);
+      if (deviceIp) {
+        const streamUrl = `http://${deviceIp}/stream`;
+        console.log('카메라 스트림 URL:', streamUrl);
+        // ESP32 카메라 사용
+        startCameraRef.current('esp32', streamUrl);
+      } else {
+        // 기기 카메라 사용
+        startCameraRef.current('device');
+      }
+    } else {
+      stopCameraRef.current();
+    }
+  }, [step, deviceIp]);
 
-  // 100ms마다 100/150씩 누적 → 구역당 15초. setCompletedZones 함수형 업데이트로 클로저 문제 방지
+  // 구역 촬영 완료 공통 처리 (타이머 자동 완료 / 버튼 수동 촬영 공유)
+  const completeZone = async (zoneIdx: number) => {
+    if (capturedZonesRef.current.has(zoneIdx)) return; // 중복 촬영 방지
+    capturedZonesRef.current.add(zoneIdx);
+    await captureAndUpload(zoneIdx);
+    const newCount = completedCountRef.current + 1;
+    completedCountRef.current = newCount;
+    setCompletedZones((prev) => [...prev, zoneIdx]);
+    if (newCount >= ZONES.length) {
+      setTimeout(() => setStep(3), 600);
+    } else {
+      progressRef.current = 0;
+      setProgress(0);
+      setCurrentZoneIdx((i) => i + 1);
+    }
+  };
+
+  // 타이머 자동 진행 (구역당 15초)
   useEffect(() => {
     if (step !== 2 || isPaused) return;
     const t = setInterval(() => {
-      setProgress((p) => {
-        const next = Math.min(p + 100 / 150, 100);
-        if (next >= 100) {
-          clearInterval(t);
-          setCompletedZones((prev) => {
-            const updated = [...prev, currentZoneIdx];
-            if (updated.length >= ZONES.length) {
-              setTimeout(() => setStep(3), 600);
-            } else {
-              setTimeout(() => {
-                setCurrentZoneIdx((i) => i + 1);
-                setProgress(0);
-              }, 400);
-            }
-            return updated;
-          });
-        }
-        return next;
-      });
+      const next = Math.min(progressRef.current + 100 / 150, 100);
+      progressRef.current = next;
+      setProgress(next);
+      if (next >= 100) {
+        clearInterval(t);
+        completeZone(currentZoneIdx);
+      }
     }, 100);
     return () => clearInterval(t);
   }, [step, isPaused, currentZoneIdx]);
 
+  // 수동 촬영 버튼
+  const handleCapture = async () => {
+    if (isCapturing || !isReady) return;
+    setIsCapturing(true);
+    try {
+      await completeZone(currentZoneIdx);
+    } finally {
+      setIsCapturing(false);
+    }
+  };
+
   useEffect(() => {
-    if (step !== 3) return;
+    if (step !== 3 || !sessionId) return;
     let n = 0;
     setAnalyzeStep(1);
     setAnalyzeProgress(0);
+    setAnalyzeError(null);
+
     const t = setInterval(() => {
       n++;
       setAnalyzeStep(n + 1);
       setAnalyzeProgress(Math.round((n / ANALYZE_STEPS.length) * 100));
-      if (n >= ANALYZE_STEPS.length) {
-        clearInterval(t);
-        setTimeout(() => setStep(4), 800);
-      }
+      if (n >= ANALYZE_STEPS.length) clearInterval(t);
     }, 2000);
+
+    // 데모: 첫 번째 업로드된 이미지 1장만 단일 분석
+    const imageId = uploadedImageIds.current[0];
+    if (!imageId) {
+      clearInterval(t);
+      setAnalyzeError('업로드된 이미지가 없습니다.\n다시 스캔해 주세요.');
+      return;
+    }
+    const viewType = ZONES[0].viewType;
+
+    aiApi
+      .analyze(imageId, viewType, 'WHITE_LIGHT')
+      .then((res) => {
+        setAnalysisResult(res.data.result);
+        clearInterval(t);
+        setAnalyzeStep(ANALYZE_STEPS.length + 1);
+        setAnalyzeProgress(100);
+        setTimeout(() => setStep(4), 800);
+      })
+      .catch((e) => {
+        clearInterval(t);
+        const status = e?.response?.status;
+        if (status === 503) {
+          setAnalyzeError('AI 분석 서버가 현재 준비 중이에요.\n잠시 후 다시 시도해 주세요.');
+        } else {
+          setAnalyzeError('분석 중 오류가 발생했어요.\n다시 시도해 주세요.');
+        }
+      });
+
     return () => clearInterval(t);
-  }, [step]);
+  }, [step, sessionId, analyzeKey]);
 
   const handleReset = () => {
+    uploadedImageIds.current = [];
+    progressRef.current = 0;
+    completedCountRef.current = 0;
     setStep(1);
     setPhase('white');
     setProgress(0);
     setIsPaused(false);
+    setIsCapturing(false);
     setCurrentZoneIdx(0);
     setCompletedZones([]);
     setChecked(false);
     setAnalyzeStep(0);
     setAnalyzeProgress(0);
+    setSessionId(null);
+    setAnalysisResult(null);
+    setAnalyzeError(null);
+    setAnalyzeKey(0);
+    progressRef.current = 0;
+    completedCountRef.current = 0;
+    capturedZonesRef.current = new Set();
   };
 
   return (
@@ -1222,19 +1443,35 @@ export default function ScanPage() {
           checked={checked}
           onCheck={setChecked}
           onExit={() => setShowExitModal(true)}
-          onStart={() => {
-            setStep(2);
-            setCurrentZoneIdx(0);
-            setCompletedZones([]);
-            setProgress(0);
+          onStart={async () => {
+            // 세션 생성
+            if (!deviceId) {
+              console.error('기기가 등록되지 않았습니다');
+              return;
+            }
+            try {
+              const res = await scanApi.createSession({ userId: 1, deviceId });
+              const sid = res.data.result;
+              console.log('sessionId:', sid);
+              setSessionId(sid);
+              setStep(2);
+              setCurrentZoneIdx(0);
+              setCompletedZones([]);
+              setProgress(0);
+              uploadedImageIds.current = [];
+            } catch (e) {
+              console.error('세션 생성 실패:', e);
+            }
           }}
         />
       )}
       {step === 2 && (
         <Step2
           videoRef={videoRef}
+          imgRef={imgRef}
           isReady={isReady}
           cameraError={cameraError}
+          cameraMode={cameraMode}
           phase={phase}
           status={detectedStatus}
           progress={progress}
@@ -1245,12 +1482,41 @@ export default function ScanPage() {
           onExit={() => setShowExitModal(true)}
           onHelp={() => setShowHelp(true)}
           onPauseToggle={() => setIsPaused((p) => !p)}
+          onCapture={handleCapture}
+          isCapturing={isCapturing}
           onLightToggle={toggleLight}
           onCameraFlip={flipCamera}
+          onRetry={() => {
+            stopCamera();
+            if (deviceIp) {
+              startCamera('esp32', `http://${deviceIp}/stream`);
+            } else {
+              startCamera('device');
+            }
+          }}
         />
       )}
-      {step === 3 && <Step3 analyzeStep={analyzeStep} analyzeProgress={analyzeProgress} />}
-      {step === 4 && <Step4 onNext={() => router.push('/analysis')} onReset={handleReset} />}
+      {step === 3 && (
+        <Step3
+          analyzeStep={analyzeStep}
+          analyzeProgress={analyzeProgress}
+          analyzeError={analyzeError}
+          onRetry={() => {
+            setAnalyzeError(null);
+            setAnalyzeStep(0);
+            setAnalyzeProgress(0);
+            setAnalyzeKey((k) => k + 1);
+          }}
+          onReset={handleReset}
+        />
+      )}
+      {step === 4 && (
+        <Step4
+          onNext={() => router.push('/analysis')}
+          onReset={handleReset}
+          analysisResult={analysisResult}
+        />
+      )}
 
       {showExitModal && (
         <ExitModal onCancel={() => setShowExitModal(false)} onConfirm={() => router.back()} />

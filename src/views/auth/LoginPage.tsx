@@ -6,6 +6,8 @@ import Link from 'next/link';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import Input from '@/components/atoms/Input';
 import Checkbox from '@/components/atoms/Checkbox';
+import { authApi } from '@/lib/api/auth';
+import { useAuthStore } from '@/stores/authStore';
 
 const KakaoIcon = () => (
   <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -53,15 +55,26 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [shakeEmail, setShakeEmail] = useState(false);
   const [shakePassword, setShakePassword] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
+  const setToken = useAuthStore((s) => s.setToken);
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (isLoading) return;
     let hasError = false;
     if (!email) { setShakeEmail(true); hasError = true; setTimeout(() => setShakeEmail(false), 500); }
     if (!password) { setShakePassword(true); hasError = true; setTimeout(() => setShakePassword(false), 500); }
     if (hasError) return;
     setIsLoading(true);
-    setTimeout(() => { setIsLoading(false); router.push('/pairing'); }, 1500);
+    setApiError(null);
+    try {
+      const res = await authApi.login({ email, password });
+      setToken(res.data.result.accessToken);
+      router.push('/pairing');
+    } catch {
+      setApiError('이메일 또는 비밀번호가 올바르지 않아요.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -106,6 +119,9 @@ export default function LoginPage() {
           </div>
         </div>
 
+        {apiError && (
+          <p className="text-[13px] text-danger text-center mb-3 -mt-1">{apiError}</p>
+        )}
         <button
           type="button"
           onClick={handleLogin}

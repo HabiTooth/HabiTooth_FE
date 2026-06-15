@@ -7,6 +7,8 @@ import { ChevronLeft, ChevronRight, Eye, EyeOff } from 'lucide-react';
 import Input from '@/components/atoms/Input';
 import Button from '@/components/atoms/Button';
 import Checkbox from '@/components/atoms/Checkbox';
+import { authApi } from '@/lib/api/auth';
+import { useAuthStore } from '@/stores/authStore';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -14,12 +16,15 @@ export default function RegisterPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [birthDate, setBirthDate] = useState('');
   const [showPw, setShowPw] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [terms, setTerms] = useState(false);
   const [privacy, setPrivacy] = useState(false);
   const [marketing, setMarketing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
+  const setToken = useAuthStore((s) => s.setToken);
 
   const allChecked = terms && privacy && marketing;
   const requiredChecked = terms && privacy;
@@ -44,15 +49,24 @@ export default function RegisterPage() {
     email && !emailError &&
     password.length >= 8 &&
     !passwordError &&
+    birthDate &&
     requiredChecked
   );
 
-  const handleRegister = () => {
+  const handleRegister = async () => {
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
+    setApiError(null);
+    try {
+      await authApi.signUp({ email, password, name, birthDate });
+      const loginRes = await authApi.login({ email, password });
+      setToken(loginRes.data.result.accessToken);
       router.push('/pairing');
-    }, 1000);
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setApiError(msg ?? '회원가입에 실패했어요. 다시 시도해주세요.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -77,6 +91,13 @@ export default function RegisterPage() {
       <div className="bg-white/90 backdrop-blur-sm rounded-[20px] shadow-card p-6 mb-4 relative z-10">
         <div className="flex flex-col gap-4">
           <Input label="이름" type="text" placeholder="이름을 입력해주세요" value={name} onChange={setName} />
+          <Input
+            label="생년월일"
+            type="date"
+            placeholder="생년월일을 선택해주세요"
+            value={birthDate}
+            onChange={setBirthDate}
+          />
           <Input label="이메일" type="email" placeholder="example@email.com" value={email} onChange={setEmail} error={emailError} />
           <Input
             label="비밀번호"
@@ -143,6 +164,9 @@ export default function RegisterPage() {
       </div>
 
       <div className="relative z-10">
+        {apiError && (
+          <p className="text-[13px] text-danger text-center mb-3">{apiError}</p>
+        )}
         <Button variant="primary" fullWidth isLoading={isLoading} disabled={!canSubmit} onClick={handleRegister}>
           가입하기
         </Button>
