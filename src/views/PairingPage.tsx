@@ -9,11 +9,13 @@ import {
   CheckCircle2,
   AlertCircle,
   Loader2,
+  Wifi,
 } from 'lucide-react';
 import SignalBars, { SIGNAL_LABEL } from '@/components/atoms/SignalBars';
 import ListItem from '@/components/molecules/ListItem';
 import type { SignalLevel } from '@/components/atoms/SignalBars';
 import { useBluetoothDevice } from '@/hooks/useBluetoothDevice';
+import { useAuthStore } from '@/stores/authStore';
 
 const MOCK_DEVICES: { id: string; name: string; signal: SignalLevel; recommended?: boolean }[] = [
   { id: '1', name: 'HabiTooth_ESP32', signal: 'strong', recommended: true },
@@ -47,10 +49,14 @@ const ToothThumb = () => (
   </svg>
 );
 
+const DEMO_DEVICE_IP = '10.49.238.25:81';
+
 export default function PairingPage() {
   const router = useRouter();
   const { status, deviceName, error, requestAndConnect } = useBluetoothDevice();
+  const { setDevice } = useAuthStore();
   const [mockConnectingId, setMockConnectingId] = useState<string | null>(null);
+  const [wifiConnecting, setWifiConnecting] = useState(false);
 
   useEffect(() => {
     if (status === 'connected') router.push('/dashboard');
@@ -58,6 +64,12 @@ export default function PairingPage() {
 
   const handleMockConnect = (id: string) => {
     setMockConnectingId(id);
+    setTimeout(() => router.push('/dashboard'), 1500);
+  };
+
+  const handleWiFiConnect = () => {
+    setWifiConnecting(true);
+    setDevice(1, DEMO_DEVICE_IP);
     setTimeout(() => router.push('/dashboard'), 1500);
   };
 
@@ -221,12 +233,12 @@ export default function PairingPage() {
         </div>
       </div>
 
-      <div className="relative z-10 mb-4">
+      <div className="relative z-10 mb-4 space-y-2.5">
         {(status === 'idle' || status === 'error') && (
           <button
             type="button"
             onClick={requestAndConnect}
-            disabled={!!mockConnectingId}
+            disabled={!!mockConnectingId || wifiConnecting}
             className="w-full h-[54px] rounded-[14px] bg-primary-gradient text-white text-[15px] font-semibold shadow-button flex items-center justify-center gap-2 disabled:opacity-60"
           >
             <Bluetooth size={18} />
@@ -252,6 +264,30 @@ export default function PairingPage() {
             <CheckCircle2 size={18} />
             연결 완료 — 이동 중...
           </button>
+        )}
+
+        {!isScanning && status !== 'connected' && (
+          <div className="pt-2 border-t border-hairline">
+            <p className="text-[11px] text-muted/60 text-center mb-2">테스트 모드</p>
+            <button
+              type="button"
+              onClick={handleWiFiConnect}
+              disabled={!!mockConnectingId || wifiConnecting}
+              className="w-full h-[48px] rounded-[12px] border border-primary/40 bg-primary/5 text-primary text-[13px] font-medium flex items-center justify-center gap-2 disabled:opacity-60 hover:bg-primary/10 transition-colors"
+            >
+              {wifiConnecting ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" />
+                  WiFi 연결 중...
+                </>
+              ) : (
+                <>
+                  <Wifi size={16} />
+                  WiFi 데모 연결
+                </>
+              )}
+            </button>
+          </div>
         )}
       </div>
 
