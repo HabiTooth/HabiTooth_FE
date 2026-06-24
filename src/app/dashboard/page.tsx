@@ -3,9 +3,8 @@
 import { useRouter } from 'next/navigation';
 import ScoreCard from '@/components/molecules/ScoreCard';
 import NavBar from '@/components/organisms/NavBar';
-import AnalysisResult from '@/components/molecules/AnalysisResult';
 import ScanBanner from '@/components/molecules/ScanBanner';
-import RiskSummary from '@/components/organisms/RiskSummary';
+import ReportSummary from '@/components/organisms/ReportSummary';
 import Header from '@/components/organisms/Header';
 
 export default function DashboardPage() {
@@ -15,14 +14,13 @@ export default function DashboardPage() {
     <main className="max-w-[430px] mx-auto p-6 bg-[#EEF2FF] min-h-screen pb-20">
       <Header hasNotification={true} />
       <ScoreCard score={82} prevScore={76} />
-      <AnalysisResult
-        date="2025.05.15"
-        time="14:30"
+      <ReportSummary
         score={82}
-        plaqueRisk="normal"
-        calculusRisk="high"
-      />
-      <RiskSummary
+        prevScore={76}
+        grade="B"
+        status="양호"
+        date="2025.05.15 14:30"
+        reportId="abc123"
         plaqueScore={52}
         calculusScore={68}
         gumScore={85}
