@@ -1,10 +1,12 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import Button from '@/components/atoms/Button';
 import type { ScoreCardProps } from './ScoreCard.types';
 
 export default function ScoreCard({ score, prevScore }: ScoreCardProps) {
+  const router = useRouter();
   const router = useRouter();
   const diff = prevScore !== undefined ? score - prevScore : null;
 
