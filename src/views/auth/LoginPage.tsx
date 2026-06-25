@@ -147,11 +147,28 @@ export default function LoginPage() {
       </div>
 
       <div className="flex flex-col gap-3 relative z-10">
-        <button type="button" className="w-full h-[50px] bg-white border border-hairline rounded-[14px] flex items-center justify-center gap-2 text-[15px] font-medium text-content cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-card">
+        <button
+          type="button"
+          onClick={() => {
+            const clientId = process.env.NEXT_PUBLIC_KAKAO_CLIENT_ID;
+            const redirectUri = `${window.location.origin}/oauth/kakao`;
+            window.location.href = `https://kauth.kakao.com/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code`;
+          }}
+          className="w-full h-[50px] bg-white border border-hairline rounded-[14px] flex items-center justify-center gap-2 text-[15px] font-medium text-content cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-card"
+        >
           <KakaoIcon />
           카카오로 시작하기
         </button>
-        <button type="button" className="w-full h-[50px] bg-white border border-hairline rounded-[14px] flex items-center justify-center gap-2 text-[15px] font-medium text-content cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-card">
+        <button
+          type="button"
+          onClick={() => {
+            const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+            const redirectUri = `${window.location.origin}/oauth/google`;
+            const scope = encodeURIComponent('email profile');
+            window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}`;
+          }}
+          className="w-full h-[50px] bg-white border border-hairline rounded-[14px] flex items-center justify-center gap-2 text-[15px] font-medium text-content cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-card"
+        >
           <GoogleIcon />
           Google로 시작하기
         </button>
