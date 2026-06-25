@@ -17,10 +17,19 @@ export interface LoginResult {
   accessToken: string;
 }
 
+export interface SocialLoginPayload {
+  provider: 'kakao' | 'google';
+  authCode: string;
+  redirectUri: string;
+}
+
 export const authApi = {
   signUp: (payload: SignUpPayload) =>
     apiClient.post<ApiResponse<string>>('/api/auth/signup', payload),
 
   login: (payload: LoginPayload) =>
     apiClient.post<ApiResponse<LoginResult>>('/api/auth/login', payload),
+
+  socialLogin: (payload: SocialLoginPayload) =>
+    apiClient.post<ApiResponse<LoginResult>>('/api/auth/social', payload),
 };

@@ -1,7 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuthStore } from '@/stores/authStore';
+import { deviceApi } from '@/lib/api/device';
+import type { DeviceResponse } from '@/lib/api/device';
 import {
   User, ChevronLeft, ChevronRight, Bell, Shield, FileText,
   Smartphone, Clock, LogOut, UserX, Lock,
@@ -57,30 +60,21 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 
-const MOCK_DEVICE = {
-  serialNumber: 'HBT-2024-0042',
-  firmwareVersion: 'v1.2.3',
-  lastConnected: '2026-05-28 14:32',
-  connected: true,
-};
-
-const MOCK_HISTORY = [
-  { id: '1', date: '2026-05-28', score: 82, plaque: '낮음', tartar: '보통' },
-  { id: '2', date: '2026-05-14', score: 74, plaque: '보통', tartar: '보통' },
-  { id: '3', date: '2026-04-30', score: 68, plaque: '높음', tartar: '높음' },
-];
-
-function scoreColor(score: number) {
-  if (score >= 80) return 'bg-success/15 text-success';
-  if (score >= 70) return 'bg-warning/15 text-[#B87F00]';
-  return 'bg-danger/15 text-danger';
-}
 
 export default function MyPage() {
   const router = useRouter();
+  const { email, clearAuth } = useAuthStore();
   const [notifyScan, setNotifyScan] = useState(true);
   const [notifyAnalysis, setNotifyAnalysis] = useState(true);
   const [notifyDanger, setNotifyDanger] = useState(true);
+  const [device, setDevice] = useState<DeviceResponse | null>(null);
+
+  useEffect(() => {
+    deviceApi.getStatus().then((res) => {
+      const list = res.data.result;
+      if (list.length > 0) setDevice(list[0]);
+    }).catch(() => {});
+  }, []);
 
   return (
     <div
@@ -107,8 +101,8 @@ export default function MyPage() {
           <User size={32} className="text-primary" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="m-0 text-[16px] font-bold text-content">홍길동</p>
-          <p className="m-0 mt-0.5 text-[14px] text-muted truncate">habitooth@example.com</p>
+          <p className="m-0 text-[16px] font-bold text-content">{email?.split('@')[0] ?? '사용자'}</p>
+          <p className="m-0 mt-0.5 text-[14px] text-muted truncate">{email ?? ''}</p>
         </div>
         <button
           type="button"
@@ -132,17 +126,21 @@ export default function MyPage() {
               <div>
                 <div className="flex items-center gap-2">
                   <span className="text-content">디바이스 관리</span>
-                  <span className={`text-[11px] font-semibold px-1.5 py-0.5 rounded-full ${MOCK_DEVICE.connected ? 'bg-success/15 text-success' : 'bg-hairline text-muted'}`}>
-                    {MOCK_DEVICE.connected ? '연결됨' : '미연결'}
+                  <span className={`text-[11px] font-semibold px-1.5 py-0.5 rounded-full ${device ? 'bg-success/15 text-success' : 'bg-hairline text-muted'}`}>
+                    {device ? '연결됨' : '미연결'}
                   </span>
                 </div>
-                <p className="m-0 mt-0.5 text-[11px] text-muted">
-                  {MOCK_DEVICE.serialNumber} · {MOCK_DEVICE.firmwareVersion}
-                </p>
-                <p className="m-0 text-[11px] text-muted flex items-center gap-1">
-                  <Clock size={10} />
-                  {MOCK_DEVICE.lastConnected}
-                </p>
+                {device && (
+                  <>
+                    <p className="m-0 mt-0.5 text-[11px] text-muted">
+                      {device.macAddress} · {device.deviceName}
+                    </p>
+                    <p className="m-0 text-[11px] text-muted flex items-center gap-1">
+                      <Clock size={10} />
+                      {device.createdAt?.slice(0, 16).replace('T', ' ')}
+                    </p>
+                  </>
+                )}
               </div>
             }
             onClick={() => router.push('/mypage/device')}
@@ -187,13 +185,13 @@ export default function MyPage() {
             icon={<LogOut size={15} className="text-danger" />}
             label={<span className="text-danger font-semibold">로그아웃</span>}
             right={null}
-            onClick={() => router.push('/login')}
+            onClick={() => { clearAuth(); router.push('/login'); }}
           />
           <MenuItem
             icon={<UserX size={15} className="text-danger" />}
             label={<span className="text-danger font-semibold">회원탈퇴</span>}
             right={null}
-            onClick={() => {}}
+            onClick={() => router.push('/mypage/withdraw')}
           />
         </Section>
         </div>

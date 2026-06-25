@@ -6,13 +6,23 @@ export async function GET(req: NextRequest) {
   if (!ip) return NextResponse.json({ error: 'ip required' }, { status: 400 });
 
   try {
-    const res = await fetch(`http://${ip}/capture`, { cache: 'no-store' });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    const res = await fetch(`http://${ip}/capture`, {
+      cache: 'no-store',
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
     if (!res.ok) throw new Error(`ESP32 responded ${res.status}`);
     const buffer = await res.arrayBuffer();
     return new NextResponse(buffer, {
       headers: { 'Content-Type': 'image/jpeg' },
     });
   } catch (e) {
-    return NextResponse.json({ error: 'capture failed' }, { status: 502 });
+    const isTimeout = e instanceof Error && e.name === 'AbortError';
+    return NextResponse.json(
+      { error: isTimeout ? 'capture timeout' : 'capture failed' },
+      { status: 502 },
+    );
   }
 }

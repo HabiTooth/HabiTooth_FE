@@ -1,33 +1,23 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, type RefObject } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  X,
-  HelpCircle,
-  Check,
-  CheckCircle2,
-  Lightbulb,
-  Timer,
-  FlipHorizontal2,
-  Pause,
-  Play,
-  Lock,
-  Loader2,
-  XCircle,
-  AlertTriangle,
-  Sun,
-  Camera,
-  Bell,
-  User,
-} from 'lucide-react';
+import { X, HelpCircle, Check, CheckCircle2, Lock, Loader2, AlertTriangle, Sun, Camera, Bell, User } from 'lucide-react';
 import StepIndicator from '@/components/molecules/StepIndicator';
 import type { ScanStatusType } from '@/components/molecules/ScanStatusBanner';
 import { useCameraStream, type CameraMode } from '@/hooks/useCameraStream';
 import { useScanDetection } from '@/hooks/useScanDetection';
-import { scanApi, type ViewType } from '@/lib/api/scan';
-import { aiApi, type AiAnalyzeResult } from '@/lib/api/ai';
+import { scanApi, type ViewType, type AnalysisResultSummary } from '@/lib/api/scan';
 import { useAuthStore } from '@/stores/authStore';
+import ZoneArchIcon from '@/components/atoms/ZoneArchIcon';
+import SandRevealImage from '@/components/atoms/SandRevealImage';
+import ToothIcon from '@/components/atoms/ToothIcon';
+import GuideItem from '@/components/molecules/GuideItem';
+import ScanProgressBar from '@/components/molecules/ScanProgressBar';
+import CameraView from '@/components/organisms/CameraView';
+import ScanExitModal from '@/components/organisms/ScanExitModal';
+import ScanHelpSheet from '@/components/organisms/ScanHelpSheet';
+import Checkbox from '@/components/atoms/Checkbox';
 
 type Step = 1 | 2 | 3 | 4;
 type ScanPhase = 'guide' | 'white' | 'uv';
@@ -52,6 +42,17 @@ const ZONES: { viewType: ViewType; label: string }[] = [
   { viewType: 'LOWER_CENTER', label: '하악 중' },
   { viewType: 'LOWER_RIGHT',  label: '하악 우' },
 ];
+
+// BE AI 분석 구현 전까지 쓰는 테스트용 데이터
+const MOCK_ANALYSIS_RESULT: AnalysisResultSummary = {
+  sessionId: 0,
+  analysisResultSummaries: ZONES.map((z, i) => ({
+    analysisResultId: i + 1,
+    score: [82, 75, 78, 90, 68, 85, 72, 88, 79][i],
+    viewType: z.viewType,
+  })),
+  averageScore: 80,
+};
 
 function PageHeader({
   title,
@@ -105,43 +106,6 @@ function PhaseTabs({ phase }: { phase: ScanPhase }) {
   );
 }
 
-function ZoneArchIcon({ viewType, className = '' }: { viewType: ViewType; className?: string }) {
-  const isUpper = viewType.startsWith('UPPER_');
-  const isLower = viewType.startsWith('LOWER_');
-  const isLeft = viewType.endsWith('_LEFT');
-  const isCenter = viewType.endsWith('_CENTER');
-
-  if (isUpper) {
-    return (
-      <svg width="26" height="14" viewBox="0 0 26 14" fill="none" className={className}>
-        <path d="M2 13 C2 5 6 2 13 2 C20 2 24 5 24 13" stroke="#D0D8E5" strokeWidth="2" strokeLinecap="round" />
-        {isLeft   && <path d="M2 13 C2 5 6 2 9 2" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />}
-        {isCenter && <path d="M9 2 C11 2 13 2 17 2" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />}
-        {!isLeft && !isCenter && <path d="M17 2 C20 2 24 5 24 13" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />}
-      </svg>
-    );
-  }
-  if (isLower) {
-    return (
-      <svg width="26" height="14" viewBox="0 0 26 14" fill="none" className={className}>
-        <path d="M2 1 C2 9 6 12 13 12 C20 12 24 9 24 1" stroke="#D0D8E5" strokeWidth="2" strokeLinecap="round" />
-        {isLeft   && <path d="M2 1 C2 9 6 12 9 12" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />}
-        {isCenter && <path d="M9 12 C11 12 13 12 17 12" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />}
-        {!isLeft && !isCenter && <path d="M17 12 C20 12 24 9 24 1" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />}
-      </svg>
-    );
-  }
-  // OUTER: 앞니 정면 가로 바
-  return (
-    <svg width="26" height="10" viewBox="0 0 26 10" fill="none" className={className}>
-      <rect x="1" y="3" width="24" height="4" rx="2" stroke="#D0D8E5" strokeWidth="1.5" />
-      {isLeft   && <rect x="1" y="3" width="8" height="4" rx="2" stroke="currentColor" strokeWidth="2" />}
-      {isCenter && <rect x="9" y="3" width="8" height="4" rx="1" stroke="currentColor" strokeWidth="2" />}
-      {!isLeft && !isCenter && <rect x="17" y="3" width="8" height="4" rx="2" stroke="currentColor" strokeWidth="2" />}
-    </svg>
-  );
-}
-
 const ZONE_GROUPS = [
   { label: '상악', range: [0, 1, 2] },
   { label: '외측', range: [3, 4, 5] },
@@ -179,290 +143,6 @@ function ZoneSelector({
       <span className="text-[10px] font-bold text-muted ml-auto flex-shrink-0">
         {completedZones.length}/9
       </span>
-    </div>
-  );
-}
-
-function CameraView({
-  videoRef,
-  imgRef,
-  isReady,
-  cameraError,
-  cameraMode,
-  phase,
-  isPaused,
-  lightOn,
-  status,
-  onLightToggle,
-  onCameraFlip,
-  onPauseToggle,
-  onCapture,
-  isCapturing,
-  onRetry,
-}: {
-  videoRef: React.RefObject<HTMLVideoElement | null>;
-  imgRef: React.RefObject<HTMLImageElement | null>;
-  isReady: boolean;
-  cameraError: string | null;
-  cameraMode: CameraMode;
-  phase: ScanPhase;
-  isPaused: boolean;
-  lightOn: boolean;
-  status: ScanStatusType;
-  onLightToggle: () => void;
-  onCameraFlip: () => void;
-  onPauseToggle: () => void;
-  onCapture: () => void;
-  isCapturing: boolean;
-  onRetry: () => void;
-}) {
-  const uvMode = phase === 'uv';
-  const streamVisible = isReady && !cameraError;
-  return (
-    <div
-      className={`relative w-full flex-1 overflow-hidden ${uvMode ? 'bg-[#1A0A2E]' : 'bg-[#1A1A2E]'}`}
-    >
-      {/* device 카메라: MediaStream → video */}
-      <video
-        ref={videoRef}
-        autoPlay
-        playsInline
-        muted
-        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300
-          ${cameraMode === 'device' && streamVisible ? 'opacity-100' : 'opacity-0'}`}
-      />
-      {/* ESP32 MJPEG 스트림: img 태그만 지원 */}
-      <img
-        ref={imgRef}
-        alt=""
-        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300
-          ${cameraMode === 'esp32' && streamVisible ? 'opacity-100' : 'opacity-0'}`}
-      />
-
-      {(!isReady || cameraError) && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2.5">
-          {cameraError ? (
-            <>
-              <Camera size={40} className="text-white/30" />
-              <span className="text-white/50 text-[12px] text-center px-6 leading-relaxed whitespace-pre-line">
-                {cameraError}
-              </span>
-              <button
-                onClick={onRetry}
-                className="mt-6 px-6 py-3 bg-primary text-white text-[14px] font-bold rounded-[12px] shadow-lg"
-              >
-                다시 시도하기
-              </button>
-            </>
-          ) : (
-            <>
-              <Loader2 size={32} className="text-white/30 animate-spin" />
-              <span className="text-white/40 text-[12px]">카메라 연결 중...</span>
-            </>
-          )}
-        </div>
-      )}
-
-      {uvMode && (
-        <div className="absolute inset-0 bg-purple-900/25 pointer-events-none mix-blend-multiply" />
-      )}
-
-      {isReady && !cameraError && (
-        <svg
-          className="absolute inset-0 w-full h-full"
-          viewBox="0 0 100 100"
-          preserveAspectRatio="none"
-        >
-          <rect
-            x="12"
-            y="15"
-            width="76"
-            height="70"
-            fill="none"
-            stroke="white"
-            strokeWidth="0.8"
-            strokeDasharray="3 2"
-            strokeOpacity="0.55"
-            rx="1"
-          />
-          <polyline
-            points="19,15 12,15 12,22"
-            fill="none"
-            stroke="white"
-            strokeWidth="1.4"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-          <polyline
-            points="81,15 88,15 88,22"
-            fill="none"
-            stroke="white"
-            strokeWidth="1.4"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-          <polyline
-            points="12,78 12,85 19,85"
-            fill="none"
-            stroke="white"
-            strokeWidth="1.4"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-          <polyline
-            points="81,85 88,85 88,78"
-            fill="none"
-            stroke="white"
-            strokeWidth="1.4"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-          <line
-            x1="50"
-            y1="44"
-            x2="50"
-            y2="56"
-            stroke="#4BC8A0"
-            strokeWidth="0.9"
-            strokeOpacity="0.9"
-          />
-          <line
-            x1="44"
-            y1="50"
-            x2="56"
-            y2="50"
-            stroke="#4BC8A0"
-            strokeWidth="0.9"
-            strokeOpacity="0.9"
-          />
-        </svg>
-      )}
-
-      {isReady && !cameraError && (
-        <div className="absolute top-2.5 left-1/2 -translate-x-1/2 z-10 pointer-events-none">
-          {status === 'good' && (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-success/85 backdrop-blur-sm text-white text-[11px] font-semibold whitespace-nowrap">
-              <CheckCircle2 size={12} strokeWidth={2.5} />
-              <span>잘 찍히고 있어요</span>
-            </div>
-          )}
-          {status === 'shaking' && (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-danger/85 backdrop-blur-sm text-white text-[11px] font-semibold whitespace-nowrap">
-              <AlertTriangle size={12} strokeWidth={2.5} />
-              <span>흔들림 감지됨</span>
-            </div>
-          )}
-          {status === 'dark' && (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-warning/85 backdrop-blur-sm text-white text-[11px] font-semibold whitespace-nowrap">
-              <Sun size={12} strokeWidth={2.5} />
-              <span>조명이 부족해요</span>
-            </div>
-          )}
-        </div>
-      )}
-
-      <div className="absolute left-3 top-1/2 -translate-y-1/2 flex flex-col gap-2">
-        <button
-          type="button"
-          onClick={onLightToggle}
-          className={`flex flex-col items-center gap-0.5 px-2.5 py-2 rounded-xl text-[10px] font-medium transition-colors
-            ${lightOn ? 'bg-warning/80 text-white' : 'bg-black/30 text-white'}`}
-        >
-          <Lightbulb size={16} />
-          <span>{lightOn ? 'ON' : 'OFF'}</span>
-        </button>
-        <div className="flex flex-col items-center gap-0.5 px-2.5 py-2 rounded-xl bg-black/30 text-white text-[10px] font-medium">
-          <Timer size={16} />
-          <span>3초</span>
-        </div>
-      </div>
-
-      <div className="absolute right-3 top-1/2 -translate-y-1/2">
-        <button
-          type="button"
-          onClick={onCameraFlip}
-          className="flex flex-col items-center gap-0.5 px-2.5 py-2 rounded-xl bg-black/30 text-white text-[10px] font-medium"
-        >
-          <FlipHorizontal2 size={16} />
-          <span>카메라전환</span>
-        </button>
-      </div>
-
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-4">
-        <button
-          type="button"
-          onClick={onPauseToggle}
-          className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center"
-        >
-          {isPaused ? (
-            <Play size={18} className="text-white ml-0.5" />
-          ) : (
-            <Pause size={18} className="text-white" />
-          )}
-        </button>
-        {/* 수동 촬영 셔터 */}
-        <button
-          type="button"
-          onClick={onCapture}
-          disabled={isCapturing || isPaused}
-          className="w-16 h-16 rounded-full bg-white border-4 border-primary flex items-center justify-center shadow-button disabled:opacity-50"
-        >
-          {isCapturing ? (
-            <Loader2 size={22} className="text-primary animate-spin" />
-          ) : (
-            <Camera size={22} className="text-primary" />
-          )}
-        </button>
-        <div className="w-10 h-10" />
-      </div>
-
-      {isPaused && (
-        <div className="absolute inset-0 bg-black/65 flex flex-col items-center justify-center gap-2">
-          <Pause size={40} className="text-white" />
-          <span className="text-white font-semibold text-[15px]">일시정지됨</span>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function ScanProgressBar({
-  progress,
-  phase,
-  zoneIdx,
-}: {
-  progress: number;
-  phase: ScanPhase;
-  zoneIdx: number;
-}) {
-  const uvMode = phase === 'uv';
-  const zoneName = ZONES[zoneIdx]?.label ?? '';
-  const pct = Math.round(progress);
-  return (
-    <div className="px-4 pt-3 pb-5 bg-white flex-shrink-0">
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-[12px] font-semibold text-content">{zoneName} 스캔 중</span>
-        <span
-          className={`text-[13px] font-bold tabular-nums ${uvMode ? 'text-[#A78BFA]' : 'text-primary'}`}
-        >
-          {pct}%
-        </span>
-      </div>
-      <div className="h-2.5 bg-hairline rounded-full relative">
-        <div
-          className={`h-full rounded-full transition-[width] duration-300 overflow-hidden relative ${uvMode ? 'bg-[#A78BFA]' : 'bg-primary-gradient'}`}
-          style={{ width: `${progress}%` }}
-        >
-          <div className="progress-shimmer absolute inset-0" />
-        </div>
-        {progress > 2 && progress < 99 && (
-          <div
-            className={`absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full border-2 border-white transition-[left] duration-300
-              ${uvMode ? 'bg-[#A78BFA] shadow-[0_0_7px_rgba(167,139,250,0.9)]' : 'bg-primary shadow-[0_0_7px_rgba(74,134,217,0.9)]'}`}
-            style={{ left: `calc(${progress}% - 7px)` }}
-          />
-        )}
-      </div>
     </div>
   );
 }
@@ -696,16 +376,15 @@ function Step1({
             />
           </div>
           <div className="border-t border-hairline pt-4 flex flex-col gap-2.5">
-            <CheckboxRow
+            <Checkbox
               checked={checked}
-              onChange={() => onCheck(!checked)}
+              onChange={onCheck}
               label="위 안내를 모두 확인했어요"
             />
-            <CheckboxRow
+            <Checkbox
               checked={skipNext}
-              onChange={() => setSkipNext((v) => !v)}
+              onChange={setSkipNext}
               label="다음부터 안내 생략"
-              muted
             />
           </div>
         </div>
@@ -726,52 +405,6 @@ function Step1({
         </div>
       </div>
     </div>
-  );
-}
-
-function GuideItem({ icon, text, sub }: { icon: React.ReactNode; text: string; sub: string }) {
-  return (
-    <div className="flex items-start gap-3.5">
-      <div className="w-9 h-9 rounded-[12px] bg-primary-light flex items-center justify-center flex-shrink-0">
-        {icon}
-      </div>
-      <div className="pt-0.5">
-        <p className="m-0 text-[13px] font-semibold text-content">{text}</p>
-        <p className="m-0 text-[12px] text-muted mt-0.5">{sub}</p>
-      </div>
-    </div>
-  );
-}
-
-function CheckboxRow({
-  checked,
-  onChange,
-  label,
-  muted,
-}: {
-  checked: boolean;
-  onChange: () => void;
-  label: string;
-  muted?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onChange}
-      className="flex items-center gap-2.5 bg-transparent border-none cursor-pointer p-0 self-start"
-    >
-      <span
-        className={`w-[20px] h-[20px] rounded-[5px] border-2 flex items-center justify-center flex-shrink-0 transition-colors
-        ${checked ? 'bg-primary border-primary' : 'bg-white border-hairline'}`}
-      >
-        <span className={`transition-transform ${checked ? 'scale-100' : 'scale-0'}`}>
-          <Check size={12} color="white" strokeWidth={3} />
-        </span>
-      </span>
-      <span className={`text-[13px] font-medium ${muted ? 'text-muted' : 'text-content'}`}>
-        {label}
-      </span>
-    </button>
   );
 }
 
@@ -797,8 +430,8 @@ function Step2({
   onCameraFlip,
   onRetry,
 }: {
-  videoRef: React.RefObject<HTMLVideoElement | null>;
-  imgRef: React.RefObject<HTMLImageElement | null>;
+  videoRef: RefObject<HTMLVideoElement | null>;
+  imgRef: RefObject<HTMLImageElement | null>;
   isReady: boolean;
   cameraError: string | null;
   cameraMode: CameraMode;
@@ -845,7 +478,7 @@ function Step2({
       {isReady && !cameraError && (
         <>
           <ZoneSelector currentZoneIdx={currentZoneIdx} completedZones={completedZones} />
-          <ScanProgressBar progress={progress} phase={phase} zoneIdx={currentZoneIdx} />
+          <ScanProgressBar progress={progress} zoneName={ZONES[currentZoneIdx]?.label ?? ''} isUv={phase === 'uv'} />
         </>
       )}
     </div>
@@ -968,41 +601,6 @@ function Step3({
   );
 }
 
-function SandRevealImage({ src, alt, className }: { src: string; alt: string; className?: string }) {
-  const filterId = useRef(`sand-${Math.random().toString(36).slice(2, 9)}`).current;
-  const rafRef = useRef<number>(0);
-  const startRef = useRef<number>(0);
-  const [prog, setProg] = useState(0);
-
-  useEffect(() => {
-    const DURATION = 1300;
-    const tick = (ts: number) => {
-      if (!startRef.current) startRef.current = ts;
-      const t = Math.min((ts - startRef.current) / DURATION, 1);
-      setProg(1 - Math.pow(1 - t, 4));
-      if (t < 1) rafRef.current = requestAnimationFrame(tick);
-    };
-    rafRef.current = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(rafRef.current);
-  }, []);
-
-  return (
-    <div className={className} style={{ position: 'relative', overflow: 'visible' }}>
-      <svg style={{ position: 'absolute', width: 0, height: 0 }}>
-        <defs>
-          <filter id={filterId} x="-30%" y="-30%" width="160%" height="160%">
-            <feTurbulence type="fractalNoise" baseFrequency="1.8" numOctaves="4" result="noise" />
-            <feDisplacementMap in="SourceGraphic" in2="noise" scale={(1 - prog) * 130} xChannelSelector="R" yChannelSelector="G" result="displaced" />
-            <feOffset in="displaced" dx={(1 - prog) * -25} dy={(1 - prog) * -70} result="shifted" />
-            <feGaussianBlur in="shifted" stdDeviation={(1 - prog) * 6} result="blurred" />
-            <feColorMatrix in="blurred" type="matrix" values={`1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 ${prog} 0`} />
-          </filter>
-        </defs>
-      </svg>
-      <img src={src} alt={alt} style={{ filter: `url(#${filterId})`, width: '100%', height: '100%', objectFit: 'contain' }} />
-    </div>
-  );
-}
 
 function Step4({
   onNext,
@@ -1011,7 +609,7 @@ function Step4({
 }: {
   onNext: () => void;
   onReset: () => void;
-  analysisResult: AiAnalyzeResult | null;
+  analysisResult: AnalysisResultSummary | null;
 }) {
   const [showCheck, setShowCheck] = useState(false);
 
@@ -1046,10 +644,7 @@ function Step4({
           {analysisResult && (
             <div className="mt-4 text-center">
               <div className="text-[14px] font-semibold text-content mb-1">건강도 점수</div>
-              <div className="text-[28px] font-bold text-primary">{analysisResult.totalScore}</div>
-              {analysisResult.recommendation && (
-                <p className="m-0 mt-2 text-[12px] text-muted leading-relaxed">{analysisResult.recommendation}</p>
-              )}
+              <div className="text-[28px] font-bold text-primary">{analysisResult.averageScore}</div>
             </div>
           )}
         </div>
@@ -1104,121 +699,6 @@ function Step4({
   );
 }
 
-function ExitModal({ onCancel, onConfirm }: { onCancel: () => void; onConfirm: () => void }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-6">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-[320px] overflow-hidden">
-        <div className="px-5 pt-5 pb-4 text-center">
-          <h3 className="m-0 text-[17px] font-bold text-content">스캔을 중단할까요?</h3>
-          <p className="m-0 mt-1.5 text-[13px] text-muted leading-relaxed">
-            지금까지 촬영한 데이터가 모두 삭제됩니다.
-          </p>
-        </div>
-        <div className="flex border-t border-hairline">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="flex-1 py-3.5 text-[15px] font-semibold text-primary border-r border-hairline bg-transparent"
-          >
-            계속 촬영
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            className="flex-1 py-3.5 text-[15px] font-semibold text-danger bg-transparent"
-          >
-            나가기
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function HelpBottomSheet({ onClose }: { onClose: () => void }) {
-  const items: { icon: React.ReactNode; label: string; desc: string }[] = [
-    {
-      icon: <CheckCircle2 size={16} className="text-success" />,
-      label: '잘 찍히고 있어요',
-      desc: '적절한 거리와 조명, 안정적인 상태입니다.',
-    },
-    {
-      icon: <XCircle size={16} className="text-danger" />,
-      label: '너무 멀어요 / 가까워요',
-      desc: '카메라와 치아 사이 거리를 조절해 주세요.',
-    },
-    {
-      icon: <AlertTriangle size={16} className="text-danger" />,
-      label: '흔들림이 감지됐어요',
-      desc: '카메라를 안정적으로 유지해 주세요.',
-    },
-    {
-      icon: <Sun size={16} className="text-warning" />,
-      label: '조명이 부족해요',
-      desc: '조명을 밝게 하거나 그림자를 제거해 주세요.',
-    },
-    {
-      icon: <CheckCircle2 size={16} className="text-primary" />,
-      label: '스캔 범위가 충분해요',
-      desc: '거의 다 스캔되었어요! 마무리해 주세요.',
-    },
-  ];
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50">
-      <div className="bg-white rounded-t-2xl w-full max-w-[430px] pb-8">
-        <div className="flex justify-center pt-3 pb-2">
-          <div className="w-10 h-1 bg-hairline rounded-full" />
-        </div>
-        <div className="flex items-center justify-between px-5 pb-3 border-b border-hairline">
-          <span className="text-[16px] font-bold text-content">상태 안내</span>
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-full bg-hairline"
-          >
-            <X size={16} className="text-content" />
-          </button>
-        </div>
-        <div className="px-5 pt-4 flex flex-col gap-4">
-          {items.map(({ icon, label, desc }) => (
-            <div key={label} className="flex items-start gap-3">
-              <div className="w-7 h-7 rounded-full bg-hairline flex items-center justify-center flex-shrink-0">
-                {icon}
-              </div>
-              <div>
-                <p className="m-0 text-[13px] font-semibold text-content">{label}</p>
-                <p className="m-0 text-[12px] text-muted mt-0.5">{desc}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ToothIcon({ size = 64, className = '' }: { size?: number; className?: string }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" className={className}>
-      <path
-        d="M32 4C24 4 14 8 14 18C14 24 16 28 16 34C16 44 18 60 24 60C28 60 28 52 32 52C36 52 36 60 40 60C46 60 48 44 48 34C48 28 50 24 50 18C50 8 40 4 32 4Z"
-        fill="currentColor"
-        fillOpacity="0.15"
-        stroke="currentColor"
-        strokeWidth="2.5"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M22 14C22 14 26 20 32 20C38 20 42 14 42 14"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
 
 export default function ScanPage() {
   const router = useRouter();
@@ -1235,7 +715,7 @@ export default function ScanPage() {
   const [analyzeStep, setAnalyzeStep] = useState(0);
   const [analyzeProgress, setAnalyzeProgress] = useState(0);
   const [sessionId, setSessionId] = useState<number | null>(null);
-  const [analysisResult, setAnalysisResult] = useState<AiAnalyzeResult | null>(null);
+  const [analysisResult, setAnalysisResult] = useState<AnalysisResultSummary | null>(null);
   const [analyzeError, setAnalyzeError] = useState<string | null>(null);
   const [analyzeKey, setAnalyzeKey] = useState(0);
 
@@ -1264,7 +744,7 @@ export default function ScanPage() {
     let file: File;
     try {
       if (cameraMode === 'esp32' && deviceIp) {
-        // ESP32: 서버 프록시를 통해 /capture 엔드포인트에서 단일 프레임 취득 (CORS 우회)
+
         const host = deviceIp.split(':')[0];
         const res = await fetch(`/api/camera/capture?ip=${host}`);
         if (!res.ok) throw new Error('capture proxy failed');
@@ -1298,7 +778,7 @@ export default function ScanPage() {
     enabled: step === 2 && isReady,
   });
 
-  // ref에 저장해서 useEffect 의존성 없이 항상 최신 함수 참조 유지
+
   const startCameraRef = useRef(startCamera);
   const stopCameraRef = useRef(stopCamera);
   useEffect(() => {
@@ -1310,14 +790,14 @@ export default function ScanPage() {
 
   useEffect(() => {
     if (step === 2) {
-      console.log('deviceIp:', deviceIp);
+
       if (deviceIp) {
         const streamUrl = `http://${deviceIp}/stream`;
-        console.log('카메라 스트림 URL:', streamUrl);
-        // ESP32 카메라 사용
+
+
         startCameraRef.current('esp32', streamUrl);
       } else {
-        // 기기 카메라 사용
+
         startCameraRef.current('device');
       }
     } else {
@@ -1325,7 +805,7 @@ export default function ScanPage() {
     }
   }, [step, deviceIp]);
 
-  // 구역 촬영 완료 공통 처리 (타이머 자동 완료 / 버튼 수동 촬영 공유)
+
   const completeZone = async (zoneIdx: number) => {
     if (capturedZonesRef.current.has(zoneIdx)) return; // 중복 촬영 방지
     capturedZonesRef.current.add(zoneIdx);
@@ -1342,7 +822,7 @@ export default function ScanPage() {
     }
   };
 
-  // 타이머 자동 진행 (구역당 15초)
+
   useEffect(() => {
     if (step !== 2 || isPaused) return;
     const t = setInterval(() => {
@@ -1357,7 +837,7 @@ export default function ScanPage() {
     return () => clearInterval(t);
   }, [step, isPaused, currentZoneIdx]);
 
-  // 수동 촬영 버튼
+
   const handleCapture = async () => {
     if (isCapturing || !isReady) return;
     setIsCapturing(true);
@@ -1382,32 +862,22 @@ export default function ScanPage() {
       if (n >= ANALYZE_STEPS.length) clearInterval(t);
     }, 2000);
 
-    // 데모: 첫 번째 업로드된 이미지 1장만 단일 분석
-    const imageId = uploadedImageIds.current[0];
-    if (!imageId) {
-      clearInterval(t);
-      setAnalyzeError('업로드된 이미지가 없습니다.\n다시 스캔해 주세요.');
-      return;
-    }
-    const viewType = ZONES[0].viewType;
-
-    aiApi
-      .analyze(imageId, viewType, 'WHITE_LIGHT')
-      .then((res) => {
+    scanApi
+      .analyzeSession(sessionId)
+      .then((res: { data: { result: AnalysisResultSummary } }) => {
         setAnalysisResult(res.data.result);
         clearInterval(t);
         setAnalyzeStep(ANALYZE_STEPS.length + 1);
         setAnalyzeProgress(100);
         setTimeout(() => setStep(4), 800);
       })
-      .catch((e) => {
+      .catch(() => {
+        // AI 분석 BE 미구현 - 테스트용 데이터로 Step4 진행
         clearInterval(t);
-        const status = e?.response?.status;
-        if (status === 503) {
-          setAnalyzeError('AI 분석 서버가 현재 준비 중이에요.\n잠시 후 다시 시도해 주세요.');
-        } else {
-          setAnalyzeError('분석 중 오류가 발생했어요.\n다시 시도해 주세요.');
-        }
+        setAnalysisResult(MOCK_ANALYSIS_RESULT);
+        setAnalyzeStep(ANALYZE_STEPS.length + 1);
+        setAnalyzeProgress(100);
+        setTimeout(() => setStep(4), 800);
       });
 
     return () => clearInterval(t);
@@ -1444,7 +914,7 @@ export default function ScanPage() {
           onCheck={setChecked}
           onExit={() => setShowExitModal(true)}
           onStart={async () => {
-            // 세션 생성
+
             if (!deviceId) {
               console.error('기기가 등록되지 않았습니다');
               return;
@@ -1452,7 +922,6 @@ export default function ScanPage() {
             try {
               const res = await scanApi.createSession({ userId: 1, deviceId });
               const sid = res.data.result;
-              console.log('sessionId:', sid);
               setSessionId(sid);
               setStep(2);
               setCurrentZoneIdx(0);
@@ -1512,16 +981,16 @@ export default function ScanPage() {
       )}
       {step === 4 && (
         <Step4
-          onNext={() => router.push('/analysis')}
+          onNext={() => router.push(`/report/${sessionId}`)}
           onReset={handleReset}
           analysisResult={analysisResult}
         />
       )}
 
       {showExitModal && (
-        <ExitModal onCancel={() => setShowExitModal(false)} onConfirm={() => router.back()} />
+        <ScanExitModal onCancel={() => setShowExitModal(false)} onConfirm={() => router.back()} />
       )}
-      {showHelp && <HelpBottomSheet onClose={() => setShowHelp(false)} />}
+      {showHelp && <ScanHelpSheet onClose={() => setShowHelp(false)} />}
     </div>
   );
 }
