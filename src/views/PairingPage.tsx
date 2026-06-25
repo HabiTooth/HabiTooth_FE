@@ -16,6 +16,7 @@ import ListItem from '@/components/molecules/ListItem';
 import type { SignalLevel } from '@/components/atoms/SignalBars';
 import { useBluetoothDevice } from '@/hooks/useBluetoothDevice';
 import { useAuthStore } from '@/stores/authStore';
+import { deviceApi } from '@/lib/api/device';
 
 const MOCK_DEVICES: { id: string; name: string; signal: SignalLevel; recommended?: boolean }[] = [
   { id: '1', name: 'HabiTooth_ESP32', signal: 'strong', recommended: true },
@@ -59,17 +60,30 @@ export default function PairingPage() {
   const [wifiConnecting, setWifiConnecting] = useState(false);
 
   useEffect(() => {
-    if (status === 'connected') router.push('/dashboard');
-  }, [status, router]);
+    if (status !== 'connected' || !deviceName) return;
+    deviceApi.register({ deviceName })
+      .then((res) => {
+        const { deviceId, ip } = res.data.result;
+        setDevice(deviceId, ip ?? '');
+      })
+      .catch(() => {})
+      .finally(() => router.push('/dashboard'));
+  }, [status, deviceName, router, setDevice]);
 
   const handleMockConnect = (id: string) => {
     setMockConnectingId(id);
     setTimeout(() => router.push('/dashboard'), 1500);
   };
 
-  const handleWiFiConnect = () => {
+  const handleWiFiConnect = async () => {
     setWifiConnecting(true);
-    setDevice(1, DEMO_DEVICE_IP);
+    try {
+      const res = await deviceApi.register({ deviceName: 'HabiTooth_Demo', ip: DEMO_DEVICE_IP });
+      const { deviceId, ip } = res.data.result;
+      setDevice(deviceId, ip ?? DEMO_DEVICE_IP);
+    } catch {
+      setDevice(1, DEMO_DEVICE_IP);
+    }
     setTimeout(() => router.push('/dashboard'), 1500);
   };
 
