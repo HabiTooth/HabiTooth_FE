@@ -1,5 +1,6 @@
 'use client';
 
+import OralViewer3D from '@/components/organisms/OralViewer3D';
 import type { RiskAnalysisSectionProps } from './RiskAnalysisSection.types';
 
 export default function RiskAnalysisSection({ plaque, calculus }: RiskAnalysisSectionProps) {
@@ -7,9 +8,9 @@ export default function RiskAnalysisSection({ plaque, calculus }: RiskAnalysisSe
     <div className="bg-white rounded-2xl p-5 mt-4">
       <h2 className="text-sm font-semibold text-gray-800 mb-4">위험 부위 분석</h2>
 
-      {/* 3D 뷰어 placeholder */}
-      <div className="bg-[#F0F4FF] rounded-xl flex items-center justify-center h-40 mb-4">
-        <p className="text-xs text-gray-400">3D 치아 뷰어 (준비 중)</p>
+      {/* 3D 뷰어 */}
+      <div className="bg-[#F0F4FF] rounded-xl overflow-hidden h-64 mb-4">
+        <OralViewer3D />
       </div>
 
       {/* 탐지 항목 */}
