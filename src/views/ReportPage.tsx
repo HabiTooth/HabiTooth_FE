@@ -65,7 +65,7 @@ export default function ReportPage() {
       <RiskAnalysisSection
         plaque={12}
         calculus={5}
-        calibrationMode={true}
+        calibrationMode={false}
         analysisResults={analysisResults}
       />
       <LLMGuideSection

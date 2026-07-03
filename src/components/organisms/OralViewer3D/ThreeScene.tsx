@@ -45,38 +45,41 @@ const RISK_LABEL_MAP: Record<RiskLevel, string> = {
 };
 
 const TOOTH_POSITIONS: Record<string, [number, number, number]> = {
-  '11': [0.10, -0.55, 0.85],
-  '12': [0.22, -0.52, 0.85],
-  '13': [0.34, -0.46, 0.85],
-  '14': [0.44, -0.38, 0.85],
-  '15': [0.52, -0.28, 0.85],
-  '16': [0.58, -0.16, 0.85],
-  '17': [0.60, -0.04, 0.85],
-  '18': [0.60,  0.08, 0.85],
-  '21': [-0.10, -0.55, 0.85],
-  '22': [-0.22, -0.52, 0.85],
-  '23': [-0.34, -0.46, 0.85],
-  '24': [-0.44, -0.38, 0.85],
-  '25': [-0.52, -0.28, 0.85],
-  '26': [-0.58, -0.16, 0.85],
-  '27': [-0.60, -0.04, 0.85],
-  '28': [-0.60,  0.08, 0.85],
-  '31': [-0.10, -0.52, 0.15],
-  '32': [-0.20, -0.49, 0.15],
-  '33': [-0.30, -0.43, 0.15],
-  '34': [-0.40, -0.35, 0.15],
-  '35': [-0.48, -0.25, 0.15],
-  '36': [-0.54, -0.13, 0.15],
-  '37': [-0.56, -0.01, 0.15],
-  '38': [-0.56,  0.10, 0.15],
-  '41': [0.10, -0.52, 0.15],
-  '42': [0.20, -0.49, 0.15],
-  '43': [0.30, -0.43, 0.15],
-  '44': [0.40, -0.35, 0.15],
-  '45': [0.48, -0.25, 0.15],
-  '46': [0.54, -0.13, 0.15],
-  '47': [0.56, -0.01, 0.15],
-  '48': [0.56,  0.10, 0.15],
+  // 상악 (왼쪽 그룹)
+  '18': [-1.101, 0.155, 0.557],
+  '17': [-1.062, 0.153, 0.413],
+  '16': [-1.052, 0.159, 0.336],
+  '15': [-1.008, 0.163, 0.270],
+  '14': [-1.011, 0.169, 0.163],
+  '13': [-0.964, 0.151, 0.121],
+  '12': [-0.923, 0.154, 0.082],
+  '11': [-0.870, 0.131, 0.065],
+  '21': [-0.818, 0.141, 0.060],
+  '22': [-0.764, 0.165, 0.076],
+  '23': [-0.709, 0.174, 0.123],
+  '24': [-0.704, 0.164, 0.190],
+  '25': [-0.674, 0.169, 0.256],
+  '26': [-0.643, 0.167, 0.354],
+  '27': [-0.614, 0.149, 0.431],
+  '28': [-0.580, 0.151, 0.539],
+
+  // 하악 (오른쪽 그룹)
+  '48': [-0.014, 0.184, 0.229],
+  '47': [0.025, 0.178, 0.330],
+  '46': [0.030, 0.175, 0.430],
+  '45': [0.052, 0.177, 0.518],
+  '44': [0.098, 0.178, 0.590],
+  '43': [0.114, 0.168, 0.647],
+  '42': [0.164, 0.140, 0.692],
+  '41': [0.218, 0.165, 0.713],
+  '31': [0.271, 0.177, 0.713],
+  '32': [0.331, 0.173, 0.693],
+  '33': [0.391, 0.168, 0.644],
+  '34': [0.391, 0.178, 0.585],
+  '35': [0.450, 0.177, 0.515],
+  '36': [0.458, 0.176, 0.430],
+  '37': [0.466, 0.179, 0.324],
+  '38': [0.504, 0.184, 0.233],
 };
 
 export default function ThreeScene({ analysisResults, onToothSelect, calibrationMode = false }: ThreeSceneProps) {
@@ -96,7 +99,8 @@ export default function ThreeScene({ analysisResults, onToothSelect, calibration
     scene.background = new THREE.Color('#EEF2FF');
 
     const camera = new THREE.PerspectiveCamera(45, mount.clientWidth / mount.clientHeight, 0.1, 1000);
-    camera.position.set(0, 0, 15);
+    camera.position.set(0, 12, 8);
+    camera.lookAt(0, 0, 0);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(mount.clientWidth, mount.clientHeight);
@@ -112,6 +116,7 @@ export default function ThreeScene({ analysisResults, onToothSelect, calibration
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
+    controls.target.set(0, 0, 0);
 
     const markersGroup = new THREE.Group();
     const markerMeshes: THREE.Mesh[] = [];
@@ -143,8 +148,6 @@ export default function ThreeScene({ analysisResults, onToothSelect, calibration
     loader.load(
       MODEL_PATH,
       (gltf) => {
-        console.log('GLB 로드 성공, analysisResults:', analysisResultsRef.current);
-
         const model = gltf.scene;
         modelRoot = model;
 
@@ -161,28 +164,28 @@ export default function ThreeScene({ analysisResults, onToothSelect, calibration
         modelInfo = { center, scale };
 
         const results = analysisResultsRef.current;
-        console.log('마커 생성 시작, results:', results);
 
-        results.forEach((result) => {
-          const pos = TOOTH_POSITIONS[result.toothNumber];
-          if (!pos) {
-            console.warn(`TOOTH_POSITIONS에 ${result.toothNumber} 없음`);
-            return;
-          }
+        if (!calibrationMode) {
+          results.forEach((result) => {
+            const pos = TOOTH_POSITIONS[result.toothNumber];
+            if (!pos) {
+              console.warn(`TOOTH_POSITIONS에 ${result.toothNumber} 없음`);
+              return;
+            }
 
-          const local = new THREE.Vector3(pos[0], pos[1], pos[2]);
-          const world = localToWorld(local, center, scale);
-          console.log(`마커 ${result.toothNumber} world pos:`, world);
+            const local = new THREE.Vector3(pos[0], pos[1], pos[2]);
+            const world = localToWorld(local, center, scale);
 
-          const markerGeom = new THREE.SphereGeometry(0.25, 16, 16);
-          const markerMat = createMarkerMaterial(RISK_COLOR_MAP[result.riskLevel], 0.4);
-          const marker = new THREE.Mesh(markerGeom, markerMat);
-          marker.position.copy(world);
-          marker.userData.toothResult = result;
+            const markerGeom = new THREE.SphereGeometry(0.25, 16, 16);
+            const markerMat = createMarkerMaterial(RISK_COLOR_MAP[result.riskLevel], 0.4);
+            const marker = new THREE.Mesh(markerGeom, markerMat);
+            marker.position.copy(world);
+            marker.userData.toothResult = result;
 
-          markersGroup.add(marker);
-          markerMeshes.push(marker);
-        });
+            markersGroup.add(marker);
+            markerMeshes.push(marker);
+          });
+        }
 
         scene.add(markersGroup);
       },
