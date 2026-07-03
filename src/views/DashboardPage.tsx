@@ -1,59 +1,36 @@
 'use client';
 
-import styled from 'styled-components';
-
-const PageWrapper = styled.div`
-  max-width: 430px;
-  min-height: 100svh;
-  margin: 0 auto;
-  background: ${({ theme }) => theme.colors.background};
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-`;
-
-const IconBox = styled.div`
-  width: 64px;
-  height: 64px;
-  background: ${({ theme }) => theme.colors.primaryGradient};
-  border-radius: ${({ theme }) => theme.radius.lg};
-  display: flex;
-  align-items: center;
-  justify-content: center;
-`;
-
-const Title = styled.h1`
-  margin: 0;
-  font-size: 22px;
-  font-weight: 700;
-  color: ${({ theme }) => theme.colors.textPrimary};
-`;
-
-const Subtitle = styled.p`
-  margin: 0;
-  font-size: 14px;
-  color: ${({ theme }) => theme.colors.textSecondary};
-`;
-
-const ToothIcon = () => (
-  <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-    <path
-      d="M16 3C12 3 9 6 9 10c0 2.7 1.4 5 3.5 6.3.9.6 1.5 1.7 1.5 3v5c0 .6.4 1 1 1h2c.6 0 1-.4 1-1v-5c0-1.3.6-2.4 1.5-3C21.6 15 23 12.7 23 10c0-4-3-7-7-7z"
-      fill="white"
-    />
-  </svg>
-);
+import ScoreCard from '@/components/molecules/ScoreCard';
+import NavBar from '@/components/organisms/NavBar';
+import ScanBanner from '@/components/molecules/ScanBanner';
+import ReportSummary from '@/components/organisms/ReportSummary';
+import Header from '@/components/organisms/Header';
 
 export default function DashboardPage() {
   return (
-    <PageWrapper>
-      <IconBox>
-        <ToothIcon />
-      </IconBox>
-      <Title>HabiTooth</Title>
-      <Subtitle>대시보드 — 구현 예정</Subtitle>
-    </PageWrapper>
+    <main className="max-w-[430px] mx-auto p-6 bg-[#EEF2FF] min-h-screen pb-20">
+      <Header hasNotification={true} />
+      <ScoreCard score={82} prevScore={76} />
+      <ReportSummary
+        score={82}
+        prevScore={76}
+        grade="B"
+        status="양호"
+        date="2025.05.15 14:30"
+        reportId="abc123"
+        plaqueScore={52}
+        calculusScore={68}
+        gumScore={85}
+        plaqueRisk="normal"
+        calculusRisk="high"
+        gumRisk="low"
+      />
+      <ScanBanner
+        title="AI 구강 분석을 시작해보세요"
+        description={"실시간 스캔 후 AI가\n구강 상태를 분석해드려요"}
+        onClick={() => {}}
+      />
+      <NavBar activeTab="home" />
+    </main>
   );
 }
