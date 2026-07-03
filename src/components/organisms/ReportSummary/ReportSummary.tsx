@@ -13,10 +13,8 @@ export default function ReportSummary({
   reportId,
   plaqueScore,
   calculusScore,
-  gumScore,
   plaqueRisk,
   calculusRisk,
-  gumRisk,
 }: ReportSummaryProps) {
   const router = useRouter();
   const diff = prevScore !== undefined ? score - prevScore : null;
@@ -24,23 +22,20 @@ export default function ReportSummary({
   return (
     <div className="bg-white rounded-2xl p-5 mt-4">
 
-      {/* 헤더 */}
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h3 className="text-sm font-semibold text-gray-800">최근 분석 결과</h3>
-          {date && (
-            <span className="text-xs text-gray-400 mt-0.5 block">{date}</span>
-          )}
-        </div>
-        {reportId && (
-          <button
-            onClick={() => router.push(`/report/${reportId}`)}
-            className="text-xs text-gray-400"
-          >
-            전체 보기 &gt;
-          </button>
-        )}
-      </div>
+     {/* 헤더 */}
+<div className="flex items-center justify-between mb-4">
+  <h3 className="text-sm font-semibold text-gray-800">
+    {date ? `${date} 분석 결과` : '최근 분석 결과'}
+  </h3>
+  {reportId && (
+    <button
+      onClick={() => router.push(`/report/${reportId}`)}
+      className="text-xs text-gray-400"
+    >
+      전체 보기 &gt;
+    </button>
+  )}
+</div>
 
       {/* 점수 */}
       <div className="flex items-center gap-4">
@@ -66,10 +61,9 @@ export default function ReportSummary({
         <>
           <div className="border-t border-dashed border-gray-100 my-4" />
           <h4 className="text-sm font-semibold text-gray-800 mb-3">위험도 요약</h4>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             <ToothStatusItem label="치태" score={plaqueScore} riskLevel={plaqueRisk!} />
             <ToothStatusItem label="치석" score={calculusScore!} riskLevel={calculusRisk!} />
-            <ToothStatusItem label="잇몸 건강" score={gumScore!} riskLevel={gumRisk!} />
           </div>
           <div className="flex items-center justify-center gap-4 mt-3">
             {[

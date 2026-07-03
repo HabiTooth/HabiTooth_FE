@@ -11,8 +11,6 @@ export interface ReportSummaryProps {
 
   plaqueScore?: number;
   calculusScore?: number;
-  gumScore?: number;
   plaqueRisk?: RiskLevel;
   calculusRisk?: RiskLevel;
-  gumRisk?: RiskLevel;
 }

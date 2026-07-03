@@ -12,19 +12,17 @@ export default function DashboardPage() {
       <Header hasNotification={true} />
       <ScoreCard score={82} prevScore={76} />
       <ReportSummary
-        score={82}
-        prevScore={76}
-        grade="B"
-        status="양호"
-        date="2025.05.15 14:30"
-        reportId="abc123"
-        plaqueScore={52}
-        calculusScore={68}
-        gumScore={85}
-        plaqueRisk="normal"
-        calculusRisk="high"
-        gumRisk="low"
-      />
+  score={82}
+  prevScore={76}
+  grade="B"
+  status="양호"
+  date="2025.05.15 14:30"
+  reportId="abc123"
+  plaqueScore={52}
+  calculusScore={68}
+  plaqueRisk="normal"
+  calculusRisk="high"
+/>
       <ScanBanner
         title="AI 구강 분석을 시작해보세요"
         description={"실시간 스캔 후 AI가\n구강 상태를 분석해드려요"}
