@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/authStore';
 import { deviceApi } from '@/lib/api/device';
-import type { DeviceResponse } from '@/lib/api/device';
+import type { DeviceStatusResponse } from '@/lib/api/device';
 import {
   User, ChevronLeft, ChevronRight, Bell, Shield, FileText,
   Smartphone, Clock, LogOut, UserX, Lock,
@@ -67,7 +67,7 @@ export default function MyPage() {
   const [notifyScan, setNotifyScan] = useState(true);
   const [notifyAnalysis, setNotifyAnalysis] = useState(true);
   const [notifyDanger, setNotifyDanger] = useState(true);
-  const [device, setDevice] = useState<DeviceResponse | null>(null);
+  const [device, setDevice] = useState<DeviceStatusResponse | null>(null);
 
   useEffect(() => {
     deviceApi.getStatus().then((res) => {
@@ -126,18 +126,18 @@ export default function MyPage() {
               <div>
                 <div className="flex items-center gap-2">
                   <span className="text-content">디바이스 관리</span>
-                  <span className={`text-[11px] font-semibold px-1.5 py-0.5 rounded-full ${device ? 'bg-success/15 text-success' : 'bg-hairline text-muted'}`}>
-                    {device ? '연결됨' : '미연결'}
+                  <span className={`text-[11px] font-semibold px-1.5 py-0.5 rounded-full ${device?.connected ? 'bg-success/15 text-success' : 'bg-hairline text-muted'}`}>
+                    {device ? (device.connected ? '연결됨' : '등록됨') : '미등록'}
                   </span>
                 </div>
                 {device && (
                   <>
                     <p className="m-0 mt-0.5 text-[11px] text-muted">
-                      {device.macAddress} · {device.deviceName}
+                      {device.serialNumber} · {device.modelName}
                     </p>
                     <p className="m-0 text-[11px] text-muted flex items-center gap-1">
                       <Clock size={10} />
-                      {device.createdAt?.slice(0, 16).replace('T', ' ')}
+                      {device.lastConnectedAt?.slice(0, 16).replace('T', ' ') ?? '연결 기록 없음'}
                     </p>
                   </>
                 )}

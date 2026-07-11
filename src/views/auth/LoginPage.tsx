@@ -8,6 +8,7 @@ import Input from '@/components/atoms/Input';
 import Checkbox from '@/components/atoms/Checkbox';
 import { authApi } from '@/lib/api/auth';
 import { useAuthStore } from '@/stores/authStore';
+import { destinationAfterLogin } from '@/lib/authRouting';
 
 const KakaoIcon = () => (
   <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -69,7 +70,7 @@ export default function LoginPage() {
     try {
       const res = await authApi.login({ email, password });
       setToken(res.data.result.accessToken);
-      router.push('/pairing');
+      router.push(await destinationAfterLogin());
     } catch {
       setApiError('이메일 또는 비밀번호가 올바르지 않아요.');
     } finally {

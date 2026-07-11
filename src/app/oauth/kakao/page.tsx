@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { authApi } from '@/lib/api/auth';
 import { useAuthStore } from '@/stores/authStore';
+import { destinationAfterLogin } from '@/lib/authRouting';
 
 export default function KakaoCallbackPage() {
   const router = useRouter();
@@ -19,9 +20,9 @@ export default function KakaoCallbackPage() {
 
     authApi
       .socialLogin({ provider: 'kakao', authCode: code, redirectUri })
-      .then((res) => {
+      .then(async (res) => {
         setToken(res.data.result.accessToken);
-        router.replace('/pairing');
+        router.replace(await destinationAfterLogin());
       })
       .catch(() => router.replace('/login'));
   }, [searchParams, router, setToken]);

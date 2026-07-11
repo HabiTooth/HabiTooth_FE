@@ -64,7 +64,7 @@ export default function CameraView({
       />
 
       {(!isReady || cameraError) && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2.5">
+        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-2.5 bg-[#1A1A2E]">
           {cameraError ? (
             <>
               <Camera size={40} className="text-white/30" />

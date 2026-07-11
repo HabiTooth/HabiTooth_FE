@@ -824,7 +824,7 @@ export default function ScanPage() {
 
 
   useEffect(() => {
-    if (step !== 2 || isPaused) return;
+    if (step !== 2 || isPaused || !isReady) return;
     const t = setInterval(() => {
       const next = Math.min(progressRef.current + 100 / 150, 100);
       progressRef.current = next;
@@ -835,7 +835,7 @@ export default function ScanPage() {
       }
     }, 100);
     return () => clearInterval(t);
-  }, [step, isPaused, currentZoneIdx]);
+  }, [step, isPaused, isReady, currentZoneIdx]);
 
 
   const handleCapture = async () => {

@@ -45,6 +45,13 @@ export function useCameraStream(): UseCameraStreamReturn {
 
         if (mode === 'esp32' && esp32Url) {
           setCameraMode('esp32');
+          // ESP32 기본 해상도가 QVGA(320x240)라 화면에 꽉 채우면 뭉개짐 - SVGA + 고화질로 세팅
+          // 주의: 스트림은 :81, /control은 80 포트라 포트 떼고 요청해야 함
+          const controlHost = esp32Url.replace(/^https?:\/\//, '').split('/')[0].split(':')[0];
+          // XCLK 20MHz(기본값)에서 색이 핑크로 틀어지는 이슈가 있어 12로 고정 (재부팅 시 초기화되므로 연결 때마다 세팅)
+          fetch(`http://${controlHost}/xclk?xclk=12`, { mode: 'no-cors' }).catch(() => {});
+          fetch(`http://${controlHost}/control?var=framesize&val=9`, { mode: 'no-cors' }).catch(() => {});
+          fetch(`http://${controlHost}/control?var=quality&val=10`, { mode: 'no-cors' }).catch(() => {});
           // img 엘리먼트가 마운트된 후 src 설정을 위해 requestAnimationFrame 사용
           requestAnimationFrame(() => {
             const img = imgRef.current;
