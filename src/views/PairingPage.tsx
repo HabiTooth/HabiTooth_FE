@@ -1,28 +1,31 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   ChevronLeft,
-  Bluetooth,
   Headphones,
   CheckCircle2,
   AlertCircle,
   Loader2,
   Wifi,
 } from 'lucide-react';
-import SignalBars, { SIGNAL_LABEL } from '@/components/atoms/SignalBars';
+import SignalBars from '@/components/atoms/SignalBars';
 import ListItem from '@/components/molecules/ListItem';
 import type { SignalLevel } from '@/components/atoms/SignalBars';
-import { useBluetoothDevice } from '@/hooks/useBluetoothDevice';
 import { useAuthStore } from '@/stores/authStore';
-import { deviceApi } from '@/lib/api/device';
+import { deviceApi, DEVICE_MODEL } from '@/lib/api/device';
 
-const MOCK_DEVICES: { id: string; name: string; signal: SignalLevel; recommended?: boolean }[] = [
-  { id: '1', name: 'HabiTooth_ESP32', signal: 'strong', recommended: true },
-  { id: '2', name: 'HabiTooth_Mini_001', signal: 'medium' },
-  { id: '3', name: 'HabiTooth_Pro_A1B2', signal: 'weak' },
-];
+interface FoundDevice {
+  ip: string;
+  latencyMs: number;
+}
+
+// WiFi 스캔에는 신호 강도가 없어서 응답 속도로 대체
+const latencyToSignal = (ms: number): SignalLevel =>
+  ms < 150 ? 'strong' : ms < 400 ? 'medium' : 'weak';
+
+const deviceNameFor = (ip: string) => `${DEVICE_MODEL} (${ip.split('.')[3] ?? ''})`;
 
 const ToothThumb = () => (
   <svg width="28" height="28" viewBox="75 45 255 258" fill="none">
@@ -50,45 +53,51 @@ const ToothThumb = () => (
   </svg>
 );
 
-const DEMO_DEVICE_IP = '10.49.238.25:81';
+const DEMO_DEVICE_IP = process.env.NEXT_PUBLIC_ESP32_HOST ?? '10.49.238.25:81';
 
 export default function PairingPage() {
   const router = useRouter();
-  const { status, deviceName, error, requestAndConnect } = useBluetoothDevice();
   const { setDevice } = useAuthStore();
-  const [mockConnectingId, setMockConnectingId] = useState<string | null>(null);
-  const [wifiConnecting, setWifiConnecting] = useState(false);
+  const [scanState, setScanState] = useState<'scanning' | 'done'>('scanning');
+  const [foundDevices, setFoundDevices] = useState<FoundDevice[]>([]);
+  const [connectingIp, setConnectingIp] = useState<string | null>(null);
+
+  const runDiscovery = useCallback(async () => {
+    setScanState('scanning');
+    try {
+      const r = await fetch('/api/camera/discover');
+      const { devices } = await r.json();
+      setFoundDevices(Array.isArray(devices) ? devices : []);
+    } catch {
+      setFoundDevices([]);
+    }
+    setScanState('done');
+  }, []);
 
   useEffect(() => {
-    if (status !== 'connected' || !deviceName) return;
-    deviceApi.register({ deviceName })
-      .then((res) => {
-        const { deviceId, ip } = res.data.result;
-        setDevice(deviceId, ip ?? '');
-      })
-      .catch(() => {})
-      .finally(() => router.push('/dashboard'));
-  }, [status, deviceName, router, setDevice]);
+    runDiscovery();
+  }, [runDiscovery]);
 
-  const handleMockConnect = (id: string) => {
-    setMockConnectingId(id);
-    setTimeout(() => router.push('/dashboard'), 1500);
-  };
-
-  const handleWiFiConnect = async () => {
-    setWifiConnecting(true);
+  // BE는 시리얼로 기기를 식별하고 IP는 저장하지 않음 - IP는 로컬 store에만 보관
+  const handleWiFiConnect = async (targetIp: string) => {
+    setConnectingIp(targetIp);
     try {
-      const res = await deviceApi.register({ deviceName: 'HabiTooth_Demo', ip: DEMO_DEVICE_IP });
-      const { deviceId, ip } = res.data.result;
-      setDevice(deviceId, ip ?? DEMO_DEVICE_IP);
+      const res = await deviceApi.register();
+      setDevice(res.data.result.deviceId, targetIp);
     } catch {
-      setDevice(1, DEMO_DEVICE_IP);
+      // 이미 등록된 계정(DEVICE_ALREADY_REGISTERED)이면 기존 deviceId 재사용
+      try {
+        const status = await deviceApi.getStatus();
+        const existing = status.data.result[0];
+        setDevice(existing?.deviceId ?? 1, targetIp);
+      } catch {
+        setDevice(1, targetIp);
+      }
     }
     setTimeout(() => router.push('/dashboard'), 1500);
   };
 
-  const isScanning = status === 'requesting' || status === 'connecting';
-  const [recommended, ...others] = MOCK_DEVICES;
+  const [recommended, ...others] = foundDevices;
 
   return (
     <div className="max-w-[430px] min-h-svh mx-auto bg-background px-5 pt-[56px] pb-10 flex flex-col relative z-10">
@@ -112,17 +121,17 @@ export default function PairingPage() {
       <div className="bg-white/90 backdrop-blur-sm rounded-[16px] shadow-card px-4 py-3 mb-5 relative z-10">
         <p className="m-0 text-[12px] text-muted leading-relaxed">
           <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary mr-1.5 mb-0.5 align-middle" />
-          기기의 전원을 켜고 블루투스 모드로 설정해 주세요.
+          기기의 전원을 켜 주세요.
         </p>
         <p className="m-0 text-[12px] text-muted leading-relaxed mt-1">
           <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary mr-1.5 mb-0.5 align-middle" />
-          LED가 파란색으로 깜빡이면 연결 준비가 완료된 상태입니다.
+          휴대폰과 기기가 같은 WiFi에 연결되어 있어야 해요.
         </p>
       </div>
 
       <div className="flex flex-col items-center mb-6 relative z-10">
         <div className="relative w-[200px] h-[200px] flex items-center justify-center mb-3">
-          {status !== 'connected' && (
+          {(scanState === 'scanning' || !!connectingIp) && (
             <>
               <div className="scan-ring" style={{ animationDelay: '0s' }} />
               <div className="scan-ring" style={{ animationDelay: '0.8s' }} />
@@ -131,46 +140,32 @@ export default function PairingPage() {
           )}
           <div
             className={`w-[110px] h-[110px] rounded-full shadow-card flex items-center justify-center relative z-10 transition-colors duration-300 ${
-              status === 'connected'
-                ? 'bg-success/10'
-                : status === 'error'
-                  ? 'bg-danger/10'
-                  : 'bg-white'
+              connectingIp ? 'bg-success/10' : 'bg-white'
             }`}
           >
-            {status === 'connected' && <CheckCircle2 size={44} className="text-success" />}
-            {status === 'error' && <AlertCircle size={44} className="text-danger" />}
-            {status !== 'connected' && status !== 'error' && (
-              <Bluetooth size={44} color="#4A86D9" strokeWidth={1.5} />
+            {connectingIp ? (
+              <CheckCircle2 size={44} className="text-success" />
+            ) : (
+              <Wifi size={44} color="#4A86D9" strokeWidth={1.5} />
             )}
           </div>
         </div>
 
-        {status === 'idle' && (
-          <p className="text-muted text-[14px] m-0 mb-3">기기를 검색할 준비가 됐어요.</p>
-        )}
-        {status === 'requesting' && (
+        {connectingIp ? (
+          <p className="text-success font-semibold text-[15px] m-0 mb-2.5">연결 중이에요!</p>
+        ) : scanState === 'scanning' ? (
           <p className="text-primary font-medium text-[14px] m-0 mb-2.5">
-            브라우저에서 기기를 선택해 주세요...
+            주변 기기를 검색하고 있어요...
           </p>
-        )}
-        {status === 'connecting' && (
-          <p className="text-primary font-medium text-[14px] m-0 mb-2.5">
-            <span className="text-content font-semibold">{deviceName}</span> 에 연결 중...
+        ) : foundDevices.length > 0 ? (
+          <p className="text-muted text-[14px] m-0 mb-3">
+            기기 {foundDevices.length}대를 찾았어요.
           </p>
-        )}
-        {status === 'connected' && (
-          <p className="text-success font-semibold text-[15px] m-0 mb-2.5">
-            {deviceName} 연결 완료!
-          </p>
-        )}
-        {status === 'error' && (
-          <p className="text-danger text-[13px] m-0 mb-2.5 text-center whitespace-pre-line">
-            {error}
-          </p>
+        ) : (
+          <p className="text-muted text-[14px] m-0 mb-3">검색된 기기가 없어요.</p>
         )}
 
-        {isScanning && (
+        {scanState === 'scanning' && (
           <div className="flex gap-2">
             <div className="scan-dot" style={{ animationDelay: '0s' }} />
             <div className="scan-dot" style={{ animationDelay: '0.3s' }} />
@@ -181,125 +176,123 @@ export default function PairingPage() {
 
       <div className="relative z-10 mb-4">
         <p className="text-[13px] font-semibold text-content mb-2">발견된 기기</p>
-        <div className="bg-white rounded-[16px] border-[1.5px] border-primary/30 shadow-card p-4 flex items-center gap-3">
-          <div className="w-[46px] h-[46px] bg-[#EAF2FC] rounded-[12px] flex items-center justify-center flex-shrink-0">
-            <ToothThumb />
+
+        {scanState === 'scanning' && (
+          <div className="bg-white rounded-[16px] shadow-card p-4 flex items-center gap-3">
+            <Loader2 size={18} className="text-primary animate-spin flex-shrink-0" />
+            <span className="text-[13px] text-muted">주변에서 기기를 검색하고 있어요...</span>
           </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5 mb-0.5">
-              <span className="text-[13px] font-semibold text-content truncate">
-                {recommended.name}
-              </span>
-              <span className="text-[10px] font-bold text-white bg-primary rounded-[4px] px-1.5 py-[2px] flex-shrink-0">
-                추천
-              </span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-[12px] text-muted">
-                신호 강도: {SIGNAL_LABEL[recommended.signal]}
-              </span>
-              <SignalBars level={recommended.signal} />
-            </div>
+        )}
+
+        {scanState === 'done' && !recommended && (
+          <div className="bg-white rounded-[16px] shadow-card p-4 flex items-center gap-3">
+            <AlertCircle size={18} className="text-muted flex-shrink-0" />
+            <span className="flex-1 text-[13px] text-muted">
+              기기를 찾지 못했어요. 기기 전원과 WiFi 연결을 확인해 주세요.
+            </span>
+            <button
+              type="button"
+              onClick={runDiscovery}
+              className="px-3 h-8 border border-primary/40 text-primary text-[12px] font-medium rounded-[8px] cursor-pointer bg-transparent whitespace-nowrap"
+            >
+              다시 검색
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={() => handleMockConnect(recommended.id)}
-            disabled={!!mockConnectingId || isScanning}
-            className="px-3.5 h-9 bg-primary text-white text-[13px] font-semibold rounded-[10px] flex-shrink-0 cursor-pointer disabled:opacity-60 whitespace-nowrap"
-          >
-            {mockConnectingId === recommended.id ? '연결 중...' : '연결하기'}
-          </button>
-        </div>
+        )}
+
+        {scanState === 'done' && recommended && (
+          <div className="bg-white rounded-[16px] border-[1.5px] border-primary/30 shadow-card p-4 flex items-center gap-3">
+            <div className="w-[46px] h-[46px] bg-[#EAF2FC] rounded-[12px] flex items-center justify-center flex-shrink-0">
+              <ToothThumb />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5 mb-0.5">
+                <span className="text-[13px] font-semibold text-content truncate">
+                  {deviceNameFor(recommended.ip)}
+                </span>
+                <span className="text-[10px] font-bold text-white bg-primary rounded-[4px] px-1.5 py-[2px] flex-shrink-0">
+                  추천
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[12px] text-muted">
+                  응답 {recommended.latencyMs}ms
+                </span>
+                <SignalBars level={latencyToSignal(recommended.latencyMs)} />
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleWiFiConnect(`${recommended.ip}:81`)}
+              disabled={!!connectingIp}
+              className="px-3.5 h-9 bg-primary text-white text-[13px] font-semibold rounded-[10px] flex-shrink-0 cursor-pointer disabled:opacity-60 whitespace-nowrap"
+            >
+              {connectingIp === `${recommended.ip}:81` ? '연결 중...' : '연결하기'}
+            </button>
+          </div>
+        )}
       </div>
 
-      <div className="relative z-10 mb-4">
-        <p className="text-[13px] font-semibold text-content mb-2">다른 기기</p>
-        <div className="flex flex-col gap-2">
-          {others.map((device) => (
-            <ListItem
-              key={device.id}
-              left={
-                <div className="w-9 h-9 bg-hairline rounded-[10px] flex items-center justify-center">
-                  <Bluetooth size={16} color="#8A94A6" />
-                </div>
-              }
-              title={device.name}
-              subtitle={
-                <>
-                  <span className="text-[12px] text-muted">
-                    신호 강도: {SIGNAL_LABEL[device.signal]}
-                  </span>
-                  <SignalBars level={device.signal} />
-                </>
-              }
-              right={
-                <button
-                  type="button"
-                  onClick={() => handleMockConnect(device.id)}
-                  disabled={!!mockConnectingId || isScanning}
-                  className="px-3 h-8 border border-hairline text-content text-[12px] font-medium rounded-[8px] cursor-pointer bg-transparent disabled:opacity-60 whitespace-nowrap"
-                >
-                  {mockConnectingId === device.id ? '연결 중...' : '연결'}
-                </button>
-              }
-            />
-          ))}
+      {scanState === 'done' && others.length > 0 && (
+        <div className="relative z-10 mb-4">
+          <p className="text-[13px] font-semibold text-content mb-2">다른 기기</p>
+          <div className="flex flex-col gap-2">
+            {others.map((device) => (
+              <ListItem
+                key={device.ip}
+                left={
+                  <div className="w-9 h-9 bg-hairline rounded-[10px] flex items-center justify-center">
+                    <Wifi size={16} color="#8A94A6" />
+                  </div>
+                }
+                title={deviceNameFor(device.ip)}
+                subtitle={
+                  <>
+                    <span className="text-[12px] text-muted">
+                      응답 {device.latencyMs}ms
+                    </span>
+                    <SignalBars level={latencyToSignal(device.latencyMs)} />
+                  </>
+                }
+                right={
+                  <button
+                    type="button"
+                    onClick={() => handleWiFiConnect(`${device.ip}:81`)}
+                    disabled={!!connectingIp}
+                    className="px-3 h-8 border border-hairline text-content text-[12px] font-medium rounded-[8px] cursor-pointer bg-transparent disabled:opacity-60 whitespace-nowrap"
+                  >
+                    {connectingIp === `${device.ip}:81` ? '연결 중...' : '연결'}
+                  </button>
+                }
+              />
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="relative z-10 mb-4 space-y-2.5">
-        {(status === 'idle' || status === 'error') && (
+        {scanState === 'done' && !connectingIp && (
           <button
             type="button"
-            onClick={requestAndConnect}
-            disabled={!!mockConnectingId || wifiConnecting}
+            onClick={runDiscovery}
             className="w-full h-[54px] rounded-[14px] bg-primary-gradient text-white text-[15px] font-semibold shadow-button flex items-center justify-center gap-2 disabled:opacity-60"
           >
-            <Bluetooth size={18} />
-            {status === 'error' ? '다시 시도하기' : '기기 검색 시작'}
-          </button>
-        )}
-        {isScanning && (
-          <button
-            type="button"
-            disabled
-            className="w-full h-[54px] rounded-[14px] bg-primary/40 text-white text-[15px] font-semibold flex items-center justify-center gap-2 cursor-not-allowed"
-          >
-            <Loader2 size={18} className="animate-spin" />
-            {status === 'requesting' ? '기기 선택 대기 중...' : '연결 중...'}
-          </button>
-        )}
-        {status === 'connected' && (
-          <button
-            type="button"
-            disabled
-            className="w-full h-[54px] rounded-[14px] bg-success text-white text-[15px] font-semibold flex items-center justify-center gap-2 cursor-not-allowed"
-          >
-            <CheckCircle2 size={18} />
-            연결 완료 — 이동 중...
+            <Wifi size={18} />
+            다시 검색하기
           </button>
         )}
 
-        {!isScanning && status !== 'connected' && (
+        {!connectingIp && (
           <div className="pt-2 border-t border-hairline">
             <p className="text-[11px] text-muted/60 text-center mb-2">테스트 모드</p>
             <button
               type="button"
-              onClick={handleWiFiConnect}
-              disabled={!!mockConnectingId || wifiConnecting}
+              onClick={() => handleWiFiConnect(DEMO_DEVICE_IP)}
+              disabled={scanState === 'scanning'}
               className="w-full h-[48px] rounded-[12px] border border-primary/40 bg-primary/5 text-primary text-[13px] font-medium flex items-center justify-center gap-2 disabled:opacity-60 hover:bg-primary/10 transition-colors"
             >
-              {wifiConnecting ? (
-                <>
-                  <Loader2 size={16} className="animate-spin" />
-                  WiFi 연결 중...
-                </>
-              ) : (
-                <>
-                  <Wifi size={16} />
-                  WiFi 데모 연결
-                </>
-              )}
+              <Wifi size={16} />
+              고정 IP로 연결 (데모)
             </button>
           </div>
         )}
