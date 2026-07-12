@@ -79,5 +79,5 @@ export const scanApi = {
     apiClient.post<ApiResponse<AnalysisResultSummary>>(`/api/scan-sessions/${sessionId}/analyze`, {}),
 
   getReport: (sessionId: number) =>
-    apiClient.get<ApiResponse<{ teethData: any; analysisResults: any }>>(`/api/scan-sessions/${sessionId}/report`),
+    apiClient.get<ApiResponse<import('./analysis').SessionReportResponse>>(`/api/scan-sessions/${sessionId}/report`),
 };

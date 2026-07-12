@@ -3,13 +3,9 @@ import type { ApiResponse } from '@/types/api';
 
 export type LightType = 'WHITE_LIGHT' | 'UV_LIGHT';
 export type ViewType =
-  | 'UPPER_FRONT'
-  | 'LOWER_FRONT'
-  | 'UPPER_LEFT'
-  | 'UPPER_RIGHT'
-  | 'LOWER_LEFT'
-  | 'LOWER_RIGHT'
-  | 'FULL_ARCH';
+  | 'UPPER_LEFT' | 'UPPER_CENTER' | 'UPPER_RIGHT'
+  | 'LOWER_LEFT' | 'LOWER_CENTER' | 'LOWER_RIGHT'
+  | 'OUTER_LEFT' | 'OUTER_CENTER' | 'OUTER_RIGHT';
 
 export interface ToothAreaResult {
   toothNumber: number;
