@@ -36,7 +36,7 @@ export default function ReportPage() {
   const analysisResults: ToothAnalysisResult[] = mockApiResponse.result.toothStatuses.map((t) => ({
     toothNumber: String(t.toothNumber),
     lesionType: t.lesionType,
-    areaRatio: t.areaRatio / 100,
+    areaRatio: t.areaRatio,
     riskLevel: t.riskLevel as ToothAnalysisResult['riskLevel'],
   }));
 
@@ -68,12 +68,10 @@ export default function ReportPage() {
     <main className="max-w-[430px] mx-auto p-6 bg-[#EEF2FF] min-h-screen pb-20">
       <Header />
       <ReportSummary
-  score={72}
-  prevScore={69}
-  grade="B"
-  status="주의 필요"
-  date="2026.07.03 14:30"
-/>
+       score={72}
+       prevScore={69}
+       status="주의 필요"
+       date="2026.07.03 14:30"/>
       <TrendChartSection
         data={[
           { date: '4/15', score: 68 },
