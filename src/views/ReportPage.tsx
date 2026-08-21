@@ -11,12 +11,34 @@ import HistoryListSection from '@/components/organisms/HistoryListSection';
 import { Brush, Scissors, Calendar } from 'lucide-react';
 import type { ToothAnalysisResult } from '@/components/organisms/OralViewer3D/ThreeScene';
 
+// 나영님이 준 실제 API 응답 예시를 그대로 더미로 사용
+const mockApiResponse = {
+  code: 'COMMON200',
+  message: '요청에 성공했습니다.',
+  result: {
+    sessionId: 1,
+    totalScore: 76,
+    summary: {
+      totalPlaqueRatio: 12,
+      totalCalculusRatio: 5,
+    },
+    toothStatuses: [
+      { toothNumber: 16, lesionType: 'CALCULUS', areaRatio: 15.5, riskLevel: 'CRITICAL' },
+      { toothNumber: 11, lesionType: 'PLAQUE', areaRatio: 8, riskLevel: 'HIGH' },
+      { toothNumber: 36, lesionType: 'CALCULUS', areaRatio: 12, riskLevel: 'MEDIUM' },
+    ],
+  },
+  success: true,
+};
+
 export default function ReportPage() {
-  const analysisResults: ToothAnalysisResult[] = [
-    { toothNumber: '16', lesionType: 'CALCULUS', areaRatio: 0.15, riskLevel: 'DANGER' },
-    { toothNumber: '11', lesionType: 'PLAQUE', areaRatio: 0.08, riskLevel: 'CAUTION' },
-    { toothNumber: '36', lesionType: 'CALCULUS', areaRatio: 0.12, riskLevel: 'NORMAL' },
-  ];
+  // API 응답 형식 → ThreeScene이 기대하는 형식으로 변환
+  const analysisResults: ToothAnalysisResult[] = mockApiResponse.result.toothStatuses.map((t) => ({
+    toothNumber: String(t.toothNumber),
+    lesionType: t.lesionType,
+    areaRatio: t.areaRatio / 100,
+    riskLevel: t.riskLevel as ToothAnalysisResult['riskLevel'],
+  }));
 
   const hasCalculus = analysisResults.some((r) => r.lesionType === 'CALCULUS');
 
@@ -46,25 +68,23 @@ export default function ReportPage() {
     <main className="max-w-[430px] mx-auto p-6 bg-[#EEF2FF] min-h-screen pb-20">
       <Header />
       <ReportSummary
-        score={72}
-        prevScore={69}
-        grade="B"
-        status="주의 필요"
-      />
-      <TrendChartSection
-  data={[
-    { date: '3/01', score: 60 },
-    { date: '3/15', score: 63 },
-    { date: '4/01', score: 65 },
-    { date: '4/15', score: 68 },
-    { date: '4/29', score: 76 },
-    { date: '5/08', score: 82 },
-    { date: '5/15', score: 82 },
-  ]}
+  score={72}
+  prevScore={69}
+  grade="B"
+  status="주의 필요"
+  date="2026.07.03 14:30"
 />
+      <TrendChartSection
+        data={[
+          { date: '4/15', score: 68 },
+          { date: '4/29', score: 76 },
+          { date: '5/08', score: 82 },
+          { date: '5/15', score: 82 },
+        ]}
+      />
       <RiskAnalysisSection
-        plaque={12}
-        calculus={5}
+        plaque={mockApiResponse.result.summary.totalPlaqueRatio}
+        calculus={mockApiResponse.result.summary.totalCalculusRatio}
         calibrationMode={false}
         analysisResults={analysisResults}
       />

@@ -7,7 +7,6 @@ import type { ReportSummaryProps } from './ReportSummary.types';
 export default function ReportSummary({
   score,
   prevScore,
-  grade,
   status,
   date,
   reportId,
@@ -22,20 +21,20 @@ export default function ReportSummary({
   return (
     <div className="bg-white rounded-2xl p-5 mt-4">
 
-     {/* 헤더 */}
-<div className="flex items-center justify-between mb-4">
-  <h3 className="text-sm font-semibold text-gray-800">
-    {date ? `${date} 분석 결과` : '최근 분석 결과'}
-  </h3>
-  {reportId && (
-    <button
-      onClick={() => router.push(`/report/${reportId}`)}
-      className="text-xs text-gray-400"
-    >
-      전체 보기 &gt;
-    </button>
-  )}
-</div>
+      {/* 헤더 */}
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-semibold text-gray-800">
+          {date ? `${date} 분석 결과` : '최근 분석 결과'}
+        </h3>
+        {reportId && (
+          <button
+            onClick={() => router.push(`/report/${reportId}`)}
+            className="text-xs text-gray-400"
+          >
+            전체 보기 &gt;
+          </button>
+        )}
+      </div>
 
       {/* 점수 */}
       <div className="flex items-center gap-4">
@@ -50,9 +49,6 @@ export default function ReportSummary({
               지난 결과 대비 {diff > 0 ? `+${diff}` : diff}
             </span>
           )}
-          <div className="inline-flex items-center gap-1 bg-[#F0B65A]/20 px-2 py-1 rounded-full w-fit">
-            <span className="text-xs font-semibold text-[#F0B65A]">등급 {grade}</span>
-          </div>
         </div>
       </div>
 
