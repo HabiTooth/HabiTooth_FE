@@ -1,9 +1,5 @@
-/**
- * HTTPS로 dev 서버를 띄운다. 폰에서 카메라를 쓰려면 보안 컨텍스트가 필요하다.
- *
- * next dev --experimental-https 는 인증서 생성이 실패해도 조용히 평문 HTTP로 폴백해
- * 원인을 찾기 어렵다. 여기서는 인증서를 직접 만들어 확인한 뒤 넘긴다.
- */
+// 폰 카메라는 보안 컨텍스트 필요.
+// next --experimental-https는 인증서 실패 시 경고 없이 평문 HTTP로 폴백함
 import { execFileSync, spawn } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync } from 'node:fs';
 import { networkInterfaces } from 'node:os';
@@ -14,7 +10,7 @@ const CERT_DIR = 'certificates';
 const CERT = path.join(CERT_DIR, 'localhost.pem');
 const KEY = path.join(CERT_DIR, 'localhost-key.pem');
 
-// VMware, Hyper-V 같은 가상 어댑터 주소는 폰에서 닿지 않는다
+// 가상 어댑터 주소는 폰에서 안 닿음
 const VIRTUAL = /vmware|virtualbox|vethernet|hyper-v|loopback|bluetooth|docker|wsl/i;
 
 function lanAddresses() {
@@ -39,7 +35,6 @@ function findMkcert() {
   }
 }
 
-/** 현재 IP를 전부 담고 있고 아직 유효하면 재발급하지 않는다 */
 function certCovers(ips) {
   if (!existsSync(CERT) || !existsSync(KEY)) return false;
   try {
@@ -85,7 +80,7 @@ console.log('\n폰에서 접속할 주소:');
 for (const ip of ips) console.log(`  https://${ip}:${port}`);
 console.log('  인증서 경고가 뜨면 고급 → 안전하지 않음(계속)\n');
 
-// Node 22는 .cmd 실행을 막으므로 npx 대신 next 진입점을 직접 돌린다
+// Node 22는 .cmd 실행 차단
 const nextBin = path.join('node_modules', 'next', 'dist', 'bin', 'next');
 
 spawn(

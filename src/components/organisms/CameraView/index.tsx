@@ -45,8 +45,7 @@ export default function CameraView({
   const streamVisible = isReady && !cameraError;
   const reviewing = Boolean(reviewOverlay);
 
-  // 촬영자가 자기 입을 보며 각도를 잡으므로 거울처럼 뒤집는다.
-  // 저장되는 사진은 원본 그대로다 (captureBlob이 video 원본에서 그림)
+  // 미리보기만 반전, 저장본은 원본
   const mirror = 'scale-x-[-1]';
 
   return (

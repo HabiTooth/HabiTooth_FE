@@ -1,8 +1,7 @@
 const TOKEN_KEY = 'accessToken';
 const EMAIL_KEY = 'userEmail';
 
-// 로그인 유지 체크 시 localStorage(브라우저 종료 후에도 유지),
-// 체크 안 하면 sessionStorage(탭 닫으면 사라짐)에 저장한다.
+// 로그인 유지 시 localStorage, 아니면 sessionStorage
 export function readToken(): string | null {
   if (typeof window === 'undefined') return null;
   return localStorage.getItem(TOKEN_KEY) ?? sessionStorage.getItem(TOKEN_KEY);
@@ -29,7 +28,6 @@ export function clearStoredAuth() {
   });
 }
 
-// JWT exp 클레임으로 만료 여부 판정 (서버 요청 없이 선차단)
 export function isTokenExpired(token: string): boolean {
   try {
     const { exp } = JSON.parse(atob(token.split('.')[1])) as { exp?: number };

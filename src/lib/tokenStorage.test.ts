@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { clearStoredAuth, isTokenExpired, readEmail, readToken, writeAuth } from './tokenStorage';
 
-/** exp 클레임만 든 가짜 JWT */
+// exp만 든 가짜 JWT
 function jwt(expSeconds?: number): string {
   const payload = btoa(JSON.stringify(expSeconds === undefined ? {} : { exp: expSeconds }));
   return `header.${payload}.signature`;
@@ -39,7 +39,6 @@ describe('로그인 유지', () => {
     expect(readEmail()).toBe('d@b.com');
   });
 
-  // 유지 여부를 바꿔 로그인했을 때 옛 토큰이 남아 되살아나면 안 된다
   it('저장 위치를 바꾸면 반대쪽은 지워진다', () => {
     writeAuth('old', 'old@b.com', true);
     writeAuth('new', 'new@b.com', false);
@@ -85,7 +84,6 @@ describe('토큰 만료 판정', () => {
     expect(isTokenExpired(jwt())).toBe(false);
   });
 
-  // 못 읽는 토큰을 통과시키면 만료된 세션으로 화면이 그려진다
   it('형식이 깨진 토큰은 만료로 친다', () => {
     expect(isTokenExpired('not-a-jwt')).toBe(true);
     expect(isTokenExpired('')).toBe(true);

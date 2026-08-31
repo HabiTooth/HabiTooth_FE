@@ -6,8 +6,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080';
 export const apiClient = axios.create({
   baseURL: API_URL,
   timeout: 30000,
-  // 이 헤더가 없으면 ngrok 무료 플랜이 브라우저 GET 요청을 경고 HTML로 가로챈다.
-  // 그 응답에는 CORS 헤더가 없어서 브라우저가 막고, axios는 Network Error로 보고한다.
+  // 없으면 ngrok이 브라우저 GET을 CORS 없는 경고 HTML로 가로챔
   headers: { 'ngrok-skip-browser-warning': 'true' },
 });
 

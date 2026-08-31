@@ -25,7 +25,7 @@ export interface QaContext {
   scanImageId: number | null;
 }
 
-/** 응답 형태가 제각각이라(봉투 JSON, 이미지, 로컬 라우트) 한 모양으로 맞춘다 */
+// 봉투 JSON, 이미지, 로컬 라우트 응답을 한 모양으로
 export interface QaResult {
   status: number;
   success?: boolean;
@@ -38,25 +38,23 @@ export interface QaCheck {
   group: QaGroup;
   label: string;
   endpoint: string;
-  /** 서버 상태를 바꾸거나 오래 걸려서 기본 실행 대상에서 빠지는 항목 */
+  /** 서버 상태 변경·장시간. 기본 실행 제외 */
   optIn?: boolean;
-  /** 되돌릴 수 없는 항목. 전체 실행에서 항상 빠지고 개별 실행만 가능하다 */
+  /** 되돌릴 수 없음. 개별 실행만 */
   manualOnly?: boolean;
-  /** 이 값이 없으면 건너뛴다 */
   needs?: Array<keyof QaContext>;
   run: (ctx: QaContext) => Promise<QaResult>;
-  /** result 안에 있어야 하는 키. 하나라도 없으면 계약이 어긋난 것 */
+  /** 없으면 계약 어긋남 */
   expectKeys?: string[];
-  /** 배열 응답이면 첫 원소에서 검사할 키 */
+  /** 배열이면 첫 원소 기준 */
   expectItemKeys?: string[];
-  /** 다음 체크가 쓸 값을 뽑아낸다 */
   capture?: (result: unknown) => Partial<QaContext>;
 }
 
 const asRecord = (v: unknown): Record<string, unknown> | null =>
   v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : null;
 
-/** null이나 숫자가 아닌 값을 0으로 만들지 않는다 */
+/** null·NaN을 0으로 만들지 않음 */
 const num = (v: unknown): number | null => {
   const n = Number(v);
   return v === null || v === undefined || Number.isNaN(n) ? null : n;
@@ -69,7 +67,7 @@ const unwrap = (res: AxiosResponse<ApiResponse<unknown>>): QaResult => ({
   result: res.data?.result,
 });
 
-/** 업로드 검증용 이미지. 단색이면 품질 판정에 걸리므로 무늬를 넣는다 */
+/** 단색이면 품질 판정에 걸려 무늬 필요 */
 async function syntheticJpeg(): Promise<File> {
   const canvas = document.createElement('canvas');
   canvas.width = 640;

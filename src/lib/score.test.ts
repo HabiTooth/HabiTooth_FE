@@ -58,7 +58,6 @@ describe('점수 증감 문구', () => {
     expect(scoreDiffText(-3)).toContain('내려갔');
   });
 
-  // 떨어졌는데 올랐다고 말하면 안 된다
   it('내려갔을 때 오른 표현을 쓰지 않는다', () => {
     expect(scoreDiffText(-5)).not.toContain('올랐');
   });
@@ -114,7 +113,6 @@ describe('날짜 포맷', () => {
     expect(formatTime('09:05:00')).toBe('09:05');
   });
 
-  // BE가 기록 없을 때 null을 주므로 여기서 터지면 화면이 죽는다
   it('null과 undefined를 받아도 터지지 않는다', () => {
     for (const fn of [formatDateTime, formatDate, formatShortDate, formatTime]) {
       expect(fn(null)).toBe('');

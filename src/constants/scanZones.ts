@@ -10,7 +10,7 @@ export interface ScanZone {
   teeth: number[];
 }
 
-// 좌/우는 촬영자 기준 — UPPER_RIGHT_* = 촬영자의 오른쪽. 도식은 거울처럼 반전돼 화면 오른쪽에 그려짐
+// 좌/우는 촬영자 기준
 export const SCAN_ZONES: ScanZone[] = [
   { viewType: 'UPPER_RIGHT_MOLAR',    label: '우측 어금니',     fullLabel: '상악 우측 어금니',     group: 'UPPER', teeth: [18, 17, 16] },
   { viewType: 'UPPER_RIGHT_PREMOLAR', label: '우측 작은어금니', fullLabel: '상악 우측 작은어금니', group: 'UPPER', teeth: [15, 14, 13] },

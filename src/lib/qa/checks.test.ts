@@ -31,7 +31,6 @@ describe('필드 대조', () => {
     expect(missingKeys(c, [{ x: 1 }])).toEqual(['y']);
   });
 
-  // 목록이 비었을 뿐인데 실패로 찍으면 오탐이 된다
   it('빈 배열은 통과시킨다', () => {
     const c = check({ expectItemKeys: ['x'] });
     expect(missingKeys(c, [])).toEqual([]);

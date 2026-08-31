@@ -1,11 +1,7 @@
 import { CheckCircle2, AlertCircle, XCircle, AlertTriangle, Sun } from 'lucide-react';
 import type { ScanStatusType } from '@/components/molecules/ScanStatusBanner/ScanStatusBanner.types';
 
-/**
- * 촬영 중 상태 문구. 배너와 도움말이 같은 값을 써야 문구가 갈리지 않는다.
- *
- * 말투 규칙 — label은 상태 서술(마침표 없음), sub는 할 일 안내(해요체 + 마침표).
- */
+// 배너·도움말 공용
 export interface ScanStatusCopy {
   bg: string;
   border: string;

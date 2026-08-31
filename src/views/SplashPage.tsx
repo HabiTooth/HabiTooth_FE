@@ -30,7 +30,7 @@ export default function SplashPage() {
     let cancelled = false;
     (async () => {
       const { token, clearAuth } = useAuthStore.getState();
-      // 만료된 토큰은 서버에 묻지 않고 여기서 바로 정리
+      // 만료 토큰은 서버 안 거치고 정리
       if (token && isTokenExpired(token)) clearAuth();
       const valid = token && !isTokenExpired(token);
       const [dest] = await Promise.all([
