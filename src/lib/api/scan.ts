@@ -3,9 +3,12 @@ import type { ApiResponse } from '@/types/api';
 
 export type ScanImageType = 'WHITE_LIGHT' | 'UV_LIGHT';
 export type ScanRegion = 'UPPER' | 'LOWER' | 'FRONT' | 'LEFT' | 'RIGHT' | 'FULL';
+
 export type ViewType =
-  | 'UPPER_LEFT' | 'UPPER_CENTER' | 'UPPER_RIGHT'
-  | 'LOWER_LEFT' | 'LOWER_CENTER' | 'LOWER_RIGHT'
+  | 'UPPER_RIGHT_MOLAR' | 'UPPER_RIGHT_PREMOLAR' | 'UPPER_FRONT'
+  | 'UPPER_LEFT_PREMOLAR' | 'UPPER_LEFT_MOLAR'
+  | 'LOWER_RIGHT_MOLAR' | 'LOWER_RIGHT_PREMOLAR' | 'LOWER_FRONT'
+  | 'LOWER_LEFT_PREMOLAR' | 'LOWER_LEFT_MOLAR'
   | 'OUTER_LEFT' | 'OUTER_CENTER' | 'OUTER_RIGHT';
 
 export interface ScanUploadResult {

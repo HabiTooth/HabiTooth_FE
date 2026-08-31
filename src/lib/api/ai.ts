@@ -2,10 +2,8 @@ import { apiClient } from './client';
 import type { ApiResponse } from '@/types/api';
 
 export type LightType = 'WHITE_LIGHT' | 'UV_LIGHT';
-export type ViewType =
-  | 'UPPER_LEFT' | 'UPPER_CENTER' | 'UPPER_RIGHT'
-  | 'LOWER_LEFT' | 'LOWER_CENTER' | 'LOWER_RIGHT'
-  | 'OUTER_LEFT' | 'OUTER_CENTER' | 'OUTER_RIGHT';
+export type { ViewType } from './scan';
+import type { ViewType } from './scan';
 
 export interface ToothAreaResult {
   toothNumber: number;
