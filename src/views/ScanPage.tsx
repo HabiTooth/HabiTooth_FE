@@ -321,7 +321,7 @@ function Step1({
           <div className="flex flex-col gap-4 border-t border-hairline pt-4">
             <GuideItem
               icon={<Camera size={18} className="text-primary" />}
-              text="카메라를 치아 가까이 가져가세요"
+              text="카메라를 치아 가까이 가져가 주세요"
               sub="5~10cm 거리를 유지해 주세요."
             />
             <GuideItem
@@ -331,8 +331,8 @@ function Step1({
             />
             <GuideItem
               icon={<Sun size={18} className="text-success" />}
-              text="빛 반사 없이 각도를 조절하세요"
-              sub="과도한 반사는 분석을 방해해요."
+              text="빛이 반사되지 않게 각도를 맞춰 주세요"
+              sub="반사가 심하면 분석이 어려워요."
             />
           </div>
           <div className="border-t border-hairline pt-4">
@@ -447,7 +447,7 @@ function Step2({
         />
         <div className="flex items-center justify-between px-1 mt-0.5">
           <span className="text-[13px] font-bold text-content truncate">
-            {info ? info.fullLabel : '구역을 선택하세요'}
+            {info ? info.fullLabel : '구역을 선택해 주세요'}
           </span>
           <div className="flex items-center gap-2 flex-shrink-0">
             <span className="text-[12px] font-bold text-muted tabular-nums">
@@ -779,6 +779,7 @@ export default function ScanPage() {
 
   const { detectedStatus } = useScanDetection({
     videoRef,
+    imgRef,
     enabled: step === 2 && isReady && !pending,
   });
 
