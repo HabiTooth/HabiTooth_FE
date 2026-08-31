@@ -1,5 +1,8 @@
 'use client';
 
+import { useEffect, useMemo, useState } from 'react';
+import { useParams } from 'next/navigation';
+import { Brush, Scissors, Calendar } from 'lucide-react';
 import Header from '@/components/organisms/Header';
 import NavBar from '@/components/organisms/NavBar';
 import ReportSummary from '@/components/organisms/ReportSummary';
@@ -8,114 +11,116 @@ import RiskAnalysisSection from '@/components/organisms/RiskAnalysisSection';
 import CareGuideSection from '@/components/organisms/CareGuideSection';
 import TrendChartSection from '@/components/organisms/TrendChartSection';
 import HistoryListSection from '@/components/organisms/HistoryListSection';
-import { Brush, Scissors, Calendar } from 'lucide-react';
 import type { ToothAnalysisResult } from '@/components/organisms/OralViewer3D/ThreeScene';
+import type { GuideItem } from '@/components/organisms/LLMGuideSection/LLMGuideSection.types';
+import { reportApi, type LlmReport, type SessionReport } from '@/lib/api/report';
+import { historyApi, type HistoryRecordItem, type HistoryScoreTrendItem } from '@/lib/api/history';
+import { formatDate, formatShortDate, scoreGrade, scoreStatus } from '@/lib/score';
+import type { RiskLevel } from '@/lib/api/common';
 
-// 나영님이 준 실제 API 응답 예시를 그대로 더미로 사용
-const mockApiResponse = {
-  code: 'COMMON200',
-  message: '요청에 성공했습니다.',
-  result: {
-    sessionId: 1,
-    totalScore: 76,
-    summary: {
-      totalPlaqueRatio: 12,
-      totalCalculusRatio: 5,
-    },
-        toothStatuses: [
-      { toothNumber: 16, lesionType: 'CALCULUS', areaRatio: 18.2, riskLevel: 'CRITICAL' },
-      { toothNumber: 26, lesionType: 'PLAQUE', areaRatio: 12.5, riskLevel: 'HIGH' },
-      { toothNumber: 11, lesionType: 'PLAQUE', areaRatio: 7.8, riskLevel: 'MEDIUM' },
-      { toothNumber: 36, lesionType: 'CALCULUS', areaRatio: 3.1, riskLevel: 'LOW' },
-      { toothNumber: 46, lesionType: 'PLAQUE', areaRatio: 0.9, riskLevel: 'VERY_LOW' },
-    ],
-  },
-  success: true,
+const GUIDE_TYPE: Record<RiskLevel, GuideItem['type']> = {
+  VERY_LOW: 'good',
+  LOW: 'good',
+  MEDIUM: 'warning',
+  HIGH: 'warning',
+  CRITICAL: 'danger',
 };
 
+const CARE_ICONS = [
+  <Brush key="brush" size={20} className="text-[#4A86D9]" />,
+  <Scissors key="scissors" size={20} className="text-[#4A86D9]" />,
+  <Calendar key="calendar" size={20} className="text-[#4A86D9]" />,
+];
+
 export default function ReportPage() {
-  // API 응답 형식 → ThreeScene이 기대하는 형식으로 변환
-  const analysisResults: ToothAnalysisResult[] = mockApiResponse.result.toothStatuses.map((t) => ({
-    toothNumber: String(t.toothNumber),
-    lesionType: t.lesionType,
-    areaRatio: t.areaRatio,
-    riskLevel: t.riskLevel as ToothAnalysisResult['riskLevel'],
+  const params = useParams<{ id: string }>();
+  const sessionId = Number(params?.id);
+
+  const [report, setReport] = useState<SessionReport | null>(null);
+  const [llm, setLlm] = useState<LlmReport | null>(null);
+  const [llmLoading, setLlmLoading] = useState(true);
+  const [trend, setTrend] = useState<HistoryScoreTrendItem[]>([]);
+  const [records, setRecords] = useState<HistoryRecordItem[]>([]);
+
+  useEffect(() => {
+    if (!Number.isFinite(sessionId)) return;
+
+    reportApi.getSessionReport(sessionId).then((res) => setReport(res.data.result)).catch(() => {});
+
+    reportApi
+      .generateLlmReport(sessionId)
+      .then((res) => setLlm(res.data.result))
+      .catch(() => {})
+      .finally(() => setLlmLoading(false));
+
+    historyApi.getScoreTrend().then((res) => setTrend(res.data.result)).catch(() => {});
+    historyApi.getRecords().then((res) => setRecords(res.data.result)).catch(() => {});
+  }, [sessionId]);
+
+  const analysisResults: ToothAnalysisResult[] = useMemo(
+    () =>
+      (report?.toothStatuses ?? []).map((t) => ({
+        toothNumber: String(t.toothNumber),
+        lesionType: t.lesionType ?? '',
+        areaRatio: t.areaRatio,
+        riskLevel: t.riskLevel as ToothAnalysisResult['riskLevel'],
+      })),
+    [report],
+  );
+
+  const guideItems: GuideItem[] = (llm?.riskDetail ?? []).map((r) => ({
+    type: GUIDE_TYPE[r.riskLevel],
+    title: r.title,
+    description: r.detail,
   }));
 
-  const hasCalculus = analysisResults.some((r) => r.lesionType === 'CALCULUS');
+  const careGuideItems = (llm?.management ?? []).map((m, i) => ({
+    icon: CARE_ICONS[i % CARE_ICONS.length],
+    title: m.title,
+    description: m.detail,
+  }));
 
-  const careGuideItems = [
-    {
-      icon: <Brush size={20} className="text-[#4A86D9]" />,
-      title: '칫솔질 가이드',
-      description: '앞니 안쪽은 45도 각도로 작은 원을 그리며 닦아주세요.',
-    },
-    {
-      icon: <Scissors size={20} className="text-[#4A86D9]" />,
-      title: '치실 사용',
-      description: '치아 사이에 낀 음식물과 치태를 제거해 주세요.',
-    },
-    ...(hasCalculus
-      ? [
-          {
-            icon: <Calendar size={20} className="text-[#4A86D9]" />,
-            title: '스케일링 추천',
-            description: '치석 제거를 위해 6개월 내 내원 추천드려요.',
-          },
-        ]
-      : []),
-  ];
+  const prevScore = trend.length > 1 ? trend[trend.length - 2].score : undefined;
 
   return (
     <main className="max-w-[430px] mx-auto p-6 bg-[#EEF2FF] min-h-screen pb-20">
       <Header />
-      <ReportSummary
-       score={72}
-       prevScore={69}
-       status="주의 필요"
-       date="2026.07.03 14:30"/>
+
+      {report && (
+        <ReportSummary
+          score={report.totalScore}
+          prevScore={prevScore}
+          status={scoreStatus(report.totalScore)}
+        />
+      )}
+
       <TrendChartSection
-        data={[
-          { date: '4/15', score: 68 },
-          { date: '4/29', score: 76 },
-          { date: '5/08', score: 82 },
-          { date: '5/15', score: 82 },
-        ]}
+        data={trend.map((t) => ({ date: formatShortDate(t.date), score: t.score }))}
       />
+
       <RiskAnalysisSection
-        plaque={mockApiResponse.result.summary.totalPlaqueRatio}
-        calculus={mockApiResponse.result.summary.totalCalculusRatio}
-        calibrationMode={false}
+        plaque={report?.summary.totalPlaqueRatio ?? 0}
+        calculus={report?.summary.totalCalculusRatio ?? 0}
         analysisResults={analysisResults}
       />
-      <LLMGuideSection
-        items={[
-          {
-            type: 'warning',
-            title: '하악 앞니 안쪽에 치태가 있습니다.',
-            description: '하악 전치부(앞니) 설면에 치태가 중등도로 축적되어 있어요. 칫솔을 45도 각도로 눕혀 부드럽게 닦아주세요.',
-          },
-          {
-            type: 'danger',
-            title: '상악 오른쪽 어금니 부위에 치석이 보입니다.',
-            description: '상악 우측 대구치(어금니) 치은면 근처에 치석이 있어요. 정기적인 스케일링을 권장드려요.',
-          },
-          {
-            type: 'good',
-            title: '전반적으로 양호한 상태입니다!',
-            description: '대부분의 치아 표면이 깨끗하게 관리되고 있어요. 지금처럼 꾸준히 관리하면 더 건강한 구강을 유지할 수 있어요.',
-          },
-        ]}
-      />
-      <CareGuideSection items={careGuideItems} />
+
+      <LLMGuideSection items={guideItems} isLoading={llmLoading} />
+
+      {careGuideItems.length > 0 && <CareGuideSection items={careGuideItems} />}
+
+      {llm?.disclaimer && (
+        <p className="m-0 mt-3 px-1 text-[11px] leading-relaxed text-gray-400">{llm.disclaimer}</p>
+      )}
+
       <HistoryListSection
-        items={[
-          { date: '2025.05.15', time: '14:30', score: 72, grade: 'B' },
-          { date: '2025.05.08', time: '09:15', score: 68, grade: 'C' },
-          { date: '2025.04.29', time: '11:00', score: 76, grade: 'B' },
-          { date: '2025.04.15', time: '10:30', score: 65, grade: 'C' },
-        ]}
+        items={records.map((r) => ({
+          date: formatDate(r.date),
+          time: r.time.slice(0, 5),
+          score: r.score,
+          grade: scoreGrade(r.score),
+        }))}
       />
+
       <NavBar activeTab="history" />
     </main>
   );
