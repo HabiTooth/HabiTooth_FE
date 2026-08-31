@@ -26,16 +26,31 @@ export default function CaptureReview({
 
   return (
     <div className="absolute inset-0 z-30 flex flex-col bg-black">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={previewUrl} alt={`${zoneLabel} 촬영본`} className="absolute inset-0 w-full h-full object-cover" />
+      <div className="relative flex-1 min-h-0 overflow-hidden">
+        {/* 검은 여백 대신 같은 사진을 흐리게 깔아 채운다 */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={previewUrl}
+          alt=""
+          aria-hidden
+          className="absolute inset-0 w-full h-full object-cover scale-125 blur-2xl opacity-70"
+        />
+        {/* 촬영본은 잘라 보여주면 확인이 안 되므로 contain */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={previewUrl}
+          alt={`${zoneLabel} 촬영본`}
+          className="absolute inset-0 w-full h-full object-contain"
+        />
 
-      <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10">
-        <span className="px-3 py-1.5 rounded-full bg-black/55 backdrop-blur-sm text-white text-[11px] font-semibold">
-          {zoneLabel}
-        </span>
+        <div className="absolute top-3 left-1/2 -translate-x-1/2">
+          <span className="px-3 py-1.5 rounded-full bg-black/55 backdrop-blur-sm text-white text-[11px] font-semibold">
+            {zoneLabel}
+          </span>
+        </div>
       </div>
 
-      <div className="mt-auto relative z-10 bg-white/95 backdrop-blur-sm rounded-t-[20px] px-4 pt-3.5 pb-4 flex flex-col gap-3">
+      <div className="flex-shrink-0 bg-white rounded-t-[20px] px-4 pt-3.5 pb-4 flex flex-col gap-3">
         {problem ? (
           <div className="flex items-start gap-2.5">
             <div className="w-7 h-7 rounded-full bg-warning/15 flex items-center justify-center flex-shrink-0">

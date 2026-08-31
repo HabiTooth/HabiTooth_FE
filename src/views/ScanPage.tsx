@@ -41,6 +41,7 @@ const ANALYZE_STEPS = [
 
 const DEV_SESSION_ID = -1;
 const isDev = process.env.NODE_ENV === 'development';
+const WEBCAM_KEY = 'dev.useWebcam';
 
 const zoneInfo = (viewType: ViewType | null): ScanZone | undefined =>
   viewType ? SCAN_ZONES.find((z) => z.viewType === viewType) : undefined;
@@ -174,11 +175,13 @@ function Step1({
   onStart,
   selectedZones,
   onToggleZone,
+  webcam,
 }: {
   checked: boolean;
   onCheck: (v: boolean) => void;
   onExit: () => void;
   onStart: () => void;
+  webcam: { on: boolean; onToggle: (v: boolean) => void } | null;
   selectedZones: ViewType[];
   onToggleZone: (z: ViewType) => void;
 }) {
@@ -339,6 +342,19 @@ function Step1({
               label="위 안내를 모두 확인했어요"
             />
           </div>
+
+          {webcam && (
+            <div className="border-t border-dashed border-hairline pt-4">
+              <Checkbox
+                checked={webcam.on}
+                onChange={webcam.onToggle}
+                label="개발용: 스캐너 대신 웹캠으로 촬영"
+              />
+              <p className="m-0 mt-1 ml-7 text-[11px] text-muted">
+                노트북·휴대폰 카메라로 흐름만 확인할 때 써요.
+              </p>
+            </div>
+          )}
         </div>
         <div className="sticky bottom-0 px-5 pt-3 pb-5 bg-white/95 backdrop-blur-sm border-t border-hairline">
           <button
@@ -730,6 +746,17 @@ export default function ScanPage() {
   const phase: ScanPhase = 'white';
 
   const { deviceId, deviceIp } = useAuthStore();
+  const [useWebcam, setUseWebcam] = useState(false);
+
+  useEffect(() => {
+    const stored = localStorage.getItem(WEBCAM_KEY);
+    setUseWebcam(stored !== null ? stored === 'true' : !deviceIp);
+  }, [deviceIp]);
+
+  const toggleWebcam = useCallback((next: boolean) => {
+    localStorage.setItem(WEBCAM_KEY, String(next));
+    setUseWebcam(next);
+  }, []);
   const uploadedImageIds = useRef<Map<ViewType, number>>(new Map());
   const pendingRef = useRef<PendingShot | null>(null);
 
@@ -766,7 +793,7 @@ export default function ScanPage() {
 
   useEffect(() => {
     if (step === 2) {
-      if (deviceIp) {
+      if (deviceIp && !useWebcam) {
         startCameraRef.current('esp32', `http://${deviceIp}/stream`);
       } else {
         startCameraRef.current('device');
@@ -774,7 +801,7 @@ export default function ScanPage() {
     } else {
       stopCameraRef.current();
     }
-  }, [step, deviceIp]);
+  }, [step, deviceIp, useWebcam]);
 
   useEffect(() => () => {
     if (pendingRef.current) URL.revokeObjectURL(pendingRef.current.previewUrl);
@@ -971,6 +998,7 @@ export default function ScanPage() {
           onCheck={setChecked}
           selectedZones={selectedZones}
           onToggleZone={handleToggleZone}
+          webcam={isDev ? { on: useWebcam, onToggle: toggleWebcam } : null}
           onExit={() => setShowExitModal(true)}
           onStart={async () => {
             if (!deviceId && !isDev) {
@@ -1022,7 +1050,7 @@ export default function ScanPage() {
           onFinish={() => setStep(3)}
           onRetry={() => {
             stopCamera();
-            if (deviceIp) {
+            if (deviceIp && !useWebcam) {
               startCamera('esp32', `http://${deviceIp}/stream`);
             } else {
               startCamera('device');
