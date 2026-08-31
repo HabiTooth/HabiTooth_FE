@@ -34,14 +34,19 @@ export function scoreGrade(score: number): string {
   return 'F';
 }
 
-export function formatDateTime(iso: string): string {
+export function formatDateTime(iso: string | null | undefined): string {
+  if (!iso) return '';
   const [date, time] = iso.split('T');
   return `${date.replace(/-/g, '.')} ${(time ?? '').slice(0, 5)}`.trim();
 }
 
-export const formatDate = (iso: string) => iso.slice(0, 10).replace(/-/g, '.');
+export const formatDate = (iso: string | null | undefined) =>
+  iso ? iso.slice(0, 10).replace(/-/g, '.') : '';
 
-export const formatShortDate = (iso: string) => {
+export const formatShortDate = (iso: string | null | undefined) => {
+  if (!iso) return '';
   const [, m, d] = iso.slice(0, 10).split('-');
   return `${Number(m)}/${d}`;
 };
+
+export const formatTime = (t: string | null | undefined) => (t ? t.slice(0, 5) : '');

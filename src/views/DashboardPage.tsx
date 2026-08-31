@@ -33,23 +33,26 @@ export default function DashboardPage() {
   const plaque = risk?.categories.find((c) => c.lesionType === 'PLAQUE');
   const calculus = risk?.categories.find((c) => c.lesionType === 'CALCULUS');
 
+  const hasScore = score !== null && score.score !== null;
+  const hasReport = report !== null && report.sessionId !== null;
+
   return (
     <main className="max-w-[430px] mx-auto p-6 bg-[#EEF2FF] min-h-screen pb-20">
       <Header hasNotification />
 
-      {score && (
+      {hasScore && (
         <ScoreCard
-          score={score.score}
-          prevScore={score.scoreDiff === null ? undefined : score.score - score.scoreDiff}
+          score={score!.score!}
+          prevScore={score!.scoreDiff === null ? undefined : score!.score! - score!.scoreDiff}
         />
       )}
 
-      {report && (
+      {hasReport && (
         <ReportSummary
-          score={report.averageScore}
-          status={scoreStatus(report.averageScore)}
-          date={formatDateTime(report.scannedAt)}
-          reportId={String(report.sessionId)}
+          score={report!.averageScore}
+          status={scoreStatus(report!.averageScore)}
+          date={formatDateTime(report!.scannedAt)}
+          reportId={String(report!.sessionId)}
           plaqueScore={plaque?.affectedRatio}
           calculusScore={calculus?.affectedRatio}
           plaqueRisk={plaque && toSummaryRisk(plaque.riskLevel)}
@@ -57,7 +60,7 @@ export default function DashboardPage() {
         />
       )}
 
-      {loaded && !score && (
+      {loaded && !hasScore && (
         <div className="bg-white rounded-2xl p-8 mt-4 text-center">
           <p className="m-0 text-sm text-gray-500">아직 스캔 기록이 없어요.</p>
         </div>

@@ -12,7 +12,7 @@ import {
   type HistoryScoreTrendItem,
   type HistoryToday,
 } from '@/lib/api/history';
-import { RISK_LABEL, formatDate, formatShortDate, scoreGrade } from '@/lib/score';
+import { RISK_LABEL, formatDate, formatShortDate, formatTime, scoreGrade } from '@/lib/score';
 
 const PERIODS: Array<{ value: HistoryPeriodFilter; label: string }> = [
   { value: 'ALL', label: '전체' },
@@ -94,7 +94,7 @@ export default function HistoryPage() {
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-semibold text-gray-800">오늘의 기록</h3>
             <span className="text-xs text-gray-400">
-              {formatDate(today.date)} {today.time.slice(0, 5)}
+              {formatDate(today.date)} {formatTime(today.time)}
             </span>
           </div>
           <div className="flex items-end gap-3">

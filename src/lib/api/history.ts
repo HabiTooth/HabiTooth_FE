@@ -41,7 +41,8 @@ export interface HistoryList {
 }
 
 export const historyApi = {
-  getToday: () => apiClient.get<ApiResponse<HistoryToday>>('/api/history/today'),
+  // 기록이 없으면 result가 null로 온다
+  getToday: () => apiClient.get<ApiResponse<HistoryToday | null>>('/api/history/today'),
 
   getScoreTrend: () =>
     apiClient.get<ApiResponse<HistoryScoreTrendItem[]>>('/api/history/graph'),

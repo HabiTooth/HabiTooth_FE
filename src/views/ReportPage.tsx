@@ -15,7 +15,7 @@ import type { ToothAnalysisResult } from '@/components/organisms/OralViewer3D/Th
 import type { GuideItem } from '@/components/organisms/LLMGuideSection/LLMGuideSection.types';
 import { reportApi, type LlmReport, type SessionReport } from '@/lib/api/report';
 import { historyApi, type HistoryRecordItem, type HistoryScoreTrendItem } from '@/lib/api/history';
-import { formatDate, formatShortDate, scoreGrade, scoreStatus } from '@/lib/score';
+import { formatDate, formatShortDate, formatTime, scoreGrade, scoreStatus } from '@/lib/score';
 import type { RiskLevel } from '@/lib/api/common';
 
 const GUIDE_TYPE: Record<RiskLevel, GuideItem['type']> = {
@@ -115,7 +115,7 @@ export default function ReportPage() {
       <HistoryListSection
         items={records.map((r) => ({
           date: formatDate(r.date),
-          time: r.time.slice(0, 5),
+          time: formatTime(r.time),
           score: r.score,
           grade: scoreGrade(r.score),
         }))}
