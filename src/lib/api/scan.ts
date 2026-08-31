@@ -36,8 +36,12 @@ export interface ZoneAnalysisResult {
 
 export interface SessionAnalyzeResult {
   sessionId: number;
+  sessionScore: number | null;
+  validZoneCount: number;
+  totalZoneCount: number;
+  invalidZones: ViewType[];
+  failedCount: number;
   analysisResults: ZoneAnalysisResult[];
-  averageScore: number;
 }
 
 export interface ScanCaptureStatus {

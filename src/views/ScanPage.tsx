@@ -56,6 +56,11 @@ const mockAnalysisResult = (zones: ViewType[]): SessionAnalyzeResult => {
   const scores = zones.map(mockScore);
   return {
     sessionId: 0,
+    sessionScore: Math.round(scores.reduce((a, b) => a + b, 0) / (scores.length || 1)),
+    validZoneCount: zones.length,
+    totalZoneCount: zones.length,
+    invalidZones: [],
+    failedCount: 0,
     analysisResults: zones.map((viewType, i) => ({
       analysisResultId: i + 1,
       scanImageId: i + 1,
@@ -69,7 +74,6 @@ const mockAnalysisResult = (zones: ViewType[]): SessionAnalyzeResult => {
       totalPlaqueRatio: 0,
       toothStatuses: [],
     })),
-    averageScore: Math.round(scores.reduce((a, b) => a + b, 0) / (scores.length || 1)),
   };
 };
 
@@ -627,8 +631,26 @@ function Step4({
           {analysisResult && (
             <div className="mt-4 text-center">
               <div className="text-[14px] font-semibold text-content mb-1">건강도 점수</div>
-              <div className="text-[28px] font-bold text-primary">{analysisResult.averageScore}</div>
+              {analysisResult.sessionScore === null ? (
+                <p className="m-0 text-[13px] text-muted">점수를 낼 수 있는 컷이 없었어요.</p>
+              ) : (
+                <>
+                  <div className="text-[28px] font-bold text-primary">
+                    {analysisResult.sessionScore}
+                  </div>
+                  <p className="m-0 text-[11px] text-muted">
+                    {analysisResult.validZoneCount}개 구역 기준
+                  </p>
+                </>
+              )}
             </div>
+          )}
+
+          {analysisResult && analysisResult.invalidZones.length > 0 && (
+            <p className="m-0 mt-3 text-[12px] text-warning break-keep">
+              {analysisResult.invalidZones.map((z) => zoneInfo(z)?.label ?? z).join(', ')} 구역은
+              다시 찍는 걸 추천해요.
+            </p>
           )}
         </div>
 
