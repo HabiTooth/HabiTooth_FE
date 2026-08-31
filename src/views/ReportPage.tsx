@@ -109,13 +109,11 @@ export default function ReportPage() {
       />
       <CareGuideSection items={careGuideItems} />
       <HistoryListSection
-        items={[
-          { date: '2025.05.15', time: '14:30', score: 72, grade: 'B' },
-          { date: '2025.05.08', time: '09:15', score: 68, grade: 'C' },
-          { date: '2025.04.29', time: '11:00', score: 76, grade: 'B' },
-          { date: '2025.04.15', time: '10:30', score: 65, grade: 'C' },
-        ]}
-      />
+  items={[
+    { id: '1', date: '2025.05.15', time: '14:30', score: 72, grade: 'B' },
+    { id: '2', date: '2025.05.08', time: '09:15', score: 68, grade: 'C' },
+  ]}
+/>
       <NavBar activeTab="history" />
     </main>
   );

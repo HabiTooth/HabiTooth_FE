@@ -20,8 +20,12 @@ export default function HistoryListSection({ items }: HistoryListSectionProps) {
         </Link>
       </div>
       <div className="space-y-3">
-        {items.map((item, index) => (
-          <div key={index} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-none">
+        {items.map((item) => (
+          <Link
+            key={item.id}
+            href={`/report/${item.id}`}
+            className="flex items-center justify-between py-3 border-b border-gray-100 last:border-none no-underline hover:bg-gray-50 active:bg-gray-100 transition-colors -mx-2 px-2 rounded-lg"
+          >
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-[#F0F4FF] rounded-xl flex items-center justify-center">
                 <span className="text-lg">🦷</span>
@@ -34,13 +38,15 @@ export default function HistoryListSection({ items }: HistoryListSectionProps) {
             <div className="flex items-center gap-3">
               <div className="text-right">
                 <p className="text-xs text-gray-400">구강 점수</p>
-                <p className="text-sm font-bold text-[#4A86D9]">{item.score}<span className="text-xs font-normal text-gray-400">/100</span></p>
+                <p className="text-sm font-bold text-[#4A86D9]">
+                  {item.score}<span className="text-xs font-normal text-gray-400">/100</span>
+                </p>
               </div>
               <div className={`text-sm font-bold ${getGradeColor(item.grade)}`}>
                 {item.grade}
               </div>
             </div>
-          </div>
+          </Link>
         ))}
       </div>
     </div>

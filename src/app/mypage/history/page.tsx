@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { ChevronLeft, ChevronDown, ChevronRight } from 'lucide-react';
 import NavBar from '@/components/organisms/NavBar';
 
@@ -145,7 +146,11 @@ export default function HistoryPage() {
 
         <div className="flex-1 bg-white divide-y divide-hairline">
           {pageItems.map((h) => (
-            <div key={h.id} className="grid grid-cols-4 px-4 py-3.5 items-center">
+            <Link
+              key={h.id}
+              href={`/report/${h.id}`}
+              className="grid grid-cols-4 px-4 py-3.5 items-center hover:bg-hairline/40 active:bg-hairline/60 transition-colors cursor-pointer no-underline"
+            >
               <span className="text-[13px] text-content">{h.date}</span>
               <div className="flex justify-center">
                 <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full ${scoreColor(h.score)}`}>
@@ -154,7 +159,7 @@ export default function HistoryPage() {
               </div>
               <span className={`text-[12px] font-medium text-center ${riskColor(h.plaque)}`}>{h.plaque}</span>
               <span className={`text-[12px] font-medium text-center ${riskColor(h.tartar)}`}>{h.tartar}</span>
-            </div>
+            </Link>
           ))}
         </div>
 
