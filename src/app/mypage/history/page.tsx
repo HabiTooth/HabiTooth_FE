@@ -1,35 +1,36 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, ChevronDown, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import NavBar from '@/components/organisms/NavBar';
+import {
+  historyApi,
+  type HistoryList,
+  type HistoryPeriodFilter,
+  type HistoryScoreFilter,
+} from '@/lib/api/history';
+import { userApi } from '@/lib/api/user';
+import type { RiskLevel } from '@/lib/api/common';
+import { RISK_LABEL, formatDate } from '@/lib/score';
 
-const ALL_HISTORY = Array.from({ length: 35 }, (_, i) => {
-  const date = new Date('2026-05-28');
-  date.setDate(date.getDate() - i * 7);
-  const score = Math.max(40, Math.floor(88 - i * 1.2 + (i % 3) * 4));
-  const levels = ['낮음', '보통', '높음'] as const;
-  return {
-    id: String(i + 1),
-    date: date.toISOString().slice(0, 10),
-    score,
-    plaque: levels[score >= 80 ? 0 : score >= 70 ? 1 : 2],
-    tartar: levels[score >= 75 ? 0 : score >= 65 ? 1 : 2],
-  };
-});
+const PERIOD_LABELS: Record<HistoryPeriodFilter, string> = {
+  ALL: '전체',
+  ONE_MONTH: '1개월',
+  THREE_MONTHS: '3개월',
+  SIX_MONTHS: '6개월',
+};
 
-const PER_PAGE = 20;
-type SortKey = 'date' | 'score';
-type PeriodFilter = 'all' | '1m' | '3m' | '6m';
-type ScoreFilter = 'all' | 'good' | 'normal' | 'bad';
+const SCORE_LABELS: Record<HistoryScoreFilter, string> = {
+  ALL: '전체',
+  HIGH: '80점↑',
+  MEDIUM: '70~79점',
+  LOW: '70점↓',
+};
 
-const PERIOD_LABELS: Record<PeriodFilter, string> = { all: '전체', '1m': '1개월', '3m': '3개월', '6m': '6개월' };
-const SCORE_LABELS: Record<ScoreFilter, string> = { all: '전체', good: '80점↑', normal: '70~79점', bad: '70점↓' };
-
-function riskColor(level: '낮음' | '보통' | '높음') {
-  if (level === '높음') return 'text-danger';
-  if (level === '보통') return 'text-[#B87F00]';
+function riskColor(level: RiskLevel) {
+  if (level === 'CRITICAL' || level === 'HIGH') return 'text-danger';
+  if (level === 'MEDIUM') return 'text-[#B87F00]';
   return 'text-success';
 }
 
@@ -39,41 +40,38 @@ function scoreColor(score: number) {
   return 'bg-danger/15 text-danger';
 }
 
-export default function HistoryPage() {
+export default function HistoryListPage() {
   const router = useRouter();
-  const [sortKey, setSortKey] = useState<SortKey>('date');
-  const [sortAsc, setSortAsc] = useState(false);
-  const [page, setPage] = useState(1);
-  const [period, setPeriod] = useState<PeriodFilter>('all');
-  const [scoreFilter, setScoreFilter] = useState<ScoreFilter>('all');
+  const [page, setPage] = useState(0);
+  const [period, setPeriod] = useState<HistoryPeriodFilter>('ALL');
+  const [scoreFilter, setScoreFilter] = useState<HistoryScoreFilter>('ALL');
+  const [data, setData] = useState<HistoryList | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
-  const filtered = ALL_HISTORY.filter((h) => {
-    if (period !== 'all') {
-      const months = period === '1m' ? 1 : period === '3m' ? 3 : 6;
-      const cutoff = new Date();
-      cutoff.setMonth(cutoff.getMonth() - months);
-      if (new Date(h.date) < cutoff) return false;
+  useEffect(() => {
+    setIsLoading(true);
+    historyApi
+      .getList({ period, scoreFilter, page, size: 20 })
+      .then((res) => setData(res.data.result))
+      .catch(() => setData(null))
+      .finally(() => setIsLoading(false));
+  }, [period, scoreFilter, page, reloadKey]);
+
+  const handleDeleteAll = async () => {
+    if (!window.confirm('기록을 전부 삭제할까요? 되돌릴 수 없어요.')) return;
+    setIsDeleting(true);
+    try {
+      await userApi.deleteData();
+      setPage(0);
+      setReloadKey((k) => k + 1);
+    } finally {
+      setIsDeleting(false);
     }
-    if (scoreFilter === 'good' && h.score < 80) return false;
-    if (scoreFilter === 'normal' && (h.score < 70 || h.score >= 80)) return false;
-    if (scoreFilter === 'bad' && h.score >= 70) return false;
-    return true;
-  });
-
-  const sorted = [...filtered].sort((a, b) => {
-    const v = sortKey === 'date' ? a.date.localeCompare(b.date) : a.score - b.score;
-    return sortAsc ? v : -v;
-  });
-
-  const totalPages = Math.ceil(sorted.length / PER_PAGE);
-  const pageItems = sorted.slice((page - 1) * PER_PAGE, page * PER_PAGE);
-
-  const resetPage = () => setPage(1);
-
-  const toggleSort = (key: SortKey) => {
-    if (sortKey === key) setSortAsc(v => !v);
-    else { setSortKey(key); setSortAsc(false); resetPage(); }
   };
+
+  const totalPages = data?.totalPages ?? 0;
 
   const Chip = ({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) => (
     <button
@@ -88,11 +86,6 @@ export default function HistoryPage() {
       {label}
     </button>
   );
-
-  const SortIcon = ({ k }: { k: SortKey }) =>
-    sortKey === k ? (
-      <ChevronDown size={12} className={`inline ml-0.5 transition-transform ${sortAsc ? 'rotate-180' : ''}`} />
-    ) : null;
 
   return (
     <div className="max-w-[430px] min-h-svh mx-auto bg-background flex flex-col relative pb-16">
@@ -111,68 +104,80 @@ export default function HistoryPage() {
         <span className="absolute left-1/2 -translate-x-1/2 text-[15px] font-semibold text-content">
           기록 이력
         </span>
-        <span className="ml-auto text-[12px] text-muted">{sorted.length}건</span>
+        <span className="ml-auto text-[12px] text-muted">{data?.totalCount ?? 0}건</span>
+        <button
+          type="button"
+          onClick={handleDeleteAll}
+          disabled={isDeleting || (data?.totalCount ?? 0) === 0}
+          className="ml-3 text-[12px] font-semibold text-danger bg-transparent border-none cursor-pointer disabled:opacity-30"
+        >
+          {isDeleting ? '삭제 중...' : '전체 삭제'}
+        </button>
       </div>
 
       <div className="relative z-10 flex-1 flex flex-col">
         <div className="px-4 py-3 bg-white border-b border-hairline flex flex-col gap-2">
           <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
-            {(Object.keys(PERIOD_LABELS) as PeriodFilter[]).map((k) => (
+            {(Object.keys(PERIOD_LABELS) as HistoryPeriodFilter[]).map((k) => (
               <Chip key={k} active={period === k} label={PERIOD_LABELS[k]}
-                onClick={() => { setPeriod(k); resetPage(); }} />
+                onClick={() => { setPeriod(k); setPage(0); }} />
             ))}
           </div>
           <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
-            {(Object.keys(SCORE_LABELS) as ScoreFilter[]).map((k) => (
+            {(Object.keys(SCORE_LABELS) as HistoryScoreFilter[]).map((k) => (
               <Chip key={k} active={scoreFilter === k} label={SCORE_LABELS[k]}
-                onClick={() => { setScoreFilter(k); resetPage(); }} />
+                onClick={() => { setScoreFilter(k); setPage(0); }} />
             ))}
           </div>
         </div>
 
         <div className="grid grid-cols-4 px-4 py-2.5 bg-primary-light border-b border-hairline">
-          <button type="button" onClick={() => toggleSort('date')}
-            className="text-[11px] font-bold text-primary text-left bg-transparent border-none cursor-pointer p-0">
-            날짜 <SortIcon k="date" />
-          </button>
-          <button type="button" onClick={() => toggleSort('score')}
-            className="text-[11px] font-bold text-primary text-center bg-transparent border-none cursor-pointer p-0">
-            점수 <SortIcon k="score" />
-          </button>
+          <span className="text-[11px] font-bold text-primary">날짜</span>
+          <span className="text-[11px] font-bold text-primary text-center">점수</span>
           <span className="text-[11px] font-bold text-primary text-center">치태</span>
           <span className="text-[11px] font-bold text-primary text-center">치석</span>
         </div>
 
         <div className="flex-1 bg-white divide-y divide-hairline">
-          {pageItems.map((h) => (
-            <div key={h.id} className="grid grid-cols-4 px-4 py-3.5 items-center">
-              <span className="text-[13px] text-content">{h.date}</span>
+          {isLoading && (
+            <p className="m-0 py-12 text-center text-[13px] text-muted">불러오는 중...</p>
+          )}
+          {!isLoading && (data?.items.length ?? 0) === 0 && (
+            <p className="m-0 py-12 text-center text-[13px] text-muted">기록이 없어요.</p>
+          )}
+          {data?.items.map((h, i) => (
+            <div key={`${h.date}-${i}`} className="grid grid-cols-4 px-4 py-3.5 items-center">
+              <span className="text-[13px] text-content">{formatDate(h.date)}</span>
               <div className="flex justify-center">
                 <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full ${scoreColor(h.score)}`}>
                   {h.score}점
                 </span>
               </div>
-              <span className={`text-[12px] font-medium text-center ${riskColor(h.plaque)}`}>{h.plaque}</span>
-              <span className={`text-[12px] font-medium text-center ${riskColor(h.tartar)}`}>{h.tartar}</span>
+              <span className={`text-[12px] font-medium text-center ${riskColor(h.plaqueRiskLevel)}`}>
+                {RISK_LABEL[h.plaqueRiskLevel]}
+              </span>
+              <span className={`text-[12px] font-medium text-center ${riskColor(h.calculusRiskLevel)}`}>
+                {RISK_LABEL[h.calculusRiskLevel]}
+              </span>
             </div>
           ))}
         </div>
 
         {totalPages > 1 && (
           <div className="bg-white border-t border-hairline px-4 py-3 flex items-center justify-center gap-1">
-            <button type="button" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
+            <button type="button" onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={page === 0}
               className="w-8 h-8 flex items-center justify-center rounded-full bg-transparent border-none cursor-pointer disabled:opacity-30 hover:bg-hairline transition-colors">
               <ChevronLeft size={16} className="text-content" />
             </button>
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+            {Array.from({ length: totalPages }, (_, i) => i).map((p) => (
               <button key={p} type="button" onClick={() => setPage(p)}
                 className={`w-8 h-8 rounded-full text-[13px] font-semibold border-none cursor-pointer transition-colors ${
                   p === page ? 'bg-primary text-white' : 'bg-transparent text-muted hover:bg-hairline'
                 }`}>
-                {p}
+                {p + 1}
               </button>
             ))}
-            <button type="button" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
+            <button type="button" onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))} disabled={page >= totalPages - 1}
               className="w-8 h-8 flex items-center justify-center rounded-full bg-transparent border-none cursor-pointer disabled:opacity-30 hover:bg-hairline transition-colors">
               <ChevronRight size={16} className="text-content" />
             </button>
