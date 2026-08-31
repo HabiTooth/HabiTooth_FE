@@ -13,7 +13,7 @@ export default function NavBar({ activeTab = 'home' }: NavBarProps) {
   ];
 
   return (
-    <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-white border-t border-gray-100 flex justify-around items-center h-16 px-4 z-50">
+    <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-white border-t border-gray-100 flex items-stretch h-16 z-50">
       {tabs.map((tab) => {
         const Icon = tab.icon;
         const isActive = activeTab === tab.id;
@@ -21,7 +21,7 @@ export default function NavBar({ activeTab = 'home' }: NavBarProps) {
           <Link
             key={tab.id}
             href={tab.href}
-            className={`flex flex-col items-center gap-1 text-xs font-medium ${
+            className={`flex-1 flex flex-col items-center justify-center gap-1 text-xs font-medium whitespace-nowrap ${
               isActive ? 'text-[#4A86D9]' : 'text-gray-400'
             }`}
           >
