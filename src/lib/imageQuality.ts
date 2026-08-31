@@ -7,8 +7,9 @@ export interface CaptureQuality {
   sharpness: number;
 }
 
-const DARK_THRESHOLD = 45;
-const BRIGHT_THRESHOLD = 228;
+// 실시간 배너와 공유
+export const DARK_THRESHOLD = 60;
+export const BRIGHT_THRESHOLD = 228;
 const SHARPNESS_THRESHOLD = 55;
 
 const SAMPLE_W = 160;
@@ -20,10 +21,9 @@ export const CAPTURE_ISSUE_TEXT: Record<CaptureIssue, { label: string; hint: str
   blurry: { label: '흔들리거나 초점이 안 맞았어요', hint: '카메라를 고정하고 다시 찍어 주세요.' },
 };
 
-/** 판정할 수 없을 때 쓰는 값 — 통과로 본다 */
+// 판정 불가 시 통과 처리
 const UNJUDGED: CaptureQuality = { ok: true, issues: [], brightness: 128, sharpness: 999 };
 
-/** 디코딩이 안 되면 판정을 건너뛰고 UNJUDGED를 돌려준다 */
 export async function evaluateCaptureBlob(blob: Blob): Promise<CaptureQuality> {
   let bitmap: ImageBitmap;
   try {
@@ -38,8 +38,20 @@ export async function evaluateCaptureBlob(blob: Blob): Promise<CaptureQuality> {
   }
 }
 
-/** RGBA 픽셀 배열만 보고 판정한다. canvas와 분리해 두어야 검증할 수 있다 */
-export function analyzePixels(data: Uint8ClampedArray, width: number, height: number): CaptureQuality {
+// 가중 평균
+export function meanLuma(data: Uint8ClampedArray): number {
+  let sum = 0;
+  for (let i = 0; i < data.length; i += 4) {
+    sum += 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+  }
+  return sum / (data.length / 4);
+}
+
+export function analyzePixels(
+  data: Uint8ClampedArray,
+  width: number,
+  height: number,
+): CaptureQuality {
   const gray = new Float32Array(width * height);
   let sum = 0;
   for (let i = 0, p = 0; i < data.length; i += 4, p++) {

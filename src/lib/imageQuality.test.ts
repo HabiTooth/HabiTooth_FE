@@ -1,10 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { CAPTURE_ISSUE_TEXT, analyzePixels, type CaptureIssue } from './imageQuality';
+import {
+  CAPTURE_ISSUE_TEXT,
+  DARK_THRESHOLD,
+  analyzePixels,
+  meanLuma,
+  type CaptureIssue,
+} from './imageQuality';
 
 const W = 40;
 const H = 30;
 
-/** 전체를 한 밝기로 채운다 (경계가 없으니 선명도 0) */
 function flat(value: number): Uint8ClampedArray {
   const data = new Uint8ClampedArray(W * H * 4);
   for (let i = 0; i < data.length; i += 4) {
@@ -16,7 +21,6 @@ function flat(value: number): Uint8ClampedArray {
   return data;
 }
 
-/** 체커보드로 경계를 잔뜩 만든다 (선명한 사진 대용) */
 function checker(dark: number, light: number): Uint8ClampedArray {
   const data = new Uint8ClampedArray(W * H * 4);
   for (let y = 0; y < H; y++) {
@@ -31,6 +35,35 @@ function checker(dark: number, light: number): Uint8ClampedArray {
   }
   return data;
 }
+
+describe('밝기 계산', () => {
+  it('단색의 밝기를 그대로 낸다', () => {
+    expect(meanLuma(flat(0))).toBeCloseTo(0, 5);
+    expect(meanLuma(flat(128))).toBeCloseTo(128, 0);
+    expect(meanLuma(flat(255))).toBeCloseTo(255, 0);
+  });
+
+  it('녹색을 가장 밝게, 파랑을 가장 어둡게 본다', () => {
+    const solid = (r: number, g: number, b: number) => {
+      const data = new Uint8ClampedArray(4 * 100);
+      for (let i = 0; i < data.length; i += 4) {
+        data[i] = r;
+        data[i + 1] = g;
+        data[i + 2] = b;
+        data[i + 3] = 255;
+      }
+      return meanLuma(data);
+    };
+    expect(solid(0, 255, 0)).toBeGreaterThan(solid(255, 0, 0));
+    expect(solid(255, 0, 0)).toBeGreaterThan(solid(0, 0, 255));
+  });
+
+  it('실시간 판정과 촬영 후 판정이 같은 기준을 쓴다', () => {
+    const justDark = flat(Math.round(DARK_THRESHOLD) - 5);
+    expect(meanLuma(justDark)).toBeLessThan(DARK_THRESHOLD);
+    expect(analyzePixels(justDark, W, H).issues).toContain('dark');
+  });
+});
 
 describe('촬영 품질 판정', () => {
   it('선명하고 밝기가 적당하면 통과한다', () => {
