@@ -38,22 +38,9 @@ export async function evaluateCaptureBlob(blob: Blob): Promise<CaptureQuality> {
   }
 }
 
-export function evaluateCapture(source: CanvasImageSource): CaptureQuality {
-  const canvas = document.createElement('canvas');
-  canvas.width = SAMPLE_W;
-  canvas.height = SAMPLE_H;
-  const ctx = canvas.getContext('2d', { willReadFrequently: true });
-  if (!ctx) return UNJUDGED;
-
-  let data: Uint8ClampedArray;
-  try {
-    ctx.drawImage(source, 0, 0, SAMPLE_W, SAMPLE_H);
-    data = ctx.getImageData(0, 0, SAMPLE_W, SAMPLE_H).data;
-  } catch {
-    return UNJUDGED;
-  }
-
-  const gray = new Float32Array(SAMPLE_W * SAMPLE_H);
+/** RGBA 픽셀 배열만 보고 판정한다. canvas와 분리해 두어야 검증할 수 있다 */
+export function analyzePixels(data: Uint8ClampedArray, width: number, height: number): CaptureQuality {
+  const gray = new Float32Array(width * height);
   let sum = 0;
   for (let i = 0, p = 0; i < data.length; i += 4, p++) {
     const g = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
@@ -65,11 +52,10 @@ export function evaluateCapture(source: CanvasImageSource): CaptureQuality {
   let lapSum = 0;
   let lapSqSum = 0;
   let count = 0;
-  for (let y = 1; y < SAMPLE_H - 1; y++) {
-    for (let x = 1; x < SAMPLE_W - 1; x++) {
-      const i = y * SAMPLE_W + x;
-      const lap =
-        4 * gray[i] - gray[i - 1] - gray[i + 1] - gray[i - SAMPLE_W] - gray[i + SAMPLE_W];
+  for (let y = 1; y < height - 1; y++) {
+    for (let x = 1; x < width - 1; x++) {
+      const i = y * width + x;
+      const lap = 4 * gray[i] - gray[i - 1] - gray[i + 1] - gray[i - width] - gray[i + width];
       lapSum += lap;
       lapSqSum += lap * lap;
       count++;
@@ -84,4 +70,19 @@ export function evaluateCapture(source: CanvasImageSource): CaptureQuality {
   if (sharpness < SHARPNESS_THRESHOLD) issues.push('blurry');
 
   return { ok: issues.length === 0, issues, brightness, sharpness };
+}
+
+export function evaluateCapture(source: CanvasImageSource): CaptureQuality {
+  const canvas = document.createElement('canvas');
+  canvas.width = SAMPLE_W;
+  canvas.height = SAMPLE_H;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  if (!ctx) return UNJUDGED;
+
+  try {
+    ctx.drawImage(source, 0, 0, SAMPLE_W, SAMPLE_H);
+    return analyzePixels(ctx.getImageData(0, 0, SAMPLE_W, SAMPLE_H).data, SAMPLE_W, SAMPLE_H);
+  } catch {
+    return UNJUDGED;
+  }
 }
