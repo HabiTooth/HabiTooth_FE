@@ -1,6 +1,7 @@
 'use client';
 
 import { create } from 'zustand';
+import { authApi } from '@/lib/api/auth';
 import { readToken, readEmail, writeAuth, clearStoredAuth } from '@/lib/tokenStorage';
 
 function decodeEmail(token: string): string | null {
@@ -19,9 +20,10 @@ interface AuthState {
   setToken: (token: string, remember?: boolean) => void;
   setDevice: (deviceId: number, deviceIp: string) => void;
   clearAuth: () => void;
+  logout: () => Promise<void>;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
   token: readToken(),
   email: readEmail(),
   deviceId: typeof window !== 'undefined' ? Number(localStorage.getItem('deviceId')) || null : null,
@@ -41,5 +43,12 @@ export const useAuthStore = create<AuthState>((set) => ({
     localStorage.removeItem('deviceId');
     localStorage.removeItem('deviceIp');
     set({ token: null, email: null, deviceId: null, deviceIp: null });
+  },
+  logout: async () => {
+    try {
+      await authApi.logout();
+    } finally {
+      get().clearAuth();
+    }
   },
 }));
