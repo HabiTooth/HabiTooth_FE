@@ -22,10 +22,12 @@ const mockApiResponse = {
       totalPlaqueRatio: 12,
       totalCalculusRatio: 5,
     },
-    toothStatuses: [
-      { toothNumber: 16, lesionType: 'CALCULUS', areaRatio: 15.5, riskLevel: 'CRITICAL' },
-      { toothNumber: 11, lesionType: 'PLAQUE', areaRatio: 8, riskLevel: 'HIGH' },
-      { toothNumber: 36, lesionType: 'CALCULUS', areaRatio: 12, riskLevel: 'MEDIUM' },
+        toothStatuses: [
+      { toothNumber: 16, lesionType: 'CALCULUS', areaRatio: 18.2, riskLevel: 'CRITICAL' },
+      { toothNumber: 26, lesionType: 'PLAQUE', areaRatio: 12.5, riskLevel: 'HIGH' },
+      { toothNumber: 11, lesionType: 'PLAQUE', areaRatio: 7.8, riskLevel: 'MEDIUM' },
+      { toothNumber: 36, lesionType: 'CALCULUS', areaRatio: 3.1, riskLevel: 'LOW' },
+      { toothNumber: 46, lesionType: 'PLAQUE', areaRatio: 0.9, riskLevel: 'VERY_LOW' },
     ],
   },
   success: true,
