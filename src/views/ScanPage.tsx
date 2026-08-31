@@ -6,7 +6,7 @@ import { X, HelpCircle, Check, CheckCircle2, Lock, Loader2, AlertTriangle, Sun, 
 import type { ScanStatusType } from '@/components/molecules/ScanStatusBanner';
 import { useCameraStream, type CameraMode } from '@/hooks/useCameraStream';
 import { useScanDetection } from '@/hooks/useScanDetection';
-import { scanApi, type ViewType, type AnalysisResultSummary } from '@/lib/api/scan';
+import { scanApi, type ViewType, type SessionAnalyzeResult } from '@/lib/api/scan';
 import { evaluateCaptureBlob, type CaptureQuality } from '@/lib/imageQuality';
 import { useAuthStore } from '@/stores/authStore';
 import {
@@ -52,14 +52,22 @@ const sortZones = (picked: ViewType[]): ViewType[] => {
 
 // BE AI 분석 구현 전까지 쓰는 테스트용 데이터
 const mockScore = (v: ViewType) => 68 + ((v.length * 7 + v.charCodeAt(0)) % 25);
-const mockAnalysisResult = (zones: ViewType[]): AnalysisResultSummary => {
+const mockAnalysisResult = (zones: ViewType[]): SessionAnalyzeResult => {
   const scores = zones.map(mockScore);
   return {
     sessionId: 0,
-    analysisResultSummaries: zones.map((viewType, i) => ({
+    analysisResults: zones.map((viewType, i) => ({
       analysisResultId: i + 1,
-      score: scores[i],
+      scanImageId: i + 1,
       viewType,
+      status: 'COMPLETED',
+      zoneScore: scores[i],
+      zoneValid: true,
+      detectedToothCount: 8,
+      scoreVersion: 'mock',
+      totalCalculusRatio: 0,
+      totalPlaqueRatio: 0,
+      toothStatuses: [],
     })),
     averageScore: Math.round(scores.reduce((a, b) => a + b, 0) / (scores.length || 1)),
   };
@@ -582,7 +590,7 @@ function Step4({
 }: {
   onNext: () => void;
   onReset: () => void;
-  analysisResult: AnalysisResultSummary | null;
+  analysisResult: SessionAnalyzeResult | null;
   capturedZones: ViewType[];
 }) {
   const [showCheck, setShowCheck] = useState(false);
@@ -693,7 +701,7 @@ export default function ScanPage() {
   const [analyzeStep, setAnalyzeStep] = useState(0);
   const [analyzeProgress, setAnalyzeProgress] = useState(0);
   const [sessionId, setSessionId] = useState<number | null>(null);
-  const [analysisResult, setAnalysisResult] = useState<AnalysisResultSummary | null>(null);
+  const [analysisResult, setAnalysisResult] = useState<SessionAnalyzeResult | null>(null);
   const [analyzeError, setAnalyzeError] = useState<string | null>(null);
   const [analyzeKey, setAnalyzeKey] = useState(0);
 
@@ -869,7 +877,7 @@ export default function ScanPage() {
 
     scanApi
       .analyzeSession(sessionId)
-      .then((res: { data: { result: AnalysisResultSummary } }) => {
+      .then((res: { data: { result: SessionAnalyzeResult } }) => {
         setAnalysisResult(res.data.result);
         clearInterval(t);
         setAnalyzeStep(ANALYZE_STEPS.length + 1);
@@ -955,7 +963,7 @@ export default function ScanPage() {
               setStep(2);
             };
             try {
-              const res = await scanApi.createSession({ userId: 1, deviceId: deviceId ?? 0 });
+              const res = await scanApi.createSession(deviceId ?? 0);
               enterScan(res.data.result);
             } catch (e) {
               console.error('세션 생성 실패:', e);

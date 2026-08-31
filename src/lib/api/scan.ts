@@ -1,8 +1,9 @@
 import { apiClient } from './client';
 import type { ApiResponse } from '@/types/api';
 
-export type ScanImageType = 'WHITE_LIGHT' | 'UV_LIGHT';
-export type ScanRegion = 'UPPER' | 'LOWER' | 'FRONT' | 'LEFT' | 'RIGHT' | 'FULL';
+import type { LesionType, LightType, RiskLevel } from './common';
+
+export type { LesionType, LightType, RiskLevel } from './common';
 
 export type ViewType =
   | 'UPPER_RIGHT_MOLAR' | 'UPPER_RIGHT_PREMOLAR' | 'UPPER_FRONT'
@@ -11,59 +12,55 @@ export type ViewType =
   | 'LOWER_LEFT_PREMOLAR' | 'LOWER_LEFT_MOLAR'
   | 'OUTER_LEFT' | 'OUTER_CENTER' | 'OUTER_RIGHT';
 
-export interface ScanUploadResult {
-  sessionId: number;
-  imageId: number;
-  imageType: ScanImageType;
-  region: ScanRegion;
-  imageUrl: string;
+export interface ToothStatus {
+  toothNumber: number;
+  templateRegionId: string | null;
+  lesionType: LesionType | null;
+  areaRatio: number | null;
+  riskLevel: RiskLevel;
 }
 
-export interface ScanSessionCreateRequest {
-  userId: number;
-  deviceId: number;
-}
-
-export interface ScanSessionResponse {
-  sessionId: number;
-  userId: number;
-  deviceId: number;
+export interface ZoneAnalysisResult {
+  analysisResultId: number;
+  scanImageId: number;
+  viewType: ViewType;
   status: string;
-  createdAt: string;
+  zoneScore: number | null;
+  zoneValid: boolean;
+  detectedToothCount: number;
+  scoreVersion: string;
+  totalCalculusRatio: number;
+  totalPlaqueRatio: number;
+  toothStatuses: ToothStatus[];
 }
 
-export interface AnalysisResultSummary {
+export interface SessionAnalyzeResult {
   sessionId: number;
-  analysisResultSummaries: Array<{
-    analysisResultId: number;
-    score: number;
-    viewType: ViewType;
-  }>;
+  analysisResults: ZoneAnalysisResult[];
   averageScore: number;
 }
 
+export interface ScanCaptureStatus {
+  sessionId: number;
+  uploadedImageCount: number;
+  capturedZoneCount: number;
+  totalZoneCount: number;
+  canAnalyze: boolean;
+  capturedZones: Array<{
+    scanImageId: number;
+    viewType: ViewType;
+    lightType: LightType;
+  }>;
+}
+
 export const scanApi = {
-  // 개발용 API (기존)
-  uploadImage: (params: {
-    userId: number;
-    deviceId: number;
-    imageType: ScanImageType;
-    region: ScanRegion;
-    file: File;
-  }) => {
-    const formData = new FormData();
-    formData.append('file', params.file);
-    return apiClient.post<ApiResponse<ScanUploadResult>>(
-      `/api/scan/upload?userId=${params.userId}&deviceId=${params.deviceId}&imageType=${params.imageType}&region=${params.region}`,
-      formData,
-    );
-  },
+  createSession: (deviceId: number) =>
+    apiClient.post<ApiResponse<number>>('/api/scan-sessions', null, { params: { deviceId } }),
 
-  // 세션 기반 API
-  createSession: (params: ScanSessionCreateRequest) =>
-    apiClient.post<ApiResponse<number>>('/api/scan-sessions', params),
-
-  uploadImageToSession: (sessionId: number, params: { file: File; viewType: ViewType; lightType: 'WHITE_LIGHT' | 'UV_LIGHT' }) => {
+  uploadImageToSession: (
+    sessionId: number,
+    params: { file: File; viewType: ViewType; lightType: LightType },
+  ) => {
     const formData = new FormData();
     formData.append('file', params.file);
     const metadataJson = JSON.stringify({
@@ -78,9 +75,13 @@ export const scanApi = {
     );
   },
 
-  analyzeSession: (sessionId: number) =>
-    apiClient.post<ApiResponse<AnalysisResultSummary>>(`/api/scan-sessions/${sessionId}/analyze`, {}),
+  getCaptureStatus: (sessionId: number) =>
+    apiClient.get<ApiResponse<ScanCaptureStatus>>(`/api/scan-sessions/${sessionId}/capture-status`),
 
-  getReport: (sessionId: number) =>
-    apiClient.get<ApiResponse<import('./analysis').SessionReportResponse>>(`/api/scan-sessions/${sessionId}/report`),
+  analyzeSession: (sessionId: number, target?: LesionType) =>
+    apiClient.post<ApiResponse<SessionAnalyzeResult>>(
+      `/api/scan-sessions/${sessionId}/analyze`,
+      null,
+      target ? { params: { target } } : undefined,
+    ),
 };
