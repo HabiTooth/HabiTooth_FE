@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ChevronLeft, Camera, User } from 'lucide-react';
 import Input from '@/components/atoms/Input';
 import { userApi } from '@/lib/api/user';
+import { apiErrorMessage } from '@/lib/apiError';
 
 const KakaoIcon = () => (
   <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
@@ -54,14 +55,18 @@ export default function ProfileEditPage() {
   const [googleLinked, setGoogleLinked] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
-    userApi.getProfile().then((res) => {
-      const p = res.data.result;
-      setEmail(p.email);
-      setName(p.name ?? '');
-      setBirthDate(p.birthDate ?? '');
-    }).catch(() => {});
+    userApi
+      .getProfile()
+      .then((res) => {
+        const p = res.data.result;
+        setEmail(p.email);
+        setName(p.name ?? '');
+        setBirthDate(p.birthDate ?? '');
+      })
+      .catch((e) => setLoadError(apiErrorMessage(e, '프로필을 불러오지 못했어요.')));
   }, []);
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -76,8 +81,8 @@ export default function ProfileEditPage() {
     try {
       await userApi.updateProfile({ name: name.trim(), birthDate: birthDate || undefined });
       router.back();
-    } catch {
-      setSaveError('저장에 실패했어요. 잠시 후 다시 시도해 주세요.');
+    } catch (e) {
+      setSaveError(apiErrorMessage(e, '저장에 실패했어요. 잠시 후 다시 시도해 주세요.'));
     } finally {
       setIsSaving(false);
     }
@@ -117,6 +122,10 @@ export default function ProfileEditPage() {
           사진 변경
         </button>
       </div>
+
+      {loadError && (
+        <p className="m-0 mb-3 px-1 text-[13px] text-danger relative z-10">{loadError}</p>
+      )}
 
       <div className="bg-white/90 backdrop-blur-sm rounded-[20px] shadow-card p-5 flex flex-col gap-4 relative z-10 mb-4">
         <ReadOnlyField label="이메일" value={email} />
