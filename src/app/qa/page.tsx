@@ -82,19 +82,18 @@ export default function QaPage() {
     try {
       const res = await check.run(current);
       const ms = Math.round(performance.now() - started);
-      const envelope = res.data;
-      const result = envelope?.result;
+      const result = res.result;
 
       const missing = missingKeys(check, result);
       const extra = extraKeys(check, result);
-      const envelopeOk = envelope?.success !== false;
+      const envelopeOk = res.success !== false;
       const isEmpty = result === null || result === undefined;
 
       let status: Status = 'pass';
       let message: string | undefined;
       if (!envelopeOk) {
         status = 'fail';
-        message = envelope?.message ?? 'success=false';
+        message = res.message ?? 'success=false';
       } else if (isEmpty) {
         status = 'skip';
         message = '데이터 없음 (result가 비어 있어 필드를 검사하지 못함)';
