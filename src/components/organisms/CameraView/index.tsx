@@ -45,6 +45,10 @@ export default function CameraView({
   const streamVisible = isReady && !cameraError;
   const reviewing = Boolean(reviewOverlay);
 
+  // 촬영자가 자기 입을 보며 각도를 잡으므로 거울처럼 뒤집는다.
+  // 저장되는 사진은 원본 그대로다 (captureBlob이 video 원본에서 그림)
+  const mirror = 'scale-x-[-1]';
+
   return (
     <div className={`relative w-full flex-1 overflow-hidden ${uvMode ? 'bg-[#1A0A2E]' : 'bg-[#1A1A2E]'}`}>
       <video
@@ -52,13 +56,13 @@ export default function CameraView({
         autoPlay
         playsInline
         muted
-        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300
+        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${mirror}
           ${cameraMode === 'device' && streamVisible ? 'opacity-100' : 'opacity-0'}`}
       />
       <img
         ref={imgRef}
         alt=""
-        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300
+        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${mirror}
           ${cameraMode === 'esp32' && streamVisible ? 'opacity-100' : 'opacity-0'}`}
       />
 
