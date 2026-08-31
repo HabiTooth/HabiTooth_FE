@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import Button from '@/components/atoms/Button';
+import { scoreDiffText } from '@/lib/score';
 import type { ScoreCardProps } from './ScoreCard.types';
 
 export default function ScoreCard({ score, prevScore }: ScoreCardProps) {
@@ -28,7 +29,7 @@ export default function ScoreCard({ score, prevScore }: ScoreCardProps) {
         </div>
         {diff !== null && (
           <div className="inline-flex items-center gap-1 bg-white/20 rounded-full px-3 py-1 text-xs mt-3 w-fit">
-            ↑ 지난 스캔보다 {diff}점 향상되었어요!
+            {diff > 0 ? '↑' : diff < 0 ? '↓' : '·'} {scoreDiffText(diff)}
           </div>
         )}
         <Button

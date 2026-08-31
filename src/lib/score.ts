@@ -19,6 +19,13 @@ export const RISK_LABEL: Record<RiskLevel, string> = {
   CRITICAL: '위험',
 };
 
+/** 지난 결과 대비 증감 문구. 떨어졌을 때 올랐다고 말하지 않도록 한 곳에서 만든다 */
+export function scoreDiffText(diff: number): string {
+  if (diff > 0) return `지난 스캔보다 ${diff}점 올랐어요`;
+  if (diff < 0) return `지난 스캔보다 ${-diff}점 내려갔어요`;
+  return '지난 스캔과 점수가 같아요';
+}
+
 export function scoreStatus(score: number): string {
   if (score >= 90) return '아주 좋아요';
   if (score >= 80) return '양호해요';

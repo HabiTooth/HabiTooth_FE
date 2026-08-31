@@ -6,6 +6,7 @@ import {
   formatDateTime,
   formatShortDate,
   formatTime,
+  scoreDiffText,
   scoreGrade,
   scoreStatus,
   toSummaryRisk,
@@ -48,6 +49,27 @@ describe('점수 문구', () => {
     for (let n = 0; n <= 100; n += 5) {
       expect(scoreStatus(n)).not.toBe('');
     }
+  });
+});
+
+describe('점수 증감 문구', () => {
+  it('오른 경우와 내린 경우를 구분한다', () => {
+    expect(scoreDiffText(3)).toContain('올랐');
+    expect(scoreDiffText(-3)).toContain('내려갔');
+  });
+
+  // 떨어졌는데 올랐다고 말하면 안 된다
+  it('내려갔을 때 오른 표현을 쓰지 않는다', () => {
+    expect(scoreDiffText(-5)).not.toContain('올랐');
+  });
+
+  it('음수 부호를 문구에 노출하지 않는다', () => {
+    expect(scoreDiffText(-5)).not.toContain('-');
+    expect(scoreDiffText(-5)).toContain('5점');
+  });
+
+  it('변화가 없으면 같다고 알린다', () => {
+    expect(scoreDiffText(0)).toContain('같');
   });
 });
 

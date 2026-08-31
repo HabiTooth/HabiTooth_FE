@@ -7,7 +7,12 @@ import NavBar from '@/components/organisms/NavBar';
 import ScanBanner from '@/components/molecules/ScanBanner';
 import ReportSummary from '@/components/organisms/ReportSummary';
 import Header from '@/components/organisms/Header';
-import { dashboardApi, type DashboardReport, type DashboardRisk, type DashboardScore } from '@/lib/api/dashboard';
+import {
+  dashboardApi,
+  type DashboardReport,
+  type DashboardRisk,
+  type DashboardScore,
+} from '@/lib/api/dashboard';
 import { formatDateTime, scoreStatus, toSummaryRisk } from '@/lib/score';
 
 export default function DashboardPage() {
@@ -67,8 +72,8 @@ export default function DashboardPage() {
       )}
 
       <ScanBanner
-        title="AI 구강 분석을 시작해보세요"
-        description={'실시간 스캔 후 AI가\n구강 상태를 분석해드려요'}
+        title="AI 구강 분석을 시작해 보세요."
+        description={'실시간 스캔 후 AI가\n구강 상태를 분석해 드려요.'}
         onClick={() => router.push('/scan')}
       />
       <NavBar activeTab="home" />

@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import ToothStatusItem from '@/components/molecules/ToothStatusItem';
+import { scoreDiffText } from '@/lib/score';
 import type { ReportSummaryProps } from './ReportSummary.types';
 
 export default function ReportSummary({
@@ -45,9 +46,7 @@ export default function ReportSummary({
         <div className="flex-1 flex flex-col gap-2">
           <span className="text-sm font-semibold text-gray-800">{status}</span>
           {diff !== null && (
-            <span className="text-xs text-gray-400">
-              지난 결과 대비 {diff > 0 ? `+${diff}` : diff}
-            </span>
+            <span className="text-xs text-gray-400">{scoreDiffText(diff)}</span>
           )}
         </div>
       </div>
