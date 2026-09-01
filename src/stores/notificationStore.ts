@@ -6,35 +6,46 @@ import { showLocal } from '@/lib/notifications/browser';
 import { readSettings } from '@/lib/notifications/settings';
 
 const KEY = 'habitooth.notifications';
-const MAX = 50;
+// 지운 알림이 다시 생기지 않게 발생 이력을 따로 남김
+const SEEN_KEY = 'habitooth.notifications.seen';
 
-function read(): AppNotification[] {
-  if (typeof window === 'undefined') return [];
+const MAX_ITEMS = 50;
+const MAX_SEEN = 300;
+
+function readJson<T>(key: string, fallback: T): T {
+  if (typeof window === 'undefined') return fallback;
   try {
-    const raw = localStorage.getItem(KEY);
-    return raw ? (JSON.parse(raw) as AppNotification[]) : [];
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : fallback;
   } catch {
-    return [];
+    return fallback;
   }
 }
 
-function write(items: AppNotification[]) {
+function writeJson(key: string, value: unknown) {
   try {
-    localStorage.setItem(KEY, JSON.stringify(items));
+    localStorage.setItem(key, JSON.stringify(value));
   } catch {
-    // 사파리 프라이빗 모드 등에서 저장 실패해도 화면은 그대로 동작
+    // 저장이 막혀도 이번 세션 화면은 그대로 동작
   }
 }
+
+const readItems = () => readJson<AppNotification[]>(KEY, []);
+const readSeen = () => readJson<string[]>(SEEN_KEY, []);
 
 interface NotificationState {
   items: AppNotification[];
   hydrated: boolean;
   hydrate: () => void;
+  /** 메모리가 비었으면 저장된 목록을 읽어옴 */
+  current: () => AppNotification[];
   push: (n: NewNotification) => void;
   markRead: (id: string) => void;
   markAllRead: () => void;
   remove: (id: string) => void;
   clearAll: () => void;
+  /** 지운 이력까지 비워서 알림이 다시 생기게 함 */
+  reset: () => void;
 }
 
 export const useNotificationStore = create<NotificationState>((set, get) => ({
@@ -43,48 +54,60 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
 
   hydrate: () => {
     if (get().hydrated) return;
-    set({ items: read(), hydrated: true });
+    set({ items: readItems(), hydrated: true });
   },
+
+  // 하이드레이트 전 목록은 비어 있어서, 그걸로 덮어쓰면 저장된 알림이 통째로 날아감
+  current: () => (get().hydrated ? get().items : readItems()),
 
   push: ({ dedupeKey, ...rest }) => {
     const settings = readSettings();
     if (!settings.push) return;
     if (rest.type === 'REPORT_READY' && !settings.report) return;
 
-    const items = get().hydrated ? get().items : read();
     const id = dedupeKey ?? `${rest.type}:${Date.now()}`;
-    if (items.some((n) => n.id === id)) return;
 
+    const seen = readSeen();
+    if (seen.includes(id)) return;
+    writeJson(SEEN_KEY, [id, ...seen].slice(0, MAX_SEEN));
+
+    const items = get().current();
     const next = [
       { ...rest, id, createdAt: new Date().toISOString(), read: false },
       ...items,
-    ].slice(0, MAX);
+    ].slice(0, MAX_ITEMS);
 
-    write(next);
+    writeJson(KEY, next);
     set({ items: next, hydrated: true });
     showLocal(rest);
   },
 
   markRead: (id) => {
-    const next = get().items.map((n) => (n.id === id ? { ...n, read: true } : n));
-    write(next);
-    set({ items: next });
+    const next = get().current().map((n) => (n.id === id ? { ...n, read: true } : n));
+    writeJson(KEY, next);
+    set({ items: next, hydrated: true });
   },
 
   markAllRead: () => {
-    const next = get().items.map((n) => ({ ...n, read: true }));
-    write(next);
-    set({ items: next });
+    const next = get().current().map((n) => ({ ...n, read: true }));
+    writeJson(KEY, next);
+    set({ items: next, hydrated: true });
   },
 
   remove: (id) => {
-    const next = get().items.filter((n) => n.id !== id);
-    write(next);
-    set({ items: next });
+    const next = get().current().filter((n) => n.id !== id);
+    writeJson(KEY, next);
+    set({ items: next, hydrated: true });
   },
 
   clearAll: () => {
-    write([]);
+    writeJson(KEY, []);
+    set({ items: [] });
+  },
+
+  reset: () => {
+    writeJson(KEY, []);
+    writeJson(SEEN_KEY, []);
     set({ items: [] });
   },
 }));
