@@ -62,6 +62,14 @@ export function useCameraStream(): UseCameraStreamReturn {
           });
         } else {
           setCameraMode('device');
+          // getUserMedia는 HTTPS나 localhost에서만 쓸 수 있다.
+          // 폰에서 http://192.168.x.x 로 붙으면 mediaDevices 자체가 없어 권한 창도 안 뜬다.
+          if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
+            setError(
+              '휴대폰에서는 HTTPS로 접속해야 카메라를 쓸 수 있어요.\nnpm run dev:https 로 실행한 뒤 https:// 주소로 접속해 주세요.',
+            );
+            return;
+          }
           const stream = await navigator.mediaDevices.getUserMedia({
             video: { facingMode: { ideal: facingMode }, width: { ideal: 1280 }, height: { ideal: 960 } },
             audio: false,
@@ -77,8 +85,17 @@ export function useCameraStream(): UseCameraStreamReturn {
           }
           setError(null);
         }
-      } catch {
-        setError('카메라 접근 권한이 필요합니다.\n설정에서 카메라 권한을 허용해 주세요.');
+      } catch (e) {
+        const name = e instanceof DOMException ? e.name : '';
+        if (name === 'NotAllowedError') {
+          setError('카메라 접근이 거부됐어요.\n브라우저 설정에서 카메라 권한을 허용해 주세요.');
+        } else if (name === 'NotFoundError' || name === 'OverconstrainedError') {
+          setError('쓸 수 있는 카메라를 찾지 못했어요.');
+        } else if (name === 'NotReadableError') {
+          setError('카메라를 다른 앱이 쓰고 있어요.\n해당 앱을 끄고 다시 시도해 주세요.');
+        } else {
+          setError('카메라를 열지 못했어요.\n다시 시도해 주세요.');
+        }
       }
     },
     [facingMode, stopCamera],

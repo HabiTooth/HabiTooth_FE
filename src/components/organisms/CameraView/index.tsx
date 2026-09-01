@@ -1,9 +1,9 @@
 'use client';
 
-import type { RefObject } from 'react';
+import type { ReactNode, RefObject } from 'react';
 import {
   Camera, Loader2, CheckCircle2, AlertTriangle, Sun,
-  Lightbulb, Timer, FlipHorizontal2, Pause, Play,
+  Lightbulb, FlipHorizontal2,
 } from 'lucide-react';
 import type { CameraMode } from '@/hooks/useCameraStream';
 import type { ScanStatusType } from '@/components/molecules/ScanStatusBanner';
@@ -17,15 +17,14 @@ export default function CameraView({
   cameraError,
   cameraMode,
   phase,
-  isPaused,
   lightOn,
   status,
   onLightToggle,
   onCameraFlip,
-  onPauseToggle,
   onCapture,
   isCapturing,
   onRetry,
+  reviewOverlay,
 }: {
   videoRef: RefObject<HTMLVideoElement | null>;
   imgRef: RefObject<HTMLImageElement | null>;
@@ -33,18 +32,21 @@ export default function CameraView({
   cameraError: string | null;
   cameraMode: CameraMode;
   phase: ScanPhase;
-  isPaused: boolean;
   lightOn: boolean;
   status: ScanStatusType;
   onLightToggle: () => void;
   onCameraFlip: () => void;
-  onPauseToggle: () => void;
   onCapture: () => void;
   isCapturing: boolean;
   onRetry: () => void;
+  reviewOverlay?: ReactNode;
 }) {
   const uvMode = phase === 'uv';
   const streamVisible = isReady && !cameraError;
+  const reviewing = Boolean(reviewOverlay);
+
+  // 미리보기만 반전, 저장본은 원본
+  const mirror = 'scale-x-[-1]';
 
   return (
     <div className={`relative w-full flex-1 overflow-hidden ${uvMode ? 'bg-[#1A0A2E]' : 'bg-[#1A1A2E]'}`}>
@@ -53,13 +55,13 @@ export default function CameraView({
         autoPlay
         playsInline
         muted
-        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300
+        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${mirror}
           ${cameraMode === 'device' && streamVisible ? 'opacity-100' : 'opacity-0'}`}
       />
       <img
         ref={imgRef}
         alt=""
-        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300
+        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${mirror}
           ${cameraMode === 'esp32' && streamVisible ? 'opacity-100' : 'opacity-0'}`}
       />
 
@@ -91,7 +93,7 @@ export default function CameraView({
         <div className="absolute inset-0 bg-purple-900/25 pointer-events-none mix-blend-multiply" />
       )}
 
-      {isReady && !cameraError && (
+      {isReady && !cameraError && !reviewing && (
         <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
           <rect x="12" y="15" width="76" height="70" fill="none" stroke="white" strokeWidth="0.8" strokeDasharray="3 2" strokeOpacity="0.55" rx="1" />
           <polyline points="19,15 12,15 12,22" fill="none" stroke="white" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
@@ -103,7 +105,7 @@ export default function CameraView({
         </svg>
       )}
 
-      {isReady && !cameraError && (
+      {isReady && !cameraError && !reviewing && (
         <div className="absolute top-2.5 left-1/2 -translate-x-1/2 z-10 pointer-events-none">
           {status === 'good' && (
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-success/85 backdrop-blur-sm text-white text-[11px] font-semibold whitespace-nowrap">
@@ -126,61 +128,49 @@ export default function CameraView({
         </div>
       )}
 
-      <div className="absolute left-3 top-1/2 -translate-y-1/2 flex flex-col gap-2">
-        <button
-          type="button"
-          onClick={onLightToggle}
-          className={`flex flex-col items-center gap-0.5 px-2.5 py-2 rounded-xl text-[10px] font-medium transition-colors
-            ${lightOn ? 'bg-warning/80 text-white' : 'bg-black/30 text-white'}`}
-        >
-          <Lightbulb size={16} />
-          <span>{lightOn ? 'ON' : 'OFF'}</span>
-        </button>
-        <div className="flex flex-col items-center gap-0.5 px-2.5 py-2 rounded-xl bg-black/30 text-white text-[10px] font-medium">
-          <Timer size={16} />
-          <span>3초</span>
-        </div>
-      </div>
+      {!reviewing && (
+        <>
+          <div className="absolute left-3 top-1/2 -translate-y-1/2">
+            <button
+              type="button"
+              onClick={onLightToggle}
+              className={`flex flex-col items-center gap-0.5 px-2.5 py-2 rounded-xl text-[10px] font-medium transition-colors
+                ${lightOn ? 'bg-warning/80 text-white' : 'bg-black/30 text-white'}`}
+            >
+              <Lightbulb size={16} />
+              <span>{lightOn ? 'ON' : 'OFF'}</span>
+            </button>
+          </div>
 
-      <div className="absolute right-3 top-1/2 -translate-y-1/2">
-        <button
-          type="button"
-          onClick={onCameraFlip}
-          className="flex flex-col items-center gap-0.5 px-2.5 py-2 rounded-xl bg-black/30 text-white text-[10px] font-medium"
-        >
-          <FlipHorizontal2 size={16} />
-          <span>카메라전환</span>
-        </button>
-      </div>
+          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+            <button
+              type="button"
+              onClick={onCameraFlip}
+              className="flex flex-col items-center gap-0.5 px-2.5 py-2 rounded-xl bg-black/30 text-white text-[10px] font-medium"
+            >
+              <FlipHorizontal2 size={16} />
+              <span>카메라전환</span>
+            </button>
+          </div>
 
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-4">
-        <button
-          type="button"
-          onClick={onPauseToggle}
-          className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center"
-        >
-          {isPaused ? <Play size={18} className="text-white ml-0.5" /> : <Pause size={18} className="text-white" />}
-        </button>
-        <button
-          type="button"
-          onClick={onCapture}
-          disabled={isCapturing || isPaused}
-          className="w-16 h-16 rounded-full bg-white border-4 border-primary flex items-center justify-center shadow-button disabled:opacity-50"
-        >
-          {isCapturing
-            ? <Loader2 size={22} className="text-primary animate-spin" />
-            : <Camera size={22} className="text-primary" />
-          }
-        </button>
-        <div className="w-10 h-10" />
-      </div>
-
-      {isPaused && (
-        <div className="absolute inset-0 bg-black/65 flex flex-col items-center justify-center gap-2">
-          <Pause size={40} className="text-white" />
-          <span className="text-white font-semibold text-[15px]">일시정지됨</span>
-        </div>
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10">
+            <button
+              type="button"
+              onClick={onCapture}
+              disabled={isCapturing || !isReady || Boolean(cameraError)}
+              className="w-16 h-16 rounded-full bg-white border-4 border-primary flex items-center justify-center shadow-button disabled:opacity-50"
+              aria-label="촬영"
+            >
+              {isCapturing
+                ? <Loader2 size={22} className="text-primary animate-spin" />
+                : <Camera size={22} className="text-primary" />
+              }
+            </button>
+          </div>
+        </>
       )}
+
+      {reviewOverlay}
     </div>
   );
 }
