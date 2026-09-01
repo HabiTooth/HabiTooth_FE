@@ -8,9 +8,7 @@ export default function PageShell({
 }: {
   children: ReactNode;
   className?: string;
-  /** 하단 NavBar가 fixed라 그만큼 자리를 비워둠 */
   withNav?: boolean;
-  /** 페이지 전체 대신 안쪽 영역만 스크롤시킬 때 */
   fill?: boolean;
 }) {
   const inner = fill
