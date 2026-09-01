@@ -16,6 +16,7 @@ export interface ToothAnalysisResult {
 
 interface ThreeSceneProps {
   analysisResults: ToothAnalysisResult[];
+  missingTeeth?: number[];
   onToothSelect?: (result: ToothAnalysisResult) => void;
   calibrationMode?: boolean;
 }
@@ -111,17 +112,20 @@ function closeJaws(model: THREE.Object3D, ratio: number) {
 
 export default function ThreeScene({
   analysisResults,
+  missingTeeth = [],
   onToothSelect,
   calibrationMode = false,
 }: ThreeSceneProps) {
   const mountRef = useRef<HTMLDivElement>(null);
   const analysisResultsRef = useRef(analysisResults);
+  const missingRef = useRef(missingTeeth);
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
   const [unscannedCount, setUnscannedCount] = useState(0);
 
   useEffect(() => {
     analysisResultsRef.current = analysisResults;
-  }, [analysisResults]);
+    missingRef.current = missingTeeth;
+  }, [analysisResults, missingTeeth]);
 
   useEffect(() => {
     if (!mountRef.current) return;
@@ -249,16 +253,22 @@ export default function ThreeScene({
       });
       createdMaterials.push(unscanned);
 
-      let missing = 0;
+      const gone = new Set(missingRef.current.map(String));
+
+      let notCaptured = 0;
       fdiToMeshes.forEach((meshes, fdi) => {
-        if (analyzed.has(fdi)) return;
-        missing++;
+        const absent = gone.has(fdi);
+        meshes.forEach((mesh) => {
+          mesh.visible = !absent;
+        });
+        if (absent || analyzed.has(fdi)) return;
+        notCaptured++;
         meshes.forEach((mesh) => {
           mesh.material = unscanned;
         });
       });
 
-      setUnscannedCount(missing);
+      setUnscannedCount(notCaptured);
     }
 
     const loader = new GLTFLoader();
@@ -372,7 +382,7 @@ export default function ThreeScene({
       renderer.dispose();
       mount.removeChild(renderer.domElement);
     };
-  }, [onToothSelect, calibrationMode, analysisResults]);
+  }, [onToothSelect, calibrationMode, analysisResults, missingTeeth]);
 
   return (
     <div className="relative w-full h-full">
