@@ -17,7 +17,7 @@ const getIcon = (type: GuideType) => {
 
 export default function LLMGuideSection({ items, isLoading = false }: LLMGuideSectionProps) {
   return (
-    <div className="bg-white rounded-2xl p-5 mt-4">
+    <div className="bg-white/90 backdrop-blur-sm rounded-[20px] shadow-card p-5 mt-4">
       <div className="flex items-center gap-2 mb-4">
         <div className="w-8 h-8 bg-[#E8ECF4] rounded-full flex items-center justify-center">
           <Bot size={16} className="text-[#4A86D9]" />

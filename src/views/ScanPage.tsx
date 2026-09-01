@@ -26,7 +26,11 @@ import CameraView from '@/components/organisms/CameraView';
 import CaptureReview from '@/components/organisms/CaptureReview';
 import ScanExitModal from '@/components/organisms/ScanExitModal';
 import ScanHelpSheet from '@/components/organisms/ScanHelpSheet';
+import Link from 'next/link';
 import Checkbox from '@/components/atoms/Checkbox';
+import { useNotificationStore } from '@/stores/notificationStore';
+import { reportReady } from '@/lib/notifications/rules';
+import { rememberSession } from '@/lib/sessionIndex';
 
 type Step = 1 | 2 | 3 | 4;
 type ScanPhase = 'guide' | 'white' | 'uv';
@@ -188,8 +192,12 @@ function Step1({
   const count = selectedZones.length;
 
   return (
-    <div className="max-w-[430px] min-h-svh mx-auto flex flex-col">
-      <div className="flex items-center justify-between px-4 py-3 bg-white border-b border-hairline flex-shrink-0">
+    <div className="max-w-[430px] min-h-svh mx-auto flex flex-col bg-background relative">
+      <div className="aurora-blob-1" />
+      <div className="aurora-blob-2" />
+      <div className="aurora-blob-3" />
+
+      <div className="flex items-center justify-between px-4 py-3 bg-white/90 backdrop-blur-sm border-b border-hairline flex-shrink-0 relative z-10">
         <button
           type="button"
           onClick={onExit}
@@ -199,13 +207,20 @@ function Step1({
         </button>
         <span className="text-[15px] font-semibold text-content">AI 스캔</span>
         <div className="flex items-center gap-1.5">
-          <div className="relative w-9 h-9 flex items-center justify-center rounded-full hover:bg-hairline transition-colors">
+          <Link
+            href="/notifications"
+            aria-label="알림"
+            className="relative w-9 h-9 flex items-center justify-center rounded-full hover:bg-hairline transition-colors"
+          >
             <Bell size={20} className="text-content" />
-            <div className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#4B7BF5] rounded-full border-[1.5px] border-white" />
-          </div>
-          <div className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-hairline transition-colors">
+          </Link>
+          <Link
+            href="/mypage"
+            aria-label="마이페이지"
+            className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-hairline transition-colors"
+          >
             <User size={20} className="text-content" />
-          </div>
+          </Link>
         </div>
       </div>
 
@@ -296,7 +311,7 @@ function Step1({
         </div>
       </div>
 
-      <div className="bg-white rounded-t-[28px] -mt-6 relative z-10 flex flex-col">
+      <div className="bg-white/90 backdrop-blur-sm rounded-t-[28px] -mt-6 relative z-10 flex flex-col flex-1">
         <div className="px-5 pt-5 pb-4 flex flex-col gap-4">
           <div className="flex flex-col gap-3">
             <div className="flex items-end justify-between gap-2">
@@ -740,6 +755,7 @@ export default function ScanPage() {
   const [analyzeProgress, setAnalyzeProgress] = useState(0);
   const [sessionId, setSessionId] = useState<number | null>(null);
   const [analysisResult, setAnalysisResult] = useState<SessionAnalyzeResult | null>(null);
+  const pushNotification = useNotificationStore((s) => s.push);
   const [analyzeError, setAnalyzeError] = useState<string | null>(null);
   const [analyzeKey, setAnalyzeKey] = useState(0);
 
@@ -929,6 +945,12 @@ export default function ScanPage() {
       .analyzeSession(sessionId)
       .then((res: { data: { result: SessionAnalyzeResult } }) => {
         setAnalysisResult(res.data.result);
+        pushNotification(reportReady(sessionId, res.data.result.sessionScore));
+        rememberSession({
+          sessionId,
+          scannedAt: new Date().toISOString(),
+          score: res.data.result.sessionScore,
+        });
         clearInterval(t);
         setAnalyzeStep(ANALYZE_STEPS.length + 1);
         setAnalyzeProgress(100);
@@ -944,7 +966,7 @@ export default function ScanPage() {
       });
 
     return () => clearInterval(t);
-  }, [step, sessionId, analyzeKey, capturedZones]);
+  }, [step, sessionId, analyzeKey, capturedZones, pushNotification]);
 
   const handleReset = () => {
     uploadedImageIds.current = new Map();

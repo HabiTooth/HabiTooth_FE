@@ -2,9 +2,10 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { Brush, Scissors, Calendar } from 'lucide-react';
+import { Brush, Scissors, Calendar, Loader2, Share2 } from 'lucide-react';
 import Header from '@/components/organisms/Header';
 import NavBar from '@/components/organisms/NavBar';
+import PageShell from '@/components/organisms/PageShell';
 import ReportSummary from '@/components/organisms/ReportSummary';
 import LLMGuideSection from '@/components/organisms/LLMGuideSection';
 import RiskAnalysisSection from '@/components/organisms/RiskAnalysisSection';
@@ -15,7 +16,9 @@ import type { ToothAnalysisResult } from '@/components/organisms/OralViewer3D/Th
 import type { GuideItem } from '@/components/organisms/LLMGuideSection/LLMGuideSection.types';
 import { reportApi, type LlmReport, type SessionReport } from '@/lib/api/report';
 import { historyApi, type HistoryRecordItem, type HistoryScoreTrendItem } from '@/lib/api/history';
-import { formatDate, formatShortDate, formatTime, scoreGrade, scoreStatus } from '@/lib/score';
+import { dashboardApi } from '@/lib/api/dashboard';
+import { renderReportCard, shareOrDownload } from '@/lib/reportExport';
+import { formatDate, formatDateTime, formatShortDate, formatTime, scoreGrade, scoreStatus } from '@/lib/score';
 import type { RiskLevel } from '@/lib/api/common';
 
 const GUIDE_TYPE: Record<RiskLevel, GuideItem['type']> = {
@@ -41,6 +44,9 @@ export default function ReportPage() {
   const [llmLoading, setLlmLoading] = useState(true);
   const [trend, setTrend] = useState<HistoryScoreTrendItem[]>([]);
   const [records, setRecords] = useState<HistoryRecordItem[]>([]);
+  const [scannedAt, setScannedAt] = useState('');
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!Number.isFinite(sessionId)) return;
@@ -55,7 +61,37 @@ export default function ReportPage() {
 
     historyApi.getScoreTrend().then((res) => setTrend(res.data.result)).catch(() => {});
     historyApi.getRecords().then((res) => setRecords(res.data.result)).catch(() => {});
+
+    dashboardApi
+      .getReport()
+      .then((res) => {
+        const r = res.data.result;
+        if (r?.sessionId === sessionId) setScannedAt(formatDateTime(r.scannedAt));
+      })
+      .catch(() => {});
   }, [sessionId]);
+
+  const handleExport = async () => {
+    if (!report || exporting) return;
+    setExporting(true);
+    setExportError(null);
+    try {
+      const blob = await renderReportCard({
+        scannedAt,
+        score: report.totalScore,
+        plaqueRatio: report.summary.totalPlaqueRatio,
+        calculusRatio: report.summary.totalCalculusRatio,
+        risky: report.toothStatuses
+          .filter((t) => t.riskLevel === 'HIGH' || t.riskLevel === 'CRITICAL')
+          .map((t) => ({ toothNumber: t.toothNumber, riskLevel: t.riskLevel })),
+      });
+      await shareOrDownload(blob, `habitooth-${sessionId}.png`);
+    } catch {
+      setExportError('이미지를 만들지 못했어요. 다시 시도해 주세요.');
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const analysisResults: ToothAnalysisResult[] = useMemo(
     () =>
@@ -83,7 +119,8 @@ export default function ReportPage() {
   const prevScore = trend.length > 1 ? trend[trend.length - 2].score : undefined;
 
   return (
-    <main className="max-w-[430px] mx-auto p-6 bg-[#EEF2FF] min-h-screen pb-20">
+    <PageShell>
+      <main className="p-6 pb-20">
       <Header />
 
       {report && (
@@ -92,6 +129,23 @@ export default function ReportPage() {
           prevScore={prevScore}
           status={scoreStatus(report.totalScore)}
         />
+      )}
+
+      {report && (
+        <>
+          <button
+            type="button"
+            onClick={handleExport}
+            disabled={exporting}
+            className="w-full mt-4 h-12 rounded-[14px] bg-white/90 backdrop-blur-sm shadow-card border border-hairline flex items-center justify-center gap-2 text-[13px] font-semibold text-primary disabled:opacity-60"
+          >
+            {exporting ? <Loader2 size={16} className="animate-spin" /> : <Share2 size={16} />}
+            치과에 보여줄 요약 이미지 저장
+          </button>
+          {exportError && (
+            <p className="m-0 mt-2 px-1 text-[11px] text-danger">{exportError}</p>
+          )}
+        </>
       )}
 
       <TrendChartSection
@@ -121,7 +175,8 @@ export default function ReportPage() {
         }))}
       />
 
+      </main>
       <NavBar activeTab="history" />
-    </main>
+    </PageShell>
   );
 }

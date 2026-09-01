@@ -12,7 +12,7 @@ const getGradeColor = (grade: string) => {
 
 export default function HistoryListSection({ items }: HistoryListSectionProps) {
   return (
-    <div className="bg-white rounded-2xl p-5 mt-4">
+    <div className="bg-white/90 backdrop-blur-sm rounded-[20px] shadow-card p-5 mt-4">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-sm font-semibold text-gray-800">지난 측정 기록</h2>
         <Link href="/mypage/history" className="text-xs text-[#4A86D9]">
