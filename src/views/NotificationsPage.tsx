@@ -68,7 +68,7 @@ export default function NotificationsPage() {
   const askPermission = async () => setPermission(await requestPermission());
 
   return (
-    <PageShell className="pb-16">
+    <PageShell withNav>
       <div className="flex items-center px-4 py-3 bg-white/90 backdrop-blur-sm border-b border-hairline">
         <button
           type="button"

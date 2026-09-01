@@ -103,7 +103,7 @@ export default function MyPage() {
 
   return (
     <div
-      className="max-w-[430px] min-h-svh mx-auto px-5 pt-14 pb-20 flex flex-col relative"
+      className="max-w-[430px] min-h-svh mx-auto px-5 pt-14 pb-28 flex flex-col relative"
       style={{ backgroundColor: '#EEF2FF' }}
     >
       <div className="aurora-blob-1" />

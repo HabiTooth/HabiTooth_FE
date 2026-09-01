@@ -15,7 +15,7 @@ export default function ArticleDetailPage() {
     : [];
 
   return (
-    <PageShell className="pb-10">
+    <PageShell>
       <div className="flex items-center px-4 py-3 bg-white/90 backdrop-blur-sm border-b border-hairline sticky top-0 z-20">
         <button
           type="button"

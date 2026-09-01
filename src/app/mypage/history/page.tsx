@@ -88,7 +88,7 @@ export default function HistoryListPage() {
   );
 
   return (
-    <div className="max-w-[430px] min-h-svh mx-auto bg-background flex flex-col relative pb-16">
+    <div className="max-w-[430px] min-h-svh mx-auto bg-background flex flex-col relative pb-28">
       <div className="aurora-blob-1" />
       <div className="aurora-blob-2" />
       <div className="aurora-blob-3" />
