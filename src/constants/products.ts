@@ -5,19 +5,28 @@ export type ProductCategory = '칫솔' | '치약' | '치아 사이' | '보조 �
 export interface ShopItem {
   brand: string;
   name: string;
-  /** 올리브영 검색어 */
   keyword: string;
 }
+
+export type ProductArt =
+  | 'brush'
+  | 'electric'
+  | 'paste'
+  | 'tartar'
+  | 'floss'
+  | 'interdental'
+  | 'waterjet'
+  | 'mouthwash'
+  | 'tongue';
 
 export interface Product {
   id: string;
   category: ProductCategory;
   name: string;
-  /** 고를 때 확인할 것 */
+  art: ProductArt;
+  tint: string;
   lookFor: string[];
-  /** 이 병변에 도움이 되는 용품 */
   helpsWith: LesionType[];
-  /** 위험도와 무관하게 늘 권하는 기본 용품 */
   baseline?: boolean;
   items: ShopItem[];
 }
@@ -30,6 +39,8 @@ export const shopUrl = (keyword: string) => `${OLIVEYOUNG_SEARCH}${encodeURIComp
 export const PRODUCTS: Product[] = [
   {
     id: 'soft-brush',
+    art: 'brush',
+    tint: '#E1EDF8',
     category: '칫솔',
     name: '부드러운 모 칫솔',
     lookFor: ['soft 또는 부드러움 표기', '머리가 작아 어금니 안쪽까지 들어가는 것'],
@@ -42,6 +53,8 @@ export const PRODUCTS: Product[] = [
   },
   {
     id: 'fluoride-paste',
+    art: 'paste',
+    tint: '#DDF1E8',
     category: '치약',
     name: '불소 치약',
     lookFor: ['불소 1,000ppm 이상', '연마제가 과하지 않은 것'],
@@ -54,6 +67,8 @@ export const PRODUCTS: Product[] = [
   },
   {
     id: 'electric-brush',
+    art: 'electric',
+    tint: '#E6E4FA',
     category: '칫솔',
     name: '전동칫솔',
     lookFor: ['압력 감지 기능', '2분 타이머', '작은 원형 또는 음파 헤드'],
@@ -65,6 +80,8 @@ export const PRODUCTS: Product[] = [
   },
   {
     id: 'floss',
+    art: 'floss',
+    tint: '#FBE7E9',
     category: '치아 사이',
     name: '치실',
     lookFor: ['왁스 코팅 (처음 쓴다면)', '치아 사이가 빡빡하면 얇은 테이프형'],
@@ -76,6 +93,8 @@ export const PRODUCTS: Product[] = [
   },
   {
     id: 'interdental-brush',
+    art: 'interdental',
+    tint: '#FDEFDC',
     category: '치아 사이',
     name: '치간칫솔',
     lookFor: ['헐겁게 들어가는 가장 작은 사이즈부터', '철심이 코팅된 것'],
@@ -87,6 +106,8 @@ export const PRODUCTS: Product[] = [
   },
   {
     id: 'tartar-paste',
+    art: 'tartar',
+    tint: '#E3F0FB',
     category: '치약',
     name: '타르타르 컨트롤 치약',
     lookFor: ['피로인산염 또는 아연 성분', '이미 굳은 치석은 못 없애고 새로 굳는 걸 늦춤'],
@@ -98,6 +119,8 @@ export const PRODUCTS: Product[] = [
   },
   {
     id: 'water-flosser',
+    art: 'waterjet',
+    tint: '#DCF0F7',
     category: '보조 용품',
     name: '구강 세정기',
     lookFor: ['수압 조절 단계', '치실을 대신하진 못하고 함께 쓰는 용도'],
@@ -106,6 +129,8 @@ export const PRODUCTS: Product[] = [
   },
   {
     id: 'mouthwash',
+    art: 'mouthwash',
+    tint: '#E8F4E1',
     category: '보조 용품',
     name: '가글',
     lookFor: ['알코올이 없는 것 (입 마름 예방)', '칫솔질을 대신하는 용도가 아님'],
@@ -117,6 +142,8 @@ export const PRODUCTS: Product[] = [
   },
   {
     id: 'tongue-cleaner',
+    art: 'tongue',
+    tint: '#FCE8EE',
     category: '보조 용품',
     name: '혀 클리너',
     lookFor: ['날이 부드러운 것', '칫솔 뒷면 돌기로도 대체 가능'],
@@ -129,10 +156,6 @@ const RISKY: RiskLevel[] = ['HIGH', 'CRITICAL'];
 
 export const isRisky = (level: RiskLevel) => RISKY.includes(level);
 
-/**
- * 위험한 병변에 걸린 용품을 앞에 두고, 없으면 기본 용품만.
- * 같은 조건이면 정의 순서를 유지한다.
- */
 export function recommendProducts(
   categories: Array<{ lesionType: LesionType; riskLevel: RiskLevel }> = [],
 ): Product[] {
