@@ -1,6 +1,8 @@
 'use client';
 
 import { create } from 'zustand';
+import { authApi } from '@/lib/api/auth';
+import { readToken, readEmail, writeAuth, clearStoredAuth } from '@/lib/tokenStorage';
 
 function decodeEmail(token: string): string | null {
   try {
@@ -15,20 +17,21 @@ interface AuthState {
   email: string | null;
   deviceId: number | null;
   deviceIp: string | null;
-  setToken: (token: string) => void;
+  setToken: (token: string, remember?: boolean) => void;
   setDevice: (deviceId: number, deviceIp: string) => void;
+  clearDevice: () => void;
   clearAuth: () => void;
+  logout: () => Promise<void>;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
-  token: typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null,
-  email: typeof window !== 'undefined' ? localStorage.getItem('userEmail') : null,
+export const useAuthStore = create<AuthState>((set, get) => ({
+  token: readToken(),
+  email: readEmail(),
   deviceId: typeof window !== 'undefined' ? Number(localStorage.getItem('deviceId')) || null : null,
   deviceIp: typeof window !== 'undefined' ? localStorage.getItem('deviceIp') : null,
-  setToken: (token) => {
+  setToken: (token, remember = false) => {
     const email = decodeEmail(token);
-    localStorage.setItem('accessToken', token);
-    if (email) localStorage.setItem('userEmail', email);
+    writeAuth(token, email, remember);
     set({ token, email });
   },
   setDevice: (deviceId, deviceIp) => {
@@ -36,11 +39,22 @@ export const useAuthStore = create<AuthState>((set) => ({
     localStorage.setItem('deviceIp', deviceIp);
     set({ deviceId, deviceIp });
   },
+  clearDevice: () => {
+    localStorage.removeItem('deviceId');
+    localStorage.removeItem('deviceIp');
+    set({ deviceId: null, deviceIp: null });
+  },
   clearAuth: () => {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('userEmail');
+    clearStoredAuth();
     localStorage.removeItem('deviceId');
     localStorage.removeItem('deviceIp');
     set({ token: null, email: null, deviceId: null, deviceIp: null });
+  },
+  logout: async () => {
+    try {
+      await authApi.logout();
+    } finally {
+      get().clearAuth();
+    }
   },
 }));
