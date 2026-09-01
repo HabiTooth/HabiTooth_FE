@@ -28,7 +28,8 @@ interface TooltipState {
 
 const MODEL_PATH = '/habitooth_FDI_number.glb';
 
-const VIEW_DIR = new THREE.Vector3(0, 1.4, 1).normalize();
+// Y를 키우면 위에서 내려다보는 교합면 뷰, 줄이면 정면 뷰
+const VIEW_DIR = new THREE.Vector3(0, 0.3, 1).normalize();
 const FIT_MARGIN = 1.06;
 
 // 상하악 벌어진 간격 중 좁힐 비율
