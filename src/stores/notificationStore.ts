@@ -26,7 +26,6 @@ function writeJson(key: string, value: unknown) {
   try {
     localStorage.setItem(key, JSON.stringify(value));
   } catch {
-    // 저장이 막혀도 이번 세션 화면은 그대로 동작
   }
 }
 
@@ -37,14 +36,12 @@ interface NotificationState {
   items: AppNotification[];
   hydrated: boolean;
   hydrate: () => void;
-  /** 메모리가 비었으면 저장된 목록을 읽어옴 */
   current: () => AppNotification[];
   push: (n: NewNotification) => void;
   markRead: (id: string) => void;
   markAllRead: () => void;
   remove: (id: string) => void;
   clearAll: () => void;
-  /** 지운 이력까지 비워서 알림이 다시 생기게 함 */
   reset: () => void;
 }
 
@@ -57,7 +54,6 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
     set({ items: readItems(), hydrated: true });
   },
 
-  // 하이드레이트 전 목록은 비어 있어서, 그걸로 덮어쓰면 저장된 알림이 통째로 날아감
   current: () => (get().hydrated ? get().items : readItems()),
 
   push: ({ dedupeKey, ...rest }) => {

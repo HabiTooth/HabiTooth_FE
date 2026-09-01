@@ -20,6 +20,5 @@ export function writeSettings(next: LocalNotificationSettings) {
   try {
     localStorage.setItem(KEY, JSON.stringify(next));
   } catch {
-    // 저장 실패해도 이번 세션 동안은 서버 설정대로 동작
   }
 }

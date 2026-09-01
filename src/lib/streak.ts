@@ -15,7 +15,6 @@ export interface StreakStats {
   scanned: Set<string>;
 }
 
-/** 오늘 아직 안 찍었어도 어제까지 이어졌으면 연속으로 봄 */
 export function computeStreak(dates: Array<string | null | undefined>, today = new Date()): StreakStats {
   const scanned = new Set(
     dates.filter((d): d is string => Boolean(d)).map((d) => d.slice(0, 10)),
@@ -53,7 +52,6 @@ export interface CalendarCell {
   isFuture: boolean;
 }
 
-/** 일요일 시작 6주 그리드. 앞뒤 빈 칸은 key가 null */
 export function monthGrid(year: number, month: number, scanned: Set<string>, today = new Date()): CalendarCell[] {
   const first = new Date(year, month, 1);
   const daysInMonth = new Date(year, month + 1, 0).getDate();
