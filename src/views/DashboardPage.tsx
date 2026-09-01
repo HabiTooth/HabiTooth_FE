@@ -48,8 +48,8 @@ export default function DashboardPage() {
   const hasReport = report !== null && report.sessionId !== null;
 
   return (
-    <PageShell>
-      <main className="p-6 pb-20">
+    <PageShell withNav>
+      <main className="px-5 pt-5">
         <Header />
 
         <ScoreCard
