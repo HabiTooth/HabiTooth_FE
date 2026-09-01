@@ -10,6 +10,7 @@ import {
   Smartphone, Clock, LogOut, UserX, Lock,
 } from 'lucide-react';
 import NavBar from '@/components/organisms/NavBar';
+import { writeSettings } from '@/lib/notifications/settings';
 
 function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
   return (
@@ -61,6 +62,10 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 
 
+// 알림 생성은 서버 없이도 돌아가서 설정을 로컬에 복제해 둠
+const cacheSettings = (s: NotificationSetting) =>
+  writeSettings({ push: s.pushNotificationEnabled, report: s.reportNotificationEnabled });
+
 export default function MyPage() {
   const router = useRouter();
   const { email, logout } = useAuthStore();
@@ -70,7 +75,10 @@ export default function MyPage() {
 
   useEffect(() => {
     userApi.getProfile().then((res) => setProfile(res.data.result)).catch(() => {});
-    userApi.getNotification().then((res) => setNotification(res.data.result)).catch(() => {});
+    userApi.getNotification().then((res) => {
+      setNotification(res.data.result);
+      cacheSettings(res.data.result);
+    }).catch(() => {});
     userApi.getDeviceStatus().then((res) => {
       const list = res.data.result;
       if (list.length > 0) setDevice(list[0]);
@@ -81,7 +89,11 @@ export default function MyPage() {
     if (!notification) return;
     const next = { ...notification, [key]: !notification[key] };
     setNotification(next);
-    userApi.updateNotification(next).catch(() => setNotification(notification));
+    cacheSettings(next);
+    userApi.updateNotification(next).catch(() => {
+      setNotification(notification);
+      cacheSettings(notification);
+    });
   };
 
   const handleLogout = async () => {
