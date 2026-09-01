@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import NavBar from '@/components/organisms/NavBar';
+import { useSessionIndex } from '@/hooks/useSessionIndex';
 import {
   historyApi,
   type HistoryList,
@@ -42,6 +44,7 @@ function scoreColor(score: number) {
 
 export default function HistoryListPage() {
   const router = useRouter();
+  const { idByDate } = useSessionIndex();
   const [page, setPage] = useState(0);
   const [period, setPeriod] = useState<HistoryPeriodFilter>('ALL');
   const [scoreFilter, setScoreFilter] = useState<HistoryScoreFilter>('ALL');
@@ -88,7 +91,7 @@ export default function HistoryListPage() {
   );
 
   return (
-    <div className="max-w-[430px] min-h-svh mx-auto bg-background flex flex-col relative pb-28">
+    <div className="max-w-[430px] min-h-svh mx-auto bg-background flex flex-col relative pb-16">
       <div className="aurora-blob-1" />
       <div className="aurora-blob-2" />
       <div className="aurora-blob-3" />
@@ -131,11 +134,12 @@ export default function HistoryListPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-4 px-4 py-2.5 bg-primary-light border-b border-hairline">
+        <div className="grid grid-cols-[96px_1fr_1fr_1fr_14px] gap-1 px-4 py-2.5 bg-primary-light border-b border-hairline">
           <span className="text-[11px] font-bold text-primary">날짜</span>
           <span className="text-[11px] font-bold text-primary text-center">점수</span>
           <span className="text-[11px] font-bold text-primary text-center">치태</span>
           <span className="text-[11px] font-bold text-primary text-center">치석</span>
+          <span />
         </div>
 
         <div className="flex-1 bg-white divide-y divide-hairline">
@@ -145,22 +149,45 @@ export default function HistoryListPage() {
           {!isLoading && (data?.items.length ?? 0) === 0 && (
             <p className="m-0 py-12 text-center text-[13px] text-muted">기록이 없어요.</p>
           )}
-          {data?.items.map((h, i) => (
-            <div key={`${h.date}-${i}`} className="grid grid-cols-4 px-4 py-3.5 items-center">
-              <span className="text-[13px] text-content">{formatDate(h.date)}</span>
-              <div className="flex justify-center">
-                <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full ${scoreColor(h.score)}`}>
-                  {h.score}점
+          {data?.items.map((h, i) => {
+            const sessionId = idByDate(h.date);
+            const cells = (
+              <>
+                <span className="text-[13px] text-content">{formatDate(h.date)}</span>
+                <div className="flex justify-center">
+                  <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full ${scoreColor(h.score)}`}>
+                    {h.score}점
+                  </span>
+                </div>
+                <span className={`text-[12px] font-medium text-center ${riskColor(h.plaqueRiskLevel)}`}>
+                  {RISK_LABEL[h.plaqueRiskLevel]}
                 </span>
+                <span className={`text-[12px] font-medium text-center ${riskColor(h.calculusRiskLevel)}`}>
+                  {RISK_LABEL[h.calculusRiskLevel]}
+                </span>
+                {sessionId === null ? (
+                  <span />
+                ) : (
+                  <ChevronRight size={14} className="text-muted" />
+                )}
+              </>
+            );
+            const cls = 'grid grid-cols-[96px_1fr_1fr_1fr_14px] gap-1 px-4 py-3.5 items-center';
+
+            return sessionId === null ? (
+              <div key={`${h.date}-${i}`} className={cls}>
+                {cells}
               </div>
-              <span className={`text-[12px] font-medium text-center ${riskColor(h.plaqueRiskLevel)}`}>
-                {RISK_LABEL[h.plaqueRiskLevel]}
-              </span>
-              <span className={`text-[12px] font-medium text-center ${riskColor(h.calculusRiskLevel)}`}>
-                {RISK_LABEL[h.calculusRiskLevel]}
-              </span>
-            </div>
-          ))}
+            ) : (
+              <Link
+                key={`${h.date}-${i}`}
+                href={`/report/${sessionId}`}
+                className={`${cls} no-underline transition-colors active:bg-hairline/50`}
+              >
+                {cells}
+              </Link>
+            );
+          })}
         </div>
 
         {totalPages > 1 && (
