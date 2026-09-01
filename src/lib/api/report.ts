@@ -89,6 +89,11 @@ export const reportApi = {
   getSingleImageReport: (scanImageId: number) =>
     apiClient.get<ApiResponse<SingleImageReport>>(`/api/reports/scan-images/${scanImageId}`),
 
+  // LLM 응답이 수 분 걸려서 공용 타임아웃(30초)으로는 항상 끊김
   generateLlmReport: (sessionId: number) =>
-    apiClient.post<ApiResponse<LlmReport>>(`/api/reports/scan-sessions/${sessionId}/llm-report`),
+    apiClient.post<ApiResponse<LlmReport>>(
+      `/api/reports/scan-sessions/${sessionId}/llm-report`,
+      null,
+      { timeout: 300_000 },
+    ),
 };
