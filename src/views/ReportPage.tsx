@@ -1,120 +1,204 @@
 'use client';
 
-import Header from '@/components/organisms/Header';
+import { useEffect, useMemo, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { Brush, Scissors, Calendar, ChevronLeft } from 'lucide-react';
 import NavBar from '@/components/organisms/NavBar';
+import PageShell from '@/components/organisms/PageShell';
 import ReportSummary from '@/components/organisms/ReportSummary';
 import LLMGuideSection from '@/components/organisms/LLMGuideSection';
 import RiskAnalysisSection from '@/components/organisms/RiskAnalysisSection';
 import CareGuideSection from '@/components/organisms/CareGuideSection';
 import TrendChartSection from '@/components/organisms/TrendChartSection';
-import HistoryListSection from '@/components/organisms/HistoryListSection';
-import { Brush, Scissors, Calendar } from 'lucide-react';
+import ChangeSummary from '@/components/organisms/ChangeSummary';
+import NextStepsSection from '@/components/organisms/NextStepsSection';
+import HabitSummarySection from '@/components/organisms/HabitSummarySection';
 import type { ToothAnalysisResult } from '@/components/organisms/OralViewer3D/ThreeScene';
+import type { GuideItem } from '@/components/organisms/LLMGuideSection/LLMGuideSection.types';
+import { reportApi, type LlmReport, type SessionReport } from '@/lib/api/report';
+import { historyApi, type HistoryScoreTrendItem } from '@/lib/api/history';
+import { formatDate, formatShortDate, scoreStatus } from '@/lib/score';
+import { compareTeeth } from '@/lib/compare';
+import { useSessionIndex } from '@/hooks/useSessionIndex';
+import type { LesionType, RiskLevel } from '@/lib/api/common';
 
-// 나영님이 준 실제 API 응답 예시를 그대로 더미로 사용
-const mockApiResponse = {
-  code: 'COMMON200',
-  message: '요청에 성공했습니다.',
-  result: {
-    sessionId: 1,
-    totalScore: 76,
-    summary: {
-      totalPlaqueRatio: 12,
-      totalCalculusRatio: 5,
-    },
-        toothStatuses: [
-      { toothNumber: 16, lesionType: 'CALCULUS', areaRatio: 18.2, riskLevel: 'CRITICAL' },
-      { toothNumber: 26, lesionType: 'PLAQUE', areaRatio: 12.5, riskLevel: 'HIGH' },
-      { toothNumber: 11, lesionType: 'PLAQUE', areaRatio: 7.8, riskLevel: 'MEDIUM' },
-      { toothNumber: 36, lesionType: 'CALCULUS', areaRatio: 3.1, riskLevel: 'LOW' },
-      { toothNumber: 46, lesionType: 'PLAQUE', areaRatio: 0.9, riskLevel: 'VERY_LOW' },
-    ],
-  },
-  success: true,
+const GUIDE_TYPE: Record<RiskLevel, GuideItem['type']> = {
+  VERY_LOW: 'good',
+  LOW: 'good',
+  MEDIUM: 'warning',
+  HIGH: 'warning',
+  CRITICAL: 'danger',
 };
 
+const CARE_ICONS = [
+  <Brush key="brush" size={20} className="text-[#4A86D9]" />,
+  <Scissors key="scissors" size={20} className="text-[#4A86D9]" />,
+  <Calendar key="calendar" size={20} className="text-[#4A86D9]" />,
+];
+
 export default function ReportPage() {
-  // API 응답 형식 → ThreeScene이 기대하는 형식으로 변환
-  const analysisResults: ToothAnalysisResult[] = mockApiResponse.result.toothStatuses.map((t) => ({
-    toothNumber: String(t.toothNumber),
-    lesionType: t.lesionType,
-    areaRatio: t.areaRatio,
-    riskLevel: t.riskLevel as ToothAnalysisResult['riskLevel'],
+  const router = useRouter();
+  const params = useParams<{ id: string }>();
+  const sessionId = Number(params?.id);
+
+  const [report, setReport] = useState<SessionReport | null>(null);
+  const [llm, setLlm] = useState<LlmReport | null>(null);
+  const [llmLoading, setLlmLoading] = useState(true);
+  const [llmFailed, setLlmFailed] = useState(false);
+  const [llmKey, setLlmKey] = useState(0);
+  const [previous, setPrevious] = useState<SessionReport | null>(null);
+  const { sessions } = useSessionIndex();
+  const [trend, setTrend] = useState<HistoryScoreTrendItem[]>([]);
+
+  useEffect(() => {
+    if (!Number.isFinite(sessionId)) return;
+
+    reportApi.getSessionReport(sessionId).then((res) => setReport(res.data.result)).catch(() => {});
+
+    setLlmLoading(true);
+    setLlmFailed(false);
+    reportApi
+      .generateLlmReport(sessionId)
+      .then((res) => setLlm(res.data.result))
+      .catch(() => setLlmFailed(true))
+      .finally(() => setLlmLoading(false));
+
+    historyApi.getScoreTrend().then((res) => setTrend(res.data.result)).catch(() => {});
+  }, [sessionId, llmKey]);
+
+  const previousRef = sessions.find((x) => x.sessionId < sessionId) ?? null;
+  const previousId = previousRef?.sessionId ?? null;
+
+  useEffect(() => {
+    if (previousId === null) return;
+    reportApi
+      .getSessionReport(previousId)
+      .then((res) => setPrevious(res.data.result))
+      .catch(() => setPrevious(null));
+  }, [previousId]);
+
+  const diff = useMemo(
+    () =>
+      compareTeeth(
+        (previous?.toothStatuses ?? []).map((t) => ({
+          toothNumber: t.toothNumber,
+          riskLevel: t.riskLevel,
+        })),
+        (report?.toothStatuses ?? []).map((t) => ({
+          toothNumber: t.toothNumber,
+          riskLevel: t.riskLevel,
+        })),
+      ),
+    [previous, report],
+  );
+
+  const riskCategories: Array<{ lesionType: LesionType; riskLevel: RiskLevel }> = useMemo(() => {
+    const order: RiskLevel[] = ['VERY_LOW', 'LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
+    const worst = (type: LesionType): RiskLevel => {
+      const levels = (report?.toothStatuses ?? [])
+        .filter((t) => t.lesionType === type)
+        .map((t) => order.indexOf(t.riskLevel));
+      return order[levels.length > 0 ? Math.max(...levels) : 0];
+    };
+    return [
+      { lesionType: 'PLAQUE', riskLevel: worst('PLAQUE') },
+      { lesionType: 'CALCULUS', riskLevel: worst('CALCULUS') },
+    ];
+  }, [report]);
+
+  const analysisResults: ToothAnalysisResult[] = useMemo(
+    () =>
+      (report?.toothStatuses ?? []).map((t) => ({
+        toothNumber: String(t.toothNumber),
+        lesionType: t.lesionType ?? '',
+        areaRatio: t.areaRatio,
+        riskLevel: t.riskLevel as ToothAnalysisResult['riskLevel'],
+      })),
+    [report],
+  );
+
+  const guideItems: GuideItem[] = (llm?.riskDetail ?? []).map((r) => ({
+    type: GUIDE_TYPE[r.riskLevel],
+    title: r.title,
+    description: r.detail,
   }));
 
-  const hasCalculus = analysisResults.some((r) => r.lesionType === 'CALCULUS');
+  const careGuideItems = (llm?.management ?? []).map((m, i) => ({
+    icon: CARE_ICONS[i % CARE_ICONS.length],
+    title: m.title,
+    description: m.detail,
+  }));
 
-  const careGuideItems = [
-    {
-      icon: <Brush size={20} className="text-[#4A86D9]" />,
-      title: '칫솔질 가이드',
-      description: '앞니 안쪽은 45도 각도로 작은 원을 그리며 닦아주세요.',
-    },
-    {
-      icon: <Scissors size={20} className="text-[#4A86D9]" />,
-      title: '치실 사용',
-      description: '치아 사이에 낀 음식물과 치태를 제거해 주세요.',
-    },
-    ...(hasCalculus
-      ? [
-          {
-            icon: <Calendar size={20} className="text-[#4A86D9]" />,
-            title: '스케일링 추천',
-            description: '치석 제거를 위해 6개월 내 내원 추천드려요.',
-          },
-        ]
-      : []),
-  ];
+  const prevScore = trend.length > 1 ? trend[trend.length - 2].score : undefined;
 
   return (
-    <main className="max-w-[430px] mx-auto p-6 bg-[#EEF2FF] min-h-screen pb-20">
-      <Header />
-      <ReportSummary
-       score={72}
-       prevScore={69}
-       status="주의 필요"
-       date="2026.07.03 14:30"/>
-      <TrendChartSection
-        data={[
-          { date: '4/15', score: 68 },
-          { date: '4/29', score: 76 },
-          { date: '5/08', score: 82 },
-          { date: '5/15', score: 82 },
-        ]}
-      />
+    <PageShell withNav>
+      <div className="flex items-center px-4 py-3 bg-white/90 backdrop-blur-sm border-b border-hairline">
+        <button
+          type="button"
+          onClick={() => router.back()}
+          className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-hairline transition-colors"
+        >
+          <ChevronLeft size={20} className="text-content" />
+        </button>
+        <span className="flex-1 text-center text-[15px] font-semibold text-content">
+          분석 리포트
+        </span>
+        <div className="w-9" />
+      </div>
+
+      <main className="px-5 pt-4">
+      {report && (
+        <ReportSummary
+          score={report.totalScore}
+          prevScore={prevScore}
+          status={scoreStatus(report.totalScore)}
+        />
+      )}
+
       <RiskAnalysisSection
-        plaque={mockApiResponse.result.summary.totalPlaqueRatio}
-        calculus={mockApiResponse.result.summary.totalCalculusRatio}
-        calibrationMode={false}
+        plaque={report?.summary.totalPlaqueRatio ?? 0}
+        calculus={report?.summary.totalCalculusRatio ?? 0}
         analysisResults={analysisResults}
       />
+
       <LLMGuideSection
-        items={[
-          {
-            type: 'warning',
-            title: '하악 앞니 안쪽에 치태가 있습니다.',
-            description: '하악 전치부(앞니) 설면에 치태가 중등도로 축적되어 있어요. 칫솔을 45도 각도로 눕혀 부드럽게 닦아주세요.',
-          },
-          {
-            type: 'danger',
-            title: '상악 오른쪽 어금니 부위에 치석이 보입니다.',
-            description: '상악 우측 대구치(어금니) 치은면 근처에 치석이 있어요. 정기적인 스케일링을 권장드려요.',
-          },
-          {
-            type: 'good',
-            title: '전반적으로 양호한 상태입니다!',
-            description: '대부분의 치아 표면이 깨끗하게 관리되고 있어요. 지금처럼 꾸준히 관리하면 더 건강한 구강을 유지할 수 있어요.',
-          },
-        ]}
+        items={guideItems}
+        isLoading={llmLoading}
+        failed={llmFailed}
+        onRetry={() => setLlmKey((k) => k + 1)}
       />
-      <CareGuideSection items={careGuideItems} />
-      <HistoryListSection
-  items={[
-    { id: '1', date: '2025.05.15', time: '14:30', score: 72, grade: 'B' },
-    { id: '2', date: '2025.05.08', time: '09:15', score: 68, grade: 'C' },
-  ]}
-/>
+
+      {careGuideItems.length > 0 && <CareGuideSection items={careGuideItems} />}
+
+      <NextStepsSection categories={riskCategories} />
+
+      {llm?.disclaimer && (
+        <p className="m-0 mt-3 px-1 text-[11px] leading-relaxed text-gray-400">{llm.disclaimer}</p>
+      )}
+
+      <div className="flex items-center gap-3 mt-8 mb-1">
+        <div className="flex-1 h-px bg-hairline" />
+        <span className="text-[11px] font-bold text-muted">시간에 따른 변화</span>
+        <div className="flex-1 h-px bg-hairline" />
+      </div>
+
+      <TrendChartSection
+        data={trend.map((t) => ({ date: formatShortDate(t.date), score: t.score }))}
+      />
+
+      {previous !== null && report !== null && (
+        <ChangeSummary
+          result={diff}
+          scoreDelta={report.totalScore - previous.totalScore}
+          previousDate={formatDate(previousRef?.scannedAt)}
+        />
+      )}
+
+      <HabitSummarySection />
+
+      </main>
       <NavBar activeTab="history" />
-    </main>
+    </PageShell>
   );
 }

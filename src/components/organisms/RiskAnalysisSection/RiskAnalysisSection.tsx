@@ -5,10 +5,10 @@ import type { RiskAnalysisSectionProps } from './RiskAnalysisSection.types';
 
 export default function RiskAnalysisSection({ plaque, calculus, analysisResults = [], calibrationMode = false }: RiskAnalysisSectionProps) {
   return (
-    <div className="bg-white rounded-2xl p-5 mt-4">
+    <div className="bg-white/90 backdrop-blur-sm rounded-[20px] shadow-card p-5 mt-4">
       <h2 className="text-sm font-semibold text-gray-800 mb-4">위험 부위 분석</h2>
 
-      <div className="bg-[#F0F4FF] rounded-xl overflow-hidden h-64 mb-4">
+      <div className="bg-[#F0F4FF] rounded-xl overflow-hidden h-[300px] mb-4">
         <OralViewer3D analysisResults={analysisResults} calibrationMode={calibrationMode} />
       </div>
 

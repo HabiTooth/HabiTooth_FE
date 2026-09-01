@@ -5,7 +5,7 @@ import type { RiskSummaryProps } from './RiskSummary.types';
 
 export default function RiskSummary({ plaqueScore, calculusScore, gumScore, plaqueRisk, calculusRisk, gumRisk }: RiskSummaryProps) {
   return (
-    <div className="bg-white rounded-2xl p-4 mt-4">
+    <div className="bg-white/90 backdrop-blur-sm rounded-[20px] shadow-card p-4 mt-4">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold text-gray-800">위험도 요약</h3>
         <button className="text-xs text-gray-400">자세히 보기 &gt;</button>

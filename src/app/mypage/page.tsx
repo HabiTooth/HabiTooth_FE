@@ -3,13 +3,16 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/authStore';
-import { deviceApi } from '@/lib/api/device';
+import { userApi, type NotificationSetting, type Profile } from '@/lib/api/user';
 import type { DeviceStatusResponse } from '@/lib/api/device';
 import {
   User, ChevronLeft, ChevronRight, Bell, Shield, FileText,
-  Smartphone, Clock, LogOut, UserX, Lock,
+  Smartphone, Clock, LogOut, UserX, Lock, Smile,
 } from 'lucide-react';
 import NavBar from '@/components/organisms/NavBar';
+import { writeSettings } from '@/lib/notifications/settings';
+import { useDentitionStore } from '@/stores/dentitionStore';
+import { missingSummary } from '@/lib/dentition';
 
 function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
   return (
@@ -61,24 +64,50 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 
 
+// 알림 생성은 서버 없이도 돌아가서 설정을 로컬에 복제해 둠
+const cacheSettings = (s: NotificationSetting) =>
+  writeSettings({ push: s.pushNotificationEnabled, report: s.reportNotificationEnabled });
+
 export default function MyPage() {
   const router = useRouter();
-  const { email, clearAuth } = useAuthStore();
-  const [notifyScan, setNotifyScan] = useState(true);
-  const [notifyAnalysis, setNotifyAnalysis] = useState(true);
-  const [notifyDanger, setNotifyDanger] = useState(true);
+  const { email, logout } = useAuthStore();
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [notification, setNotification] = useState<NotificationSetting | null>(null);
   const [device, setDevice] = useState<DeviceStatusResponse | null>(null);
+  const { missing, hydrate: hydrateDentition } = useDentitionStore();
 
   useEffect(() => {
-    deviceApi.getStatus().then((res) => {
+    hydrateDentition();
+    userApi.getProfile().then((res) => setProfile(res.data.result)).catch(() => {});
+    userApi.getNotification().then((res) => {
+      setNotification(res.data.result);
+      cacheSettings(res.data.result);
+    }).catch(() => {});
+    userApi.getDeviceStatus().then((res) => {
       const list = res.data.result;
       if (list.length > 0) setDevice(list[0]);
     }).catch(() => {});
-  }, []);
+  }, [hydrateDentition]);
+
+  const toggleNotification = (key: keyof NotificationSetting) => {
+    if (!notification) return;
+    const next = { ...notification, [key]: !notification[key] };
+    setNotification(next);
+    cacheSettings(next);
+    userApi.updateNotification(next).catch(() => {
+      setNotification(notification);
+      cacheSettings(notification);
+    });
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    router.push('/login');
+  };
 
   return (
     <div
-      className="max-w-[430px] min-h-svh mx-auto px-5 pt-14 pb-20 flex flex-col relative"
+      className="max-w-[430px] min-h-svh mx-auto px-5 pt-14 pb-28 flex flex-col relative"
       style={{ backgroundColor: '#EEF2FF' }}
     >
       <div className="aurora-blob-1" />
@@ -101,8 +130,8 @@ export default function MyPage() {
           <User size={32} className="text-primary" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="m-0 text-[16px] font-bold text-content">{email?.split('@')[0] ?? '사용자'}</p>
-          <p className="m-0 mt-0.5 text-[14px] text-muted truncate">{email ?? ''}</p>
+          <p className="m-0 text-[16px] font-bold text-content">{profile?.name ?? email?.split('@')[0] ?? '사용자'}</p>
+          <p className="m-0 mt-0.5 text-[14px] text-muted truncate">{profile?.email ?? email ?? ''}</p>
         </div>
         <button
           type="button"
@@ -150,23 +179,38 @@ export default function MyPage() {
             label="기록 이력 관리"
             onClick={() => router.push('/mypage/history')}
           />
+          <MenuItem
+            icon={<Smile size={15} className="text-primary" />}
+            label={
+              <div>
+                <p className="m-0 font-medium text-content">치아 정보</p>
+                <p className="m-0 text-[11px] text-muted">{missingSummary(missing)}</p>
+              </div>
+            }
+            onClick={() => router.push('/mypage/teeth')}
+          />
         </Section>
 
         <Section title="알림 설정">
           <MenuItem
             icon={<Bell size={15} className="text-primary" />}
-            label="스캔 주기 알림"
-            right={<Toggle on={notifyScan} onToggle={() => setNotifyScan(v => !v)} />}
+            label="푸시 알림"
+            right={
+              <Toggle
+                on={notification?.pushNotificationEnabled ?? false}
+                onToggle={() => toggleNotification('pushNotificationEnabled')}
+              />
+            }
           />
           <MenuItem
             icon={<Bell size={15} className="text-primary" />}
-            label="분석 완료 알림"
-            right={<Toggle on={notifyAnalysis} onToggle={() => setNotifyAnalysis(v => !v)} />}
-          />
-          <MenuItem
-            icon={<Bell size={15} className="text-primary" />}
-            label="위험 부위 경고 알림"
-            right={<Toggle on={notifyDanger} onToggle={() => setNotifyDanger(v => !v)} />}
+            label="분석 리포트 알림"
+            right={
+              <Toggle
+                on={notification?.reportNotificationEnabled ?? false}
+                onToggle={() => toggleNotification('reportNotificationEnabled')}
+              />
+            }
           />
         </Section>
 
@@ -185,7 +229,7 @@ export default function MyPage() {
             icon={<LogOut size={15} className="text-danger" />}
             label={<span className="text-danger font-semibold">로그아웃</span>}
             right={null}
-            onClick={() => { clearAuth(); router.push('/login'); }}
+            onClick={handleLogout}
           />
           <MenuItem
             icon={<UserX size={15} className="text-danger" />}

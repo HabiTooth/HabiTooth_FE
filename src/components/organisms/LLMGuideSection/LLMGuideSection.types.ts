@@ -1,4 +1,4 @@
-export type GuideType = 'warning' | 'danger' | 'good';
+export type GuideType = 'good' | 'warning' | 'danger';
 
 export interface GuideItem {
   type: GuideType;
@@ -9,4 +9,6 @@ export interface GuideItem {
 export interface LLMGuideSectionProps {
   items: GuideItem[];
   isLoading?: boolean;
+  failed?: boolean;
+  onRetry?: () => void;
 }

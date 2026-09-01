@@ -19,7 +19,7 @@ const getRiskColor = (risk: 'low' | 'normal' | 'high' | 'very-high') => {
 
 export default function AnalysisResult({ date, time, score, plaqueRisk, calculusRisk }: AnalysisResultProps) {
   return (
-    <div className="bg-white rounded-2xl p-4 mt-4">
+    <div className="bg-white/90 backdrop-blur-sm rounded-[20px] shadow-card p-4 mt-4">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold text-gray-800">최근 분석 결과</h3>
         <Link href="/report/1" className="text-xs text-gray-400">전체 보기 &gt;</Link>
