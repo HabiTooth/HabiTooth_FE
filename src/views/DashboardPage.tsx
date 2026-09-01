@@ -1,10 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import ScoreCard from '@/components/molecules/ScoreCard';
 import NavBar from '@/components/organisms/NavBar';
-import ScanBanner from '@/components/molecules/ScanBanner';
+import PageShell from '@/components/organisms/PageShell';
+import QuickMenu from '@/components/organisms/QuickMenu';
 import ReportSummary from '@/components/organisms/ReportSummary';
 import Header from '@/components/organisms/Header';
 import {
@@ -14,13 +14,14 @@ import {
   type DashboardScore,
 } from '@/lib/api/dashboard';
 import { formatDateTime, scoreStatus, toSummaryRisk } from '@/lib/score';
+import { riskAlert, scanReminder } from '@/lib/notifications/rules';
+import { useNotificationStore } from '@/stores/notificationStore';
 
 export default function DashboardPage() {
-  const router = useRouter();
   const [score, setScore] = useState<DashboardScore | null>(null);
   const [report, setReport] = useState<DashboardReport | null>(null);
   const [risk, setRisk] = useState<DashboardRisk | null>(null);
-  const [loaded, setLoaded] = useState(false);
+  const push = useNotificationStore((s) => s.push);
 
   useEffect(() => {
     Promise.allSettled([
@@ -31,9 +32,14 @@ export default function DashboardPage() {
       if (s.status === 'fulfilled') setScore(s.value.data.result);
       if (r.status === 'fulfilled') setReport(r.value.data.result);
       if (k.status === 'fulfilled') setRisk(k.value.data.result);
-      setLoaded(true);
     });
   }, []);
+
+  useEffect(() => {
+    for (const n of [scanReminder(score?.scannedAt), riskAlert(risk?.categories, risk?.sessionId)]) {
+      if (n) push(n);
+    }
+  }, [score, risk, push]);
 
   const plaque = risk?.categories.find((c) => c.lesionType === 'PLAQUE');
   const calculus = risk?.categories.find((c) => c.lesionType === 'CALCULUS');
@@ -42,41 +48,33 @@ export default function DashboardPage() {
   const hasReport = report !== null && report.sessionId !== null;
 
   return (
-    <main className="max-w-[430px] mx-auto p-6 bg-[#EEF2FF] min-h-screen pb-20">
-      <Header hasNotification />
+    <PageShell>
+      <main className="p-6 pb-20">
+        <Header />
 
-      {hasScore && (
         <ScoreCard
-          score={score!.score!}
-          prevScore={score!.scoreDiff === null ? undefined : score!.score! - score!.scoreDiff}
+          score={hasScore ? score!.score! : null}
+          prevScore={
+            hasScore && score!.scoreDiff !== null ? score!.score! - score!.scoreDiff! : undefined
+          }
         />
-      )}
 
-      {hasReport && (
-        <ReportSummary
-          score={report!.averageScore}
-          status={scoreStatus(report!.averageScore)}
-          date={formatDateTime(report!.scannedAt)}
-          reportId={String(report!.sessionId)}
-          plaqueScore={plaque?.affectedRatio}
-          calculusScore={calculus?.affectedRatio}
-          plaqueRisk={plaque && toSummaryRisk(plaque.riskLevel)}
-          calculusRisk={calculus && toSummaryRisk(calculus.riskLevel)}
-        />
-      )}
+        <QuickMenu />
 
-      {loaded && !hasScore && (
-        <div className="bg-white rounded-2xl p-8 mt-4 text-center">
-          <p className="m-0 text-sm text-gray-500">아직 스캔 기록이 없어요.</p>
-        </div>
-      )}
-
-      <ScanBanner
-        title="AI 구강 분석을 시작해 보세요."
-        description={'실시간 스캔 후 AI가\n구강 상태를 분석해 드려요.'}
-        onClick={() => router.push('/scan')}
-      />
+        {hasReport && (
+          <ReportSummary
+            score={report!.averageScore}
+            status={scoreStatus(report!.averageScore)}
+            date={formatDateTime(report!.scannedAt)}
+            reportId={String(report!.sessionId)}
+            plaqueScore={plaque?.affectedRatio}
+            calculusScore={calculus?.affectedRatio}
+            plaqueRisk={plaque && toSummaryRisk(plaque.riskLevel)}
+            calculusRisk={calculus && toSummaryRisk(calculus.riskLevel)}
+          />
+        )}
+      </main>
       <NavBar activeTab="home" />
-    </main>
+    </PageShell>
   );
 }
