@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo, type RefObject } from 'react';
 import { useRouter } from 'next/navigation';
-import { X, HelpCircle, Check, CheckCircle2, Lock, Loader2, AlertTriangle, Sun, Camera, Bell, User } from 'lucide-react';
+import { X, HelpCircle, Check, CheckCircle2, Lock, Loader2, AlertTriangle, Sun, Camera, Bell, User, Smile, ChevronRight } from 'lucide-react';
 import type { ScanStatusType } from '@/components/molecules/ScanStatusBanner';
 import { useCameraStream, type CameraMode } from '@/hooks/useCameraStream';
 import { useScanDetection } from '@/hooks/useScanDetection';
@@ -14,6 +14,7 @@ import {
   ALL_VIEW_TYPES,
   ZONE_GROUP_ORDER,
   GROUP_LABELS,
+  GROUP_HINTS,
   zonesOfGroup,
   estimateMinutes,
   type ScanZone,
@@ -29,8 +30,10 @@ import ScanHelpSheet from '@/components/organisms/ScanHelpSheet';
 import Link from 'next/link';
 import Checkbox from '@/components/atoms/Checkbox';
 import { useNotificationStore } from '@/stores/notificationStore';
+import { useDentitionStore } from '@/stores/dentitionStore';
 import { reportReady } from '@/lib/notifications/rules';
 import { rememberSession } from '@/lib/sessionIndex';
+import { readWebcamPreference, writeWebcamPreference } from '@/lib/cameraSource';
 
 type Step = 1 | 2 | 3 | 4;
 type ScanPhase = 'guide' | 'white' | 'uv';
@@ -45,7 +48,6 @@ const ANALYZE_STEPS = [
 
 const DEV_SESSION_ID = -1;
 const isDev = process.env.NODE_ENV === 'development';
-const WEBCAM_KEY = 'dev.useWebcam';
 
 const zoneInfo = (viewType: ViewType | null): ScanZone | undefined =>
   viewType ? SCAN_ZONES.find((z) => z.viewType === viewType) : undefined;
@@ -131,6 +133,7 @@ function ZoneChips({
               <span className="text-[11px] font-semibold text-muted tabular-nums">
                 {on}/{zones.length}
               </span>
+              <span className="text-[10px] text-muted">{GROUP_HINTS[group]}</span>
             </div>
             <div className="grid grid-cols-3 gap-1.5">
               {zones.map(({ viewType, label }) => {
@@ -169,6 +172,32 @@ function ZoneChips({
         );
       })}
     </div>
+  );
+}
+
+function TeethNotice() {
+  const { answered, hydrate } = useDentitionStore();
+
+  useEffect(() => hydrate(), [hydrate]);
+
+  if (answered) return null;
+
+  return (
+    <Link
+      href="/mypage/teeth"
+      className="flex items-center gap-3 p-3.5 rounded-[14px] bg-primary-light border border-primary/20 no-underline"
+    >
+      <Smile size={18} className="text-primary flex-shrink-0" />
+      <span className="flex-1 min-w-0">
+        <span className="block text-[12.5px] font-semibold text-content">
+          빠진 치아가 있나요?
+        </span>
+        <span className="block text-[11px] text-muted">
+          사랑니나 교정 발치를 알려주면 그 자리를 미촬영으로 안 세요.
+        </span>
+      </span>
+      <ChevronRight size={16} className="text-primary flex-shrink-0" />
+    </Link>
   );
 }
 
@@ -313,11 +342,15 @@ function Step1({
 
       <div className="bg-white/90 backdrop-blur-sm rounded-t-[28px] -mt-6 relative z-10 flex flex-col flex-1">
         <div className="px-5 pt-5 pb-4 flex flex-col gap-4">
+          <TeethNotice />
+
           <div className="flex flex-col gap-3">
             <div className="flex items-end justify-between gap-2">
               <div className="min-w-0">
                 <p className="m-0 text-[15px] font-bold text-content">촬영할 구역 고르기</p>
-                <p className="m-0 mt-0.5 text-[11px] text-muted">여러 구역을 함께 고를 수 있어요</p>
+                <p className="m-0 mt-0.5 text-[11px] text-muted">
+                  찍고 싶은 곳만 골라도 되고, 여러 곳을 함께 골라도 돼요
+                </p>
               </div>
               <span className="text-[12px] font-bold text-primary whitespace-nowrap">
                 {count}구역 · 약 {estimateMinutes(count)}분
@@ -765,12 +798,11 @@ export default function ScanPage() {
   const [useWebcam, setUseWebcam] = useState(false);
 
   useEffect(() => {
-    const stored = localStorage.getItem(WEBCAM_KEY);
-    setUseWebcam(stored !== null ? stored === 'true' : !deviceIp);
+    setUseWebcam(readWebcamPreference(Boolean(deviceIp)));
   }, [deviceIp]);
 
   const toggleWebcam = useCallback((next: boolean) => {
-    localStorage.setItem(WEBCAM_KEY, String(next));
+    writeWebcamPreference(next);
     setUseWebcam(next);
   }, []);
   const uploadedImageIds = useRef<Map<ViewType, number>>(new Map());

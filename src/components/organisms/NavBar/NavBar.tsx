@@ -1,6 +1,6 @@
 'use client';
 
-import { Home, ScanLine, BookOpen, User } from 'lucide-react';
+import { Home, ScanLine, CalendarDays, User } from 'lucide-react';
 import Link from 'next/link';
 import type { NavBarProps } from './NavBar.types';
 
@@ -8,7 +8,7 @@ export default function NavBar({ activeTab = 'home' }: NavBarProps) {
   const tabs = [
     { id: 'home', label: '홈', icon: Home, href: '/dashboard' },
     { id: 'scan', label: '스캔', icon: ScanLine, href: '/scan' },
-    { id: 'history', label: '기록', icon: BookOpen, href: '/mypage/history' },
+    { id: 'history', label: '기록', icon: CalendarDays, href: '/streak' },
     { id: 'mypage', label: '마이페이지', icon: User, href: '/mypage' },
   ];
 

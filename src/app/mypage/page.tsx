@@ -7,10 +7,12 @@ import { userApi, type NotificationSetting, type Profile } from '@/lib/api/user'
 import type { DeviceStatusResponse } from '@/lib/api/device';
 import {
   User, ChevronLeft, ChevronRight, Bell, Shield, FileText,
-  Smartphone, Clock, LogOut, UserX, Lock,
+  Smartphone, Clock, LogOut, UserX, Lock, Smile,
 } from 'lucide-react';
 import NavBar from '@/components/organisms/NavBar';
 import { writeSettings } from '@/lib/notifications/settings';
+import { useDentitionStore } from '@/stores/dentitionStore';
+import { missingSummary } from '@/lib/dentition';
 
 function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
   return (
@@ -72,8 +74,10 @@ export default function MyPage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [notification, setNotification] = useState<NotificationSetting | null>(null);
   const [device, setDevice] = useState<DeviceStatusResponse | null>(null);
+  const { missing, hydrate: hydrateDentition } = useDentitionStore();
 
   useEffect(() => {
+    hydrateDentition();
     userApi.getProfile().then((res) => setProfile(res.data.result)).catch(() => {});
     userApi.getNotification().then((res) => {
       setNotification(res.data.result);
@@ -83,7 +87,7 @@ export default function MyPage() {
       const list = res.data.result;
       if (list.length > 0) setDevice(list[0]);
     }).catch(() => {});
-  }, []);
+  }, [hydrateDentition]);
 
   const toggleNotification = (key: keyof NotificationSetting) => {
     if (!notification) return;
@@ -174,6 +178,16 @@ export default function MyPage() {
             icon={<Clock size={15} className="text-primary" />}
             label="기록 이력 관리"
             onClick={() => router.push('/mypage/history')}
+          />
+          <MenuItem
+            icon={<Smile size={15} className="text-primary" />}
+            label={
+              <div>
+                <p className="m-0 font-medium text-content">치아 정보</p>
+                <p className="m-0 text-[11px] text-muted">{missingSummary(missing)}</p>
+              </div>
+            }
+            onClick={() => router.push('/mypage/teeth')}
           />
         </Section>
 

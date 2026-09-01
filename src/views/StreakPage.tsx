@@ -1,11 +1,15 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft, ChevronRight, Flame } from 'lucide-react';
 import NavBar from '@/components/organisms/NavBar';
 import PageShell from '@/components/organisms/PageShell';
-import { historyApi } from '@/lib/api/history';
+import { historyApi, type HistoryRecordItem } from '@/lib/api/history';
+import HistoryListSection from '@/components/organisms/HistoryListSection';
+import { useSessionIndex } from '@/hooks/useSessionIndex';
+import { formatDate, formatTime, scoreGrade } from '@/lib/score';
 import { useNotificationStore } from '@/stores/notificationStore';
 import { streakReached } from '@/lib/notifications/rules';
 import {
@@ -28,6 +32,8 @@ function Stat({ value, label }: { value: string; label: string }) {
 export default function StreakPage() {
   const router = useRouter();
   const [dates, setDates] = useState<string[]>([]);
+  const [records, setRecords] = useState<HistoryRecordItem[]>([]);
+  const { idByDate } = useSessionIndex();
   const [cursor, setCursor] = useState(() => new Date());
   const push = useNotificationStore((s) => s.push);
 
@@ -35,6 +41,11 @@ export default function StreakPage() {
     historyApi
       .getList({ period: 'ALL', size: 200 })
       .then((res) => setDates((res.data.result?.items ?? []).map((i) => i.date)))
+      .catch(() => {});
+
+    historyApi
+      .getRecords()
+      .then((res) => setRecords(res.data.result ?? []))
       .catch(() => {});
   }, []);
 
@@ -149,27 +160,53 @@ export default function StreakPage() {
           </div>
 
           <div className="grid grid-cols-7 gap-1">
-            {cells.map((cell, i) => (
-              <div
-                key={cell.key ?? `pad-${i}`}
-                className={`aspect-square rounded-lg flex items-center justify-center text-xs tabular-nums ${
-                  cell.day === null
-                    ? ''
-                    : cell.scanned
-                      ? 'bg-primary text-white font-semibold'
-                      : cell.isFuture
-                        ? 'text-muted/40'
-                        : 'bg-hairline/50 text-muted'
-                } ${cell.isToday && !cell.scanned ? 'ring-1 ring-primary text-primary' : ''}`}
-              >
-                {cell.day ?? ''}
-              </div>
-            ))}
+            {cells.map((cell, i) => {
+              const cls = `aspect-square rounded-lg flex items-center justify-center text-xs tabular-nums ${
+                cell.day === null
+                  ? ''
+                  : cell.scanned
+                    ? 'bg-primary text-white font-semibold'
+                    : cell.isFuture
+                      ? 'text-muted/40'
+                      : 'bg-hairline/50 text-muted'
+              } ${cell.isToday && !cell.scanned ? 'ring-1 ring-primary text-primary' : ''}`;
+
+              const sessionId = cell.scanned ? idByDate(cell.key) : null;
+
+              return sessionId === null ? (
+                <div key={cell.key ?? `pad-${i}`} className={cls}>
+                  {cell.day ?? ''}
+                </div>
+              ) : (
+                <Link
+                  key={cell.key}
+                  href={`/report/${sessionId}`}
+                  aria-label={`${cell.day}일 리포트 보기`}
+                  className={`${cls} no-underline transition-transform active:scale-95`}
+                >
+                  {cell.day}
+                </Link>
+              );
+            })}
           </div>
+
+          <p className="m-0 mt-3 text-[11px] text-muted">
+            파란 날짜를 누르면 그날 리포트로 넘어가요.
+          </p>
         </div>
+
+        <HistoryListSection
+          items={records.map((r) => ({
+            sessionId: idByDate(r.date),
+            date: formatDate(r.date),
+            time: formatTime(r.time),
+            score: r.score,
+            grade: scoreGrade(r.score),
+          }))}
+        />
       </div>
 
-      <NavBar activeTab="home" />
+      <NavBar activeTab="history" />
     </PageShell>
   );
 }
