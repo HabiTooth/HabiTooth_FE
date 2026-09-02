@@ -1,8 +1,9 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { ChevronRight } from 'lucide-react';
+import MoreLink from '@/components/atoms/MoreLink';
 import ToothStatusItem from '@/components/molecules/ToothStatusItem';
+import { RISK_FILL, RISK_LEGEND } from '@/lib/riskColors';
 import { scoreDiffText, scoreGrade } from '@/lib/score';
 import type { ReportSummaryProps, RiskLevel } from './ReportSummary.types';
 
@@ -36,11 +37,39 @@ export default function ReportSummary({
   calculusScore,
   plaqueRisk,
   calculusRisk,
+  teeth,
+  totalTeeth,
 }: ReportSummaryProps) {
   const router = useRouter();
   const diff = prevScore !== undefined ? score - prevScore : null;
   const grade = scoreGrade(score);
   const focus = focusText(plaqueRisk, calculusRisk);
+
+  const chips =
+    teeth && teeth.length > 0
+      ? [
+          {
+            label: '양호',
+            color: RISK_FILL.LOW,
+            count: teeth.filter((r) => r === 'VERY_LOW' || r === 'LOW').length,
+          },
+          {
+            label: '주의',
+            color: RISK_FILL.HIGH,
+            count: teeth.filter((r) => r === 'MEDIUM' || r === 'HIGH').length,
+          },
+          {
+            label: '위험',
+            color: RISK_FILL.CRITICAL,
+            count: teeth.filter((r) => r === 'CRITICAL').length,
+          },
+          {
+            label: '미촬영',
+            color: '#CDD7E3',
+            count: Math.max((totalTeeth ?? teeth.length) - teeth.length, 0),
+          },
+        ].filter((c) => c.count > 0)
+      : [];
 
   const open = reportId ? () => router.push(`/report/${reportId}`) : undefined;
 
@@ -58,17 +87,12 @@ export default function ReportSummary({
         <h3 className="text-sm font-semibold text-content">
           {date ? `${date} 분석 결과` : '최근 분석 결과'}
         </h3>
-        {open && (
-          <span className="flex items-center gap-0.5 text-xs text-muted">
-            전체 보기
-            <ChevronRight size={14} />
-          </span>
-        )}
+        {open && <MoreLink label="전체 보기" />}
       </div>
 
       <div className="flex items-center gap-4">
         <div className="flex flex-col items-center justify-center w-24 h-24 bg-primary-light rounded-2xl flex-shrink-0">
-          <span className="text-3xl font-bold text-primary">{score}</span>
+          <span className="text-3xl font-bold text-primary tabular-nums">{score}</span>
           <span className="text-xs text-muted">종합 점수</span>
         </div>
         <div className="flex-1 min-w-0 flex flex-col gap-1.5">
@@ -83,6 +107,24 @@ export default function ReportSummary({
         </div>
       </div>
 
+      {chips.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mt-4">
+          {chips.map(({ label, color, count }) => (
+            <span
+              key={label}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-hairline/40 text-[11px] text-content"
+            >
+              <span
+                className="w-2 h-2 rounded-full flex-shrink-0"
+                style={{ backgroundColor: color }}
+              />
+              {label}
+              <b className="font-bold tabular-nums">{count}</b>
+            </span>
+          ))}
+        </div>
+      )}
+
       {plaqueScore !== undefined && (
         <>
           <div className="border-t border-dashed border-hairline my-4" />
@@ -92,14 +134,12 @@ export default function ReportSummary({
             <ToothStatusItem label="치석" score={calculusScore!} riskLevel={calculusRisk!} />
           </div>
           <div className="flex items-center justify-center gap-4 mt-3">
-            {[
-              { label: '낮음', color: 'bg-[#4A86D9]' },
-              { label: '보통', color: 'bg-[#F0B65A]' },
-              { label: '높음', color: 'bg-[#EE8A86]' },
-              { label: '매우 높음', color: 'bg-[#DC2626]' },
-            ].map(({ label, color }) => (
+            {RISK_LEGEND.map(({ label, color }) => (
               <div key={label} className="flex items-center gap-1">
-                <span className={`w-1.5 h-1.5 rounded-full ${color}`} />
+                <span
+                  className="w-1.5 h-1.5 rounded-full"
+                  style={{ backgroundColor: color }}
+                />
                 <span className="text-[10px] text-muted">{label}</span>
               </div>
             ))}

@@ -13,15 +13,15 @@ export interface ScanZone {
 // 좌/우는 촬영자 기준
 export const SCAN_ZONES: ScanZone[] = [
   { viewType: 'UPPER_RIGHT_MOLAR',    label: '오른쪽 어금니',     fullLabel: '윗니 오른쪽 어금니',   group: 'UPPER', teeth: [18, 17, 16] },
-  { viewType: 'UPPER_RIGHT_PREMOLAR', label: '오른쪽 작은어금니', fullLabel: '윗니 오른쪽 작은어금니', group: 'UPPER', teeth: [15, 14, 13] },
+  { viewType: 'UPPER_RIGHT_PREMOLAR', label: '오른쪽 송곳니 쪽', fullLabel: '윗니 오른쪽 송곳니 쪽', group: 'UPPER', teeth: [15, 14, 13] },
   { viewType: 'UPPER_FRONT',          label: '앞니',            fullLabel: '윗니 앞니',            group: 'UPPER', teeth: [12, 11, 21, 22] },
-  { viewType: 'UPPER_LEFT_PREMOLAR',  label: '왼쪽 작은어금니', fullLabel: '윗니 왼쪽 작은어금니', group: 'UPPER', teeth: [23, 24, 25] },
+  { viewType: 'UPPER_LEFT_PREMOLAR',  label: '왼쪽 송곳니 쪽', fullLabel: '윗니 왼쪽 송곳니 쪽', group: 'UPPER', teeth: [23, 24, 25] },
   { viewType: 'UPPER_LEFT_MOLAR',     label: '왼쪽 어금니',     fullLabel: '윗니 왼쪽 어금니',     group: 'UPPER', teeth: [26, 27, 28] },
 
   { viewType: 'LOWER_RIGHT_MOLAR',    label: '오른쪽 어금니',     fullLabel: '아랫니 오른쪽 어금니',   group: 'LOWER', teeth: [48, 47, 46] },
-  { viewType: 'LOWER_RIGHT_PREMOLAR', label: '오른쪽 작은어금니', fullLabel: '아랫니 오른쪽 작은어금니', group: 'LOWER', teeth: [45, 44, 43] },
+  { viewType: 'LOWER_RIGHT_PREMOLAR', label: '오른쪽 송곳니 쪽', fullLabel: '아랫니 오른쪽 송곳니 쪽', group: 'LOWER', teeth: [45, 44, 43] },
   { viewType: 'LOWER_FRONT',          label: '앞니',            fullLabel: '아랫니 앞니',            group: 'LOWER', teeth: [42, 41, 31, 32] },
-  { viewType: 'LOWER_LEFT_PREMOLAR',  label: '왼쪽 작은어금니', fullLabel: '아랫니 왼쪽 작은어금니', group: 'LOWER', teeth: [33, 34, 35] },
+  { viewType: 'LOWER_LEFT_PREMOLAR',  label: '왼쪽 송곳니 쪽', fullLabel: '아랫니 왼쪽 송곳니 쪽', group: 'LOWER', teeth: [33, 34, 35] },
   { viewType: 'LOWER_LEFT_MOLAR',     label: '왼쪽 어금니',     fullLabel: '아랫니 왼쪽 어금니',     group: 'LOWER', teeth: [36, 37, 38] },
 
   { viewType: 'OUTER_RIGHT',  label: '오른쪽 볼 쪽', fullLabel: '오른쪽 볼 쪽', group: 'OUTER', teeth: [18, 17, 16, 15, 14, 48, 47, 46, 45, 44] },

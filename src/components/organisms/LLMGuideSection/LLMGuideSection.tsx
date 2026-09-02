@@ -1,12 +1,13 @@
 'use client';
 
 import { Bot, AlertTriangle, AlertCircle, CheckCircle, Loader2, RotateCw } from 'lucide-react';
+import { RISK_INK } from '@/lib/riskColors';
 import type { LLMGuideSectionProps, GuideType } from './LLMGuideSection.types';
 
 const getColor = (type: GuideType) => {
-  if (type === 'warning') return '#F0B65A';
-  if (type === 'danger') return '#EE8A86';
-  return '#5FD3A8';
+  if (type === 'warning') return RISK_INK.MEDIUM;
+  if (type === 'danger') return RISK_INK.CRITICAL;
+  return RISK_INK.LOW;
 };
 
 const getIcon = (type: GuideType) => {

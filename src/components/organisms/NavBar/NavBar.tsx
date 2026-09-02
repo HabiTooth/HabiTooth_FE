@@ -13,7 +13,7 @@ export default function NavBar({ activeTab = 'home' }: NavBarProps) {
   ];
 
   return (
-    <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-white border-t border-gray-100 flex items-stretch h-16 z-50">
+    <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-white/95 backdrop-blur-sm border-t border-hairline flex items-stretch h-14 box-content pb-[env(safe-area-inset-bottom)] z-50">
       {tabs.map((tab) => {
         const Icon = tab.icon;
         const isActive = activeTab === tab.id;
@@ -21,11 +21,11 @@ export default function NavBar({ activeTab = 'home' }: NavBarProps) {
           <Link
             key={tab.id}
             href={tab.href}
-            className={`flex-1 flex flex-col items-center justify-center gap-1 text-xs font-medium whitespace-nowrap ${
-              isActive ? 'text-[#4A86D9]' : 'text-gray-400'
+            className={`flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-medium whitespace-nowrap no-underline ${
+              isActive ? 'text-primary' : 'text-muted'
             }`}
           >
-            <Icon size={22} strokeWidth={isActive ? 2.5 : 1.8} />
+            <Icon size={20} strokeWidth={isActive ? 2.4 : 1.8} />
             <span>{tab.label}</span>
           </Link>
         );

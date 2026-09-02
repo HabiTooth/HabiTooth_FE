@@ -2,13 +2,16 @@
 
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
+import MoreLink from '@/components/atoms/MoreLink';
+import { RISK_INK } from '@/lib/riskColors';
 import type { HistoryItem, HistoryListSectionProps } from './HistoryListSection.types';
 
-const getGradeColor = (grade: string) => {
-  if (grade === 'A') return 'text-[#4A86D9]';
-  if (grade === 'B') return 'text-[#F0B65A]';
-  if (grade === 'C') return 'text-[#E8542A]';
-  return 'text-gray-400';
+const GRADE_COLOR: Record<string, string> = {
+  A: RISK_INK.VERY_LOW,
+  B: RISK_INK.LOW,
+  C: RISK_INK.MEDIUM,
+  D: RISK_INK.HIGH,
+  F: RISK_INK.CRITICAL,
 };
 
 function Row({ item }: { item: HistoryItem }) {
@@ -31,7 +34,9 @@ function Row({ item }: { item: HistoryItem }) {
             <span className="text-xs font-normal text-gray-400">/100</span>
           </p>
         </div>
-        <div className={`text-sm font-bold ${getGradeColor(item.grade)}`}>{item.grade}</div>
+        <div className="text-sm font-bold" style={{ color: GRADE_COLOR[item.grade] ?? '#8A94A6' }}>
+          {item.grade}
+        </div>
         {item.sessionId != null && <ChevronRight size={14} className="text-gray-300" />}
       </div>
     </>
@@ -43,10 +48,15 @@ export default function HistoryListSection({ items }: HistoryListSectionProps) {
     <div className="bg-white/90 backdrop-blur-sm rounded-[20px] shadow-card p-5 mt-4">
       <div className="flex items-center justify-between mb-4">
         <h2 className="m-0 text-sm font-semibold text-gray-800">지난 측정 기록</h2>
-        <Link href="/mypage/history" className="text-xs text-[#4A86D9] no-underline">
-          전체 보기 &gt;
+        <Link href="/mypage/history" className="no-underline">
+          <MoreLink label="전체 보기" />
         </Link>
       </div>
+      {items.length === 0 && (
+        <p className="m-0 py-6 text-center text-[12px] text-muted">
+          아직 스캔 기록이 없어요. 첫 스캔을 하면 여기에 쌓여요.
+        </p>
+      )}
       <div className="space-y-3">
         {items.map((item, index) =>
           item.sessionId == null ? (

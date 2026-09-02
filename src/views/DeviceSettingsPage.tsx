@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, Loader2, Monitor, Smartphone, Trash2 } from 'lucide-react';
+import { ChevronLeft, Loader2, Monitor, RefreshCw, Smartphone, Trash2 } from 'lucide-react';
 import PageShell from '@/components/organisms/PageShell';
 import { useAuthStore } from '@/stores/authStore';
 import { userApi } from '@/lib/api/user';
@@ -12,6 +12,7 @@ import {
   readWebcamPreference,
   writeWebcamPreference,
 } from '@/lib/cameraSource';
+import { CONFIGURED_HOST, deviceAddress } from '@/lib/deviceAddress';
 
 function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
   return (
@@ -55,6 +56,10 @@ export default function DeviceSettingsPage() {
     writeWebcamPreference(next);
   };
 
+  // BE는 기기를 시리얼로 공유해서 등록 해제 API가 없음 - 이 기기에 저장된 연결만 끊음
+  const registered = Boolean(deviceIp) || device !== null;
+  const address = deviceAddress(deviceIp);
+
   const disconnect = () => {
     clearDevice();
     clearWebcamPreference();
@@ -88,8 +93,13 @@ export default function DeviceSettingsPage() {
                 {loading ? '불러오는 중...' : (device?.modelName ?? '연결된 스캐너 없음')}
               </p>
               <p className="m-0 text-[11px] text-muted">
-                {deviceIp ? `주소 ${deviceIp}` : '페어링하면 여기에 표시돼요'}
+                {address ? `주소 ${address}` : '페어링하면 여기에 표시돼요'}
               </p>
+              {CONFIGURED_HOST && (
+                <p className="m-0 text-[10px] text-muted">
+                  .env의 NEXT_PUBLIC_ESP32_HOST를 쓰는 중
+                </p>
+              )}
             </div>
             {loading && <Loader2 size={16} className="animate-spin text-primary" />}
           </div>
@@ -126,16 +136,26 @@ export default function DeviceSettingsPage() {
           )}
         </div>
 
-        {deviceIp && (
-          <button
-            type="button"
-            onClick={disconnect}
-            className="w-full py-4 rounded-[14px] bg-white/90 backdrop-blur-sm shadow-card border border-hairline flex items-center justify-center gap-2 text-[13px] font-semibold text-danger"
-          >
-            <Trash2 size={15} />
-            연결 해제하고 다시 등록
-          </button>
-        )}
+        {!loading &&
+          (registered ? (
+            <button
+              type="button"
+              onClick={disconnect}
+              className="w-full py-4 rounded-[14px] bg-white/90 backdrop-blur-sm shadow-card border border-hairline flex items-center justify-center gap-2 text-[13px] font-semibold text-danger"
+            >
+              <Trash2 size={15} />
+              연결 해제하고 다시 등록
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => router.push('/pairing')}
+              className="w-full py-4 rounded-[14px] bg-primary-gradient text-white text-[15px] font-semibold shadow-button flex items-center justify-center gap-2"
+            >
+              <RefreshCw size={16} />
+              스캐너 등록하기
+            </button>
+          ))}
 
         <p className="m-0 px-1 text-[10px] text-muted leading-relaxed">
           연결을 해제하면 이 기기에 저장된 스캐너 정보와 촬영 설정이 지워지고 등록 화면으로

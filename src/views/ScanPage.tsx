@@ -34,6 +34,8 @@ import { useDentitionStore } from '@/stores/dentitionStore';
 import { reportReady } from '@/lib/notifications/rules';
 import { rememberSession } from '@/lib/sessionIndex';
 import { readWebcamPreference, writeWebcamPreference } from '@/lib/cameraSource';
+import { controlHost, deviceAddress, streamUrl } from '@/lib/deviceAddress';
+import { useHardwareShutter } from '@/hooks/useHardwareShutter';
 
 type Step = 1 | 2 | 3 | 4;
 type ScanPhase = 'guide' | 'white' | 'uv';
@@ -540,12 +542,14 @@ function Step3({
   analyzeError,
   onRetry,
   onReset,
+  onUseMock,
 }: {
   analyzeStep: number;
   analyzeProgress: number;
   analyzeError: string | null;
   onRetry: () => void;
   onReset: () => void;
+  onUseMock: () => void;
 }) {
   if (analyzeError) {
     return (
@@ -575,6 +579,15 @@ function Step3({
           >
             처음부터 다시 스캔
           </button>
+          {isDev && (
+            <button
+              type="button"
+              onClick={onUseMock}
+              className="w-full h-11 rounded-[12px] border border-primary/40 bg-primary/5 text-primary text-[13px] font-medium"
+            >
+              테스트 데이터로 계속 (개발용)
+            </button>
+          )}
         </div>
       </div>
     );
@@ -795,6 +808,7 @@ export default function ScanPage() {
   const phase: ScanPhase = 'white';
 
   const { deviceId, deviceIp } = useAuthStore();
+  const scannerAddress = deviceAddress(deviceIp);
   const [useWebcam, setUseWebcam] = useState(false);
 
   useEffect(() => {
@@ -842,15 +856,15 @@ export default function ScanPage() {
 
   useEffect(() => {
     if (step === 2) {
-      if (deviceIp && !useWebcam) {
-        startCameraRef.current('esp32', `http://${deviceIp}/stream`);
+      if (scannerAddress && !useWebcam) {
+        startCameraRef.current('esp32', streamUrl(scannerAddress));
       } else {
         startCameraRef.current('device');
       }
     } else {
       stopCameraRef.current();
     }
-  }, [step, deviceIp, useWebcam]);
+  }, [step, scannerAddress, useWebcam]);
 
   useEffect(() => () => {
     if (pendingRef.current) URL.revokeObjectURL(pendingRef.current.previewUrl);
@@ -861,11 +875,15 @@ export default function ScanPage() {
     if (g) setSurface(g === 'OUTER' ? 'BUCCAL' : 'LINGUAL');
   }, [currentZone]);
 
-  const captureBlob = useCallback(async (): Promise<Blob> => {
-    if (cameraMode === 'esp32' && deviceIp) {
-      const host = deviceIp.split(':')[0];
-      const res = await fetch(`/api/camera/capture?ip=${host}`);
-      if (!res.ok) throw new Error('capture proxy failed');
+  const captureBlob = useCallback(async (zone: ViewType): Promise<Blob> => {
+    if (cameraMode === 'esp32' && scannerAddress) {
+      const res = await fetch(
+        `/api/camera/capture?ip=${controlHost(scannerAddress)}&view=${zone}`,
+      );
+      if (!res.ok) {
+        const detail = await res.json().catch(() => null);
+        throw new Error(detail?.error ?? `capture proxy ${res.status}`);
+      }
       return res.blob();
     }
     const video = videoRef.current;
@@ -876,22 +894,53 @@ export default function ScanPage() {
     return new Promise<Blob>((resolve) =>
       canvas.toBlob((b) => resolve(b ?? new Blob()), 'image/jpeg', 0.9),
     );
-  }, [cameraMode, deviceIp, videoRef]);
+  }, [cameraMode, scannerAddress, videoRef]);
+
+  // 기기가 풀해상도로 한 컷 잡는 동안 스트림이 끊겨서, 촬영 뒤에는 다시 붙여줘야 함
+  const restartStream = useCallback(() => {
+    if (cameraMode === 'esp32' && scannerAddress) {
+      startCameraRef.current('esp32', streamUrl(scannerAddress));
+    }
+  }, [cameraMode, scannerAddress]);
+
+  const acceptShot = useCallback(
+    async (blob: Blob) => {
+      if (!currentZone) return;
+      const quality = await evaluateCaptureBlob(blob);
+      setPending({ zone: currentZone, blob, previewUrl: URL.createObjectURL(blob), quality });
+    },
+    [currentZone],
+  );
+
+  // 기기 셔터 버튼으로 찍은 컷도 웹 버튼과 같은 확인 화면으로 넘긴다
+  useHardwareShutter({
+    host: cameraMode === 'esp32' && scannerAddress ? controlHost(scannerAddress) : null,
+    enabled: step === 2 && !pending,
+    onCapture: (blob) => {
+      void acceptShot(blob);
+      restartStream();
+    },
+  });
 
   const handleCapture = useCallback(async () => {
     if (isCapturing || !isReady || !currentZone || pending) return;
     setIsCapturing(true);
     setCaptureError(null);
     try {
-      const blob = await captureBlob();
-      const quality = await evaluateCaptureBlob(blob);
-      setPending({ zone: currentZone, blob, previewUrl: URL.createObjectURL(blob), quality });
-    } catch {
-      setCaptureError('촬영에 실패했어요. 카메라 연결을 확인해 주세요.');
+      const blob = await captureBlob(currentZone);
+      await acceptShot(blob);
+      restartStream();
+    } catch (e) {
+      const detail = e instanceof Error ? e.message : '';
+      setCaptureError(
+        `촬영에 실패했어요. 스캐너 연결을 확인해 주세요.${detail ? `
+(${detail})` : ''}`,
+      );
+      restartStream();
     } finally {
       setIsCapturing(false);
     }
-  }, [isCapturing, isReady, currentZone, pending, captureBlob]);
+  }, [isCapturing, isReady, currentZone, pending, captureBlob, acceptShot, restartStream]);
 
   const handleRetake = useCallback(() => {
     setPending((prev) => {
@@ -989,12 +1038,10 @@ export default function ScanPage() {
         setTimeout(() => setStep(4), 800);
       })
       .catch(() => {
-        // AI 분석 BE 미구현 - 테스트용 데이터로 Step4 진행
         clearInterval(t);
-        setAnalysisResult(mockAnalysisResult(capturedZones));
-        setAnalyzeStep(ANALYZE_STEPS.length + 1);
-        setAnalyzeProgress(100);
-        setTimeout(() => setStep(4), 800);
+        setAnalyzeError(
+          '분석 서버가 응답하지 않았어요.\n찍은 사진은 그대로 있으니 다시 시도하면 돼요.',
+        );
       });
 
     return () => clearInterval(t);
@@ -1105,8 +1152,8 @@ export default function ScanPage() {
           onFinish={() => setStep(3)}
           onRetry={() => {
             stopCamera();
-            if (deviceIp && !useWebcam) {
-              startCamera('esp32', `http://${deviceIp}/stream`);
+            if (scannerAddress && !useWebcam) {
+              startCamera('esp32', streamUrl(scannerAddress));
             } else {
               startCamera('device');
             }
@@ -1126,6 +1173,11 @@ export default function ScanPage() {
             setAnalyzeKey((k) => k + 1);
           }}
           onReset={handleReset}
+          onUseMock={() => {
+            setAnalyzeError(null);
+            setAnalysisResult(mockAnalysisResult(capturedZones));
+            setStep(4);
+          }}
         />
       )}
       {step === 4 && (
