@@ -65,10 +65,9 @@ export async function GET(req: NextRequest) {
 
     return new NextResponse(buffer, { headers: { 'Content-Type': 'image/jpeg' } });
   } catch (e) {
+    // 원인이 다 502로 뭉개지면 콘솔만 보고는 기기 문제인지 네트워크인지 알 수 없음
     const isTimeout = e instanceof Error && e.name === 'AbortError';
-    return NextResponse.json(
-      { error: isTimeout ? 'capture timeout' : 'capture failed' },
-      { status: 502 },
-    );
+    const reason = isTimeout ? 'capture timeout' : ((e as Error).message ?? 'capture failed');
+    return NextResponse.json({ error: reason }, { status: 502 });
   }
 }
