@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowRight, ChevronRight, TrendingDown, TrendingUp } from 'lucide-react';
+import { ArrowRight, TrendingDown, TrendingUp } from 'lucide-react';
+import MoreLink from '@/components/atoms/MoreLink';
 import { compareSummary, type CompareResult } from '@/lib/compare';
 import { RISK_LABEL } from '@/lib/score';
 
@@ -17,16 +18,13 @@ export default function ChangeSummary({
   const notable = [...result.worsened, ...result.improved].slice(0, 4);
 
   return (
-    <div className="bg-white/90 backdrop-blur-sm rounded-[20px] shadow-card p-5 mt-4">
+    <Link
+      href="/compare"
+      className="block bg-white/90 backdrop-blur-sm rounded-[20px] shadow-card p-5 mt-4 no-underline"
+    >
       <div className="flex items-center justify-between mb-3">
         <h2 className="m-0 text-sm font-semibold text-content">직전 스캔 대비</h2>
-        <Link
-          href="/compare"
-          className="flex items-center gap-0.5 text-xs text-primary no-underline"
-        >
-          자세히
-          <ChevronRight size={13} />
-        </Link>
+        <MoreLink />
       </div>
 
       <div className="flex items-center gap-2 mb-2">
@@ -74,6 +72,6 @@ export default function ChangeSummary({
           )}
         </div>
       )}
-    </div>
+    </Link>
   );
 }

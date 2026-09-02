@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo } from 'react';
 import Link from 'next/link';
-import { ChevronRight } from 'lucide-react';
+import MoreLink from '@/components/atoms/MoreLink';
 import { useHabitStore } from '@/stores/habitStore';
 import { HABITS, completionRate, doneOn, recentKeys } from '@/lib/habits';
 
@@ -24,7 +24,7 @@ export default function HabitSummarySection() {
     >
       <div className="flex items-center justify-between mb-1">
         <h2 className="m-0 text-sm font-semibold text-content">최근 일주일 관리 습관</h2>
-        <ChevronRight size={14} className="text-muted" />
+        <MoreLink />
       </div>
 
       {empty ? (

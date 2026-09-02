@@ -65,16 +65,16 @@ export default function TeethPage() {
           <p className="m-0 text-[13.5px] font-semibold text-content mb-2">
             빠진 치아가 있으면 알려주세요
           </p>
-          <p className="m-0 text-[12.5px] text-muted leading-relaxed">
+          <p className="m-0 text-[12.5px] text-muted leading-[1.45]">
             사랑니를 뽑았거나 교정하면서 뺀 치아가 있으면 표시해 주세요.
           </p>
-          <p className="m-0 mt-2 text-[12.5px] text-muted leading-relaxed">
+          <p className="m-0 mt-1.5 text-[12.5px] text-muted leading-[1.45]">
             그 자리를 분석에서 빼기 때문에, 없는 치아가 계속 &quot;안 찍힌 곳&quot;으로 잡히는 걸
             막을 수 있어요.
           </p>
         </div>
 
-        <p className="m-0 px-1 text-[11.5px] text-muted leading-relaxed">
+        <p className="m-0 px-1 text-[11.5px] text-muted leading-[1.45]">
           안쪽 어금니가 바깥, 앞니가 가운데예요. 잘 모르겠으면 아래 버튼으로 한 번에 골라도 돼요.
         </p>
 

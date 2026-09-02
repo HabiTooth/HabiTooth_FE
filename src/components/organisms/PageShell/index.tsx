@@ -12,9 +12,9 @@ export default function PageShell({
   fill?: boolean;
 }) {
   const inner = fill
-    ? 'h-svh flex flex-col pb-16'
+    ? 'h-svh flex flex-col pb-14'
     : withNav
-      ? 'pb-28'
+      ? 'pb-[104px]'
       : 'pb-10';
 
   return (

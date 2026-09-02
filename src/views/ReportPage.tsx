@@ -17,10 +17,14 @@ import type { ToothAnalysisResult } from '@/components/organisms/OralViewer3D/Th
 import type { GuideItem } from '@/components/organisms/LLMGuideSection/LLMGuideSection.types';
 import { reportApi, type LlmReport, type SessionReport } from '@/lib/api/report';
 import { historyApi, type HistoryScoreTrendItem } from '@/lib/api/history';
-import { formatDate, formatShortDate, scoreStatus } from '@/lib/score';
+import { formatDate, formatShortDate, scoreStatus, toSummaryRisk } from '@/lib/score';
+import { ALL_TEETH } from '@/lib/dentition';
+import { useDentitionStore } from '@/stores/dentitionStore';
 import { compareTeeth } from '@/lib/compare';
 import { useSessionIndex } from '@/hooks/useSessionIndex';
 import type { LesionType, RiskLevel } from '@/lib/api/common';
+
+const RISK_ORDER: RiskLevel[] = ['VERY_LOW', 'LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
 
 const GUIDE_TYPE: Record<RiskLevel, GuideItem['type']> = {
   VERY_LOW: 'good',
@@ -48,7 +52,10 @@ export default function ReportPage() {
   const [llmKey, setLlmKey] = useState(0);
   const [previous, setPrevious] = useState<SessionReport | null>(null);
   const { sessions } = useSessionIndex();
+  const { missing, hydrate: hydrateDentition } = useDentitionStore();
   const [trend, setTrend] = useState<HistoryScoreTrendItem[]>([]);
+
+  useEffect(() => hydrateDentition(), [hydrateDentition]);
 
   useEffect(() => {
     if (!Number.isFinite(sessionId)) return;
@@ -66,6 +73,7 @@ export default function ReportPage() {
     historyApi.getScoreTrend().then((res) => setTrend(res.data.result)).catch(() => {});
   }, [sessionId, llmKey]);
 
+  const currentRef = sessions.find((x) => x.sessionId === sessionId) ?? null;
   const previousRef = sessions.find((x) => x.sessionId < sessionId) ?? null;
   const previousId = previousRef?.sessionId ?? null;
 
@@ -92,13 +100,22 @@ export default function ReportPage() {
     [previous, report],
   );
 
+  // 한 치아에 치태·치석 행이 따로 오기 때문에 치아별로 제일 나쁜 등급만 남김
+  const toothRisks = useMemo(() => {
+    const worst = new Map<number, number>();
+    for (const t of report?.toothStatuses ?? []) {
+      const rank = RISK_ORDER.indexOf(t.riskLevel);
+      worst.set(t.toothNumber, Math.max(worst.get(t.toothNumber) ?? 0, rank));
+    }
+    return [...worst.values()].map((rank) => RISK_ORDER[rank]);
+  }, [report]);
+
   const riskCategories: Array<{ lesionType: LesionType; riskLevel: RiskLevel }> = useMemo(() => {
-    const order: RiskLevel[] = ['VERY_LOW', 'LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
     const worst = (type: LesionType): RiskLevel => {
       const levels = (report?.toothStatuses ?? [])
         .filter((t) => t.lesionType === type)
-        .map((t) => order.indexOf(t.riskLevel));
-      return order[levels.length > 0 ? Math.max(...levels) : 0];
+        .map((t) => RISK_ORDER.indexOf(t.riskLevel));
+      return RISK_ORDER[levels.length > 0 ? Math.max(...levels) : 0];
     };
     return [
       { lesionType: 'PLAQUE', riskLevel: worst('PLAQUE') },
@@ -153,6 +170,11 @@ export default function ReportPage() {
           score={report.totalScore}
           prevScore={prevScore}
           status={scoreStatus(report.totalScore)}
+          date={formatDate(currentRef?.scannedAt)}
+          teeth={toothRisks}
+          totalTeeth={ALL_TEETH.length - missing.length}
+          plaqueRisk={toSummaryRisk(riskCategories[0].riskLevel)}
+          calculusRisk={toSummaryRisk(riskCategories[1].riskLevel)}
         />
       )}
 
