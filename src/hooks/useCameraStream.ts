@@ -4,6 +4,8 @@ import { useRef, useState, useCallback, useEffect } from 'react';
 
 export type CameraMode = 'device' | 'esp32';
 
+const STREAM_TIMEOUT = 8000;
+
 export interface UseCameraStreamReturn {
   videoRef: React.RefObject<HTMLVideoElement | null>;
   imgRef: React.RefObject<HTMLImageElement | null>;
@@ -23,6 +25,9 @@ export function useCameraStream(): UseCameraStreamReturn {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  // 스트림은 81, 제어(/led, /control)는 80
+  const controlHostRef = useRef<string | null>(null);
+  const streamWatchdog = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lightOn, setLightOn] = useState(false);
@@ -30,6 +35,8 @@ export function useCameraStream(): UseCameraStreamReturn {
   const [cameraMode, setCameraMode] = useState<CameraMode>('device');
 
   const stopCamera = useCallback(() => {
+    if (streamWatchdog.current) clearTimeout(streamWatchdog.current);
+    streamWatchdog.current = null;
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
     if (videoRef.current) videoRef.current.srcObject = null;
@@ -45,19 +52,31 @@ export function useCameraStream(): UseCameraStreamReturn {
 
         if (mode === 'esp32' && esp32Url) {
           setCameraMode('esp32');
-          // ESP32 기본 해상도가 QVGA(320x240)라 화면에 꽉 채우면 뭉개짐 - SVGA + 고화질로 세팅
-          // 주의: 스트림은 :81, /control은 80 포트라 포트 떼고 요청해야 함
-          const controlHost = esp32Url.replace(/^https?:\/\//, '').split('/')[0].split(':')[0];
-          // XCLK 20MHz(기본값)에서 색이 핑크로 틀어지는 이슈가 있어 12로 고정 (재부팅 시 초기화되므로 연결 때마다 세팅)
-          fetch(`http://${controlHost}/xclk?xclk=12`, { mode: 'no-cors' }).catch(() => {});
-          fetch(`http://${controlHost}/control?var=framesize&val=9`, { mode: 'no-cors' }).catch(() => {});
-          fetch(`http://${controlHost}/control?var=quality&val=10`, { mode: 'no-cors' }).catch(() => {});
+          // 스트림은 :81, /led 같은 제어는 80 포트
+          controlHostRef.current = esp32Url
+            .replace(/^https?:\/\//, '')
+            .split('/')[0]
+            .split(':')[0];
+          // 스트림 포트가 닫혀 있으면 onerror도 안 뜨고 TCP 타임아웃까지 멈춰 있어서 직접 끊는다
+          streamWatchdog.current = setTimeout(() => {
+            setError(
+              `스캐너 미리보기에 연결하지 못했어요.\n${esp32Url}\n기기 전원과 WiFi 연결을 확인해 주세요.`,
+            );
+          }, STREAM_TIMEOUT);
+
           // img 엘리먼트가 마운트된 후 src 설정을 위해 requestAnimationFrame 사용
           requestAnimationFrame(() => {
             const img = imgRef.current;
             if (!img) return;
-            img.onload = () => { setIsReady(true); setError(null); };
-            img.onerror = () => { setError(`ESP32 카메라 연결 실패\n${esp32Url}`); };
+            img.onload = () => {
+              if (streamWatchdog.current) clearTimeout(streamWatchdog.current);
+              setIsReady(true);
+              setError(null);
+            };
+            img.onerror = () => {
+              if (streamWatchdog.current) clearTimeout(streamWatchdog.current);
+              setError(`스캐너 카메라 연결 실패\n${esp32Url}`);
+            };
             img.src = esp32Url;
           });
         } else {
@@ -102,7 +121,17 @@ export function useCameraStream(): UseCameraStreamReturn {
   );
 
   const toggleLight = useCallback(async () => {
-    if (cameraMode === 'esp32') { setLightOn((prev) => !prev); return; }
+    if (cameraMode === 'esp32') {
+      const next = !lightOn;
+      const host = controlHostRef.current;
+      if (host) {
+        fetch(`http://${host}/led?mode=${next ? 'white' : 'off'}`, { mode: 'no-cors' }).catch(
+          () => {},
+        );
+      }
+      setLightOn(next);
+      return;
+    }
     const track = streamRef.current?.getVideoTracks()[0];
     if (!track) return;
     try {

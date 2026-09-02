@@ -1,4 +1,5 @@
 import axios, { type AxiosResponse } from 'axios';
+import { controlHost, deviceAddress } from '@/lib/deviceAddress';
 import type { ApiResponse } from '@/types/api';
 import { authApi } from '@/lib/api/auth';
 import { deviceApi } from '@/lib/api/device';
@@ -150,11 +151,14 @@ export const QA_CHECKS: QaCheck[] = [
     endpoint: 'GET /api/camera/capture',
     manualOnly: true,
     run: async () => {
-      const ip = (localStorage.getItem('deviceIp') ?? '').split(':')[0];
-      if (!ip) {
-        return { status: 0, success: false, message: '페어링된 스캐너 IP가 없어요', result: null };
+      const address = deviceAddress(localStorage.getItem('deviceIp'));
+      if (!address) {
+        return { status: 0, success: false, message: '페어링된 스캐너가 없어요', result: null };
       }
-      const res = await axios.get<Blob>(`/api/camera/capture?ip=${ip}`, { responseType: 'blob' });
+      const res = await axios.get<Blob>(
+        `/api/camera/capture?ip=${controlHost(address)}&view=UPPER_CENTER`,
+        { responseType: 'blob' },
+      );
       return {
         status: res.status,
         result: { contentType: res.data.type, sizeKB: Math.round(res.data.size / 1024) },
