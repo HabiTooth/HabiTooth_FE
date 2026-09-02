@@ -107,7 +107,7 @@ export default function MyPage() {
 
   return (
     <div
-      className="max-w-[430px] min-h-svh mx-auto px-5 pt-14 pb-28 flex flex-col relative"
+      className="max-w-[430px] min-h-svh mx-auto px-5 pt-14 pb-[104px] flex flex-col relative"
       style={{ backgroundColor: '#EEF2FF' }}
     >
       <div className="aurora-blob-1" />
@@ -233,7 +233,12 @@ export default function MyPage() {
           />
           <MenuItem
             icon={<UserX size={15} className="text-danger" />}
-            label={<span className="text-danger font-semibold">회원탈퇴</span>}
+            label={
+              <div>
+                <p className="m-0 text-danger font-semibold">회원 탈퇴</p>
+                <p className="m-0 text-[11px] text-muted">스캔 기록을 전부 지워요</p>
+              </div>
+            }
             right={null}
             onClick={() => router.push('/mypage/withdraw')}
           />
