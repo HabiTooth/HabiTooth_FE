@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { RISK_FILL } from '@/lib/riskColors';
 
 export type RiskLevel = 'VERY_LOW' | 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 
@@ -37,15 +38,9 @@ const FIT_MARGIN = 1.06;
 const JAW_CLOSE_RATIO = 0.6;
 
 // 이번 스캔에 안 잡힌 치아
-const UNSCANNED_COLOR = '#C9D3E0';
+const UNSCANNED_COLOR = '#CDD7E3';
 
-const RISK_COLOR_MAP: Record<RiskLevel, string> = {
-  VERY_LOW: '#4CAF82',
-  LOW: '#8BC98A',
-  MEDIUM: '#A0AEC0',
-  HIGH: '#F0B65A',
-  CRITICAL: '#DC2626',
-};
+const RISK_COLOR_MAP = RISK_FILL;
 
 const RISK_LABEL_MAP: Record<RiskLevel, string> = {
   VERY_LOW: '깨끗',
@@ -61,6 +56,20 @@ const FDI_NAME_PATTERN = /tooth[_\-\s]?(\d{2})/i;
 function extractFdi(name: string): string | null {
   const m = name.match(FDI_NAME_PATTERN);
   return m ? m[1] : null;
+}
+
+const RISK_ORDER: RiskLevel[] = ['VERY_LOW', 'LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
+
+/** 한 치아에 치태·치석 결과가 따로 오므로 나쁜 쪽 색을 남긴다 */
+function worstPerTooth(results: ToothAnalysisResult[]): ToothAnalysisResult[] {
+  const kept = new Map<string, ToothAnalysisResult>();
+  for (const result of results) {
+    const prev = kept.get(result.toothNumber);
+    if (!prev || RISK_ORDER.indexOf(result.riskLevel) > RISK_ORDER.indexOf(prev.riskLevel)) {
+      kept.set(result.toothNumber, result);
+    }
+  }
+  return [...kept.values()];
 }
 
 /** 모델 원본이 위아래로 벌어져 있어 중앙선 기준으로 양쪽을 당긴다 */
@@ -136,13 +145,22 @@ export default function ThreeScene({
     const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.15;
     mount.appendChild(renderer.domElement);
 
-    scene.add(new THREE.AmbientLight(0xffffff, 1.5));
-    const dirLight = new THREE.DirectionalLight(0xffffff, 2);
-    dirLight.position.set(5, 10, 5);
-    scene.add(dirLight);
+    // 파스텔 색이 조명에 날아가지 않게 약한 앰비언트 + 위아래 반사광으로 부드럽게
+    scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+    scene.add(new THREE.HemisphereLight(0xf4f8ff, 0xc9d6e6, 1.1));
+
+    const keyLight = new THREE.DirectionalLight(0xffffff, 1.15);
+    keyLight.position.set(4, 8, 6);
+    scene.add(keyLight);
+
+    const fillLight = new THREE.DirectionalLight(0xdfe9f7, 0.5);
+    fillLight.position.set(-6, 2, 4);
+    scene.add(fillLight);
 
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
@@ -218,7 +236,7 @@ export default function ThreeScene({
 
       const analyzed = new Set<string>();
 
-      analysisResultsRef.current.forEach((result) => {
+      worstPerTooth(analysisResultsRef.current).forEach((result) => {
         const meshes = fdiToMeshes.get(String(result.toothNumber));
         if (!meshes || meshes.length === 0) {
           console.warn(`[치아 매핑] GLB에 Tooth_${result.toothNumber} 없음`);
@@ -230,9 +248,9 @@ export default function ThreeScene({
         const mat = new THREE.MeshStandardMaterial({
           color,
           emissive: color,
-          emissiveIntensity: 0.25,
-          roughness: 0.45,
-          metalness: 0.05,
+          emissiveIntensity: 0.08,
+          roughness: 0.62,
+          metalness: 0,
         });
         createdMaterials.push(mat);
 
@@ -246,10 +264,10 @@ export default function ThreeScene({
       // 결과 없는 치아를 원본 색으로 두면 분석된 것처럼 보임
       const unscanned = new THREE.MeshStandardMaterial({
         color: UNSCANNED_COLOR,
-        roughness: 0.8,
+        roughness: 0.9,
         metalness: 0,
         transparent: true,
-        opacity: 0.55,
+        opacity: 0.5,
       });
       createdMaterials.push(unscanned);
 
@@ -349,7 +367,7 @@ export default function ThreeScene({
       pickableMeshes.forEach((mesh) => {
         const r = mesh.userData.toothResult as ToothAnalysisResult | undefined;
         if (r && mesh.material instanceof THREE.MeshStandardMaterial) {
-          mesh.material.emissiveIntensity = r.toothNumber === selectedTooth ? 0.65 : 0.25;
+          mesh.material.emissiveIntensity = r.toothNumber === selectedTooth ? 0.42 : 0.08;
         }
       });
 
