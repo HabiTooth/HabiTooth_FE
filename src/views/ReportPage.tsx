@@ -8,8 +8,31 @@ import RiskAnalysisSection from '@/components/organisms/RiskAnalysisSection';
 import CareGuideSection from '@/components/organisms/CareGuideSection';
 import TrendChartSection from '@/components/organisms/TrendChartSection';
 import HistoryListSection from '@/components/organisms/HistoryListSection';
-import { Brush, Scissors, Calendar } from 'lucide-react';
+import {
+  Hospital, Target, Brush, Slash, Syringe, PillBottle,
+  Feather, Moon, Apple, ShieldCheck, Droplet, RefreshCw,
+  CalendarCheck, SprayCan,
+} from 'lucide-react';
 import type { ToothAnalysisResult } from '@/components/organisms/OralViewer3D/ThreeScene';
+
+// 백엔드 MANAGEMENT_CATALOG의 key → 아이콘 매핑
+// API 연결 시 백엔드 응답의 key로 이 매핑에서 아이콘을 뽑아 사용
+const MANAGEMENT_ICONS = {
+  SCALING:           Hospital,
+  FOCUSED_BRUSHING:  Target,
+  BRUSHING_METHOD:   Brush,
+  FLOSS:             Slash,
+  INTERDENTAL_BRUSH: Syringe,
+  MOUTHWASH:         PillBottle,
+  TONGUE_CLEANING:   Feather,
+  NIGHT_BRUSHING:    Moon,
+  DIET:              Apple,
+  IMMUNITY:          ShieldCheck,
+  HYDRATION:         Droplet,
+  TOOTHBRUSH_CARE:   RefreshCw,
+  REGULAR_CHECKUP:   CalendarCheck,
+  WATER_FLOSSER:     SprayCan,
+} as const;
 
 // 나영님이 준 실제 API 응답 예시를 그대로 더미로 사용
 const mockApiResponse = {
@@ -22,7 +45,7 @@ const mockApiResponse = {
       totalPlaqueRatio: 12,
       totalCalculusRatio: 5,
     },
-        toothStatuses: [
+    toothStatuses: [
       { toothNumber: 16, lesionType: 'CALCULUS', areaRatio: 18.2, riskLevel: 'CRITICAL' },
       { toothNumber: 26, lesionType: 'PLAQUE', areaRatio: 12.5, riskLevel: 'HIGH' },
       { toothNumber: 11, lesionType: 'PLAQUE', areaRatio: 7.8, riskLevel: 'MEDIUM' },
@@ -44,21 +67,27 @@ export default function ReportPage() {
 
   const hasCalculus = analysisResults.some((r) => r.lesionType === 'CALCULUS');
 
+  // 하드코딩된 관리 추천 (API 연결 전 임시)
+  // TODO: 백엔드 응답의 recommendation key 배열을 받아서 MANAGEMENT_ICONS로 매핑하도록 교체
+  const BrushingIcon = MANAGEMENT_ICONS.BRUSHING_METHOD;
+  const FlossIcon = MANAGEMENT_ICONS.FLOSS;
+  const ScalingIcon = MANAGEMENT_ICONS.SCALING;
+
   const careGuideItems = [
     {
-      icon: <Brush size={20} className="text-[#4A86D9]" />,
+      icon: <BrushingIcon size={20} className="text-[#4A86D9]" />,
       title: '칫솔질 가이드',
       description: '앞니 안쪽은 45도 각도로 작은 원을 그리며 닦아주세요.',
     },
     {
-      icon: <Scissors size={20} className="text-[#4A86D9]" />,
+      icon: <FlossIcon size={20} className="text-[#4A86D9]" />,
       title: '치실 사용',
       description: '치아 사이에 낀 음식물과 치태를 제거해 주세요.',
     },
     ...(hasCalculus
       ? [
           {
-            icon: <Calendar size={20} className="text-[#4A86D9]" />,
+            icon: <ScalingIcon size={20} className="text-[#4A86D9]" />,
             title: '스케일링 추천',
             description: '치석 제거를 위해 6개월 내 내원 추천드려요.',
           },
@@ -109,11 +138,11 @@ export default function ReportPage() {
       />
       <CareGuideSection items={careGuideItems} />
       <HistoryListSection
-  items={[
-    { id: '1', date: '2025.05.15', time: '14:30', score: 72, grade: 'B' },
-    { id: '2', date: '2025.05.08', time: '09:15', score: 68, grade: 'C' },
-  ]}
-/>
+        items={[
+          { id: '1', date: '2025.05.15', time: '14:30', score: 72, grade: 'B' },
+          { id: '2', date: '2025.05.08', time: '09:15', score: 68, grade: 'C' },
+        ]}
+      />
       <NavBar activeTab="history" />
     </main>
   );
