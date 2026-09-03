@@ -1,4 +1,4 @@
 export interface ScoreCardProps {
-  score: number;
+  score: number | null;
   prevScore?: number;
 }

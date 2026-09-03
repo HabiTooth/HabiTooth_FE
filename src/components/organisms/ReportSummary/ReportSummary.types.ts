@@ -1,3 +1,5 @@
+import type { RiskLevel as ApiRiskLevel } from '@/lib/api/common';
+
 export type Grade = 'A' | 'B' | 'C' | 'D' | 'F';
 export type RiskLevel = 'low' | 'normal' | 'high' | 'very-high';
 
@@ -12,4 +14,7 @@ export interface ReportSummaryProps {
   calculusScore?: number;
   plaqueRisk?: RiskLevel;
   calculusRisk?: RiskLevel;
+
+  teeth?: ApiRiskLevel[];
+  totalTeeth?: number;
 }

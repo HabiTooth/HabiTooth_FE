@@ -1,12 +1,13 @@
 'use client';
 
-import { Bot, AlertTriangle, AlertCircle, CheckCircle } from 'lucide-react';
+import { Bot, AlertTriangle, AlertCircle, CheckCircle, Loader2, RotateCw } from 'lucide-react';
+import { RISK_INK } from '@/lib/riskColors';
 import type { LLMGuideSectionProps, GuideType } from './LLMGuideSection.types';
 
 const getColor = (type: GuideType) => {
-  if (type === 'warning') return '#F0B65A';
-  if (type === 'danger') return '#EE8A86';
-  return '#5FD3A8';
+  if (type === 'warning') return RISK_INK.MEDIUM;
+  if (type === 'danger') return RISK_INK.CRITICAL;
+  return RISK_INK.LOW;
 };
 
 const getIcon = (type: GuideType) => {
@@ -15,9 +16,15 @@ const getIcon = (type: GuideType) => {
   return CheckCircle;
 };
 
-export default function LLMGuideSection({ items, isLoading = false }: LLMGuideSectionProps) {
+export default function LLMGuideSection({
+  items,
+  isLoading = false,
+  generating = false,
+  failed = false,
+  onRetry,
+}: LLMGuideSectionProps) {
   return (
-    <div className="bg-white rounded-2xl p-5 mt-4">
+    <div className="bg-white/90 backdrop-blur-sm rounded-[20px] shadow-card p-5 mt-4">
       <div className="flex items-center gap-2 mb-4">
         <div className="w-8 h-8 bg-[#E8ECF4] rounded-full flex items-center justify-center">
           <Bot size={16} className="text-[#4A86D9]" />
@@ -26,7 +33,40 @@ export default function LLMGuideSection({ items, isLoading = false }: LLMGuideSe
       </div>
       <div className="bg-[#F8FAFC] rounded-xl p-4 flex flex-col gap-4">
         {isLoading ? (
-          <p className="text-xs text-gray-400 text-center">분석 중...</p>
+          <div className="flex flex-col items-center gap-2 py-2">
+            <Loader2 size={16} className="animate-spin text-primary" />
+            <p className="m-0 text-xs text-muted text-center leading-relaxed">
+              {generating ? (
+                <>
+                  이 스캔은 처음 열어서 AI 가이드를 만들고 있어요.
+                  <br />
+                  몇 분 걸릴 수 있어요.
+                </>
+              ) : (
+                'AI 가이드를 불러오는 중이에요.'
+              )}
+            </p>
+          </div>
+        ) : failed ? (
+          <div className="flex flex-col items-center gap-2.5 py-2">
+            <p className="m-0 text-xs text-muted text-center leading-relaxed">
+              AI 가이드를 못 받아왔어요.
+              <br />
+              위쪽 분석 결과는 그대로 보셔도 돼요.
+            </p>
+            {onRetry && (
+              <button
+                type="button"
+                onClick={onRetry}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-hairline bg-white text-[11px] font-semibold text-primary"
+              >
+                <RotateCw size={12} />
+                다시 시도
+              </button>
+            )}
+          </div>
+        ) : items.length === 0 ? (
+          <p className="m-0 text-xs text-muted text-center">아직 가이드가 없어요.</p>
         ) : (
           items.map((item, index) => {
             const Icon = getIcon(item.type);

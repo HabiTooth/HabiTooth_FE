@@ -41,7 +41,7 @@ export default function TrendChartSection({ data }: TrendChartSectionProps) {
   );
 
   return (
-    <div className="bg-white rounded-2xl p-5 mt-4">
+    <div className="bg-white/90 backdrop-blur-sm rounded-[20px] shadow-card p-5 mt-4">
       <h2 className="text-sm font-semibold text-gray-800 mb-4">점수 변화 추이</h2>
       {isScrollable ? (
         <div className="overflow-x-auto">{chart}</div>
