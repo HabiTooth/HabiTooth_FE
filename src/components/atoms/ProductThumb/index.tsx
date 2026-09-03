@@ -70,7 +70,7 @@ const ART: Record<ProductArt, React.ReactNode> = {
     </g>
   ),
   interdental: (
-    <g>
+    <g transform="translate(0, -9.5)">
       <rect x="12" y="42" width="30" height="7" rx="3.5" fill="#F0B65A" />
       <rect x="12" y="43.5" width="10" height="4" rx="2" fill="#D99A3C" />
       <path d="M42 45.5h22" stroke="#8A94A6" strokeWidth="2" strokeLinecap="round" />
