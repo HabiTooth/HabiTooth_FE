@@ -1,5 +1,5 @@
 import axios, { type AxiosResponse } from 'axios';
-import { controlHost, deviceAddress } from '@/lib/deviceAddress';
+import { CONFIGURED_HOST, controlHost, deviceAddress, streamUrl } from '@/lib/deviceAddress';
 import type { ApiResponse } from '@/types/api';
 import { authApi } from '@/lib/api/auth';
 import { deviceApi } from '@/lib/api/device';
@@ -26,7 +26,6 @@ export interface QaContext {
   scanImageId: number | null;
 }
 
-// 봉투 JSON, 이미지, 로컬 라우트 응답을 한 모양으로
 export interface QaResult {
   status: number;
   success?: boolean;
@@ -39,23 +38,52 @@ export interface QaCheck {
   group: QaGroup;
   label: string;
   endpoint: string;
-  /** 서버 상태 변경·장시간. 기본 실행 제외 */
   optIn?: boolean;
-  /** 되돌릴 수 없음. 개별 실행만 */
   manualOnly?: boolean;
   needs?: Array<keyof QaContext>;
   run: (ctx: QaContext) => Promise<QaResult>;
-  /** 없으면 계약 어긋남 */
   expectKeys?: string[];
-  /** 배열이면 첫 원소 기준 */
   expectItemKeys?: string[];
   capture?: (result: unknown) => Partial<QaContext>;
 }
 
+const STREAM_CHECK_MS = 8000;
+const SHUTTER_POLL_MS = 1200;
+const SHUTTER_POLLS = 12;
+
+const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** 포트가 닫혀 있으면 error 없이 매달려서 시간으로 판단해야 함 */
+const firstFrame = (url: string, timeoutMs: number) =>
+  new Promise<number>((resolve, reject) => {
+    const img = new Image();
+    const started = performance.now();
+    const stop = () => {
+      img.onload = null;
+      img.onerror = null;
+      img.src = '';
+    };
+    const timer = setTimeout(() => {
+      stop();
+      reject(new Error(`${timeoutMs}ms 안에 첫 프레임이 안 왔어요. 81 포트가 닫혀 있을 수 있어요`));
+    }, timeoutMs);
+    img.onload = () => {
+      clearTimeout(timer);
+      const ms = Math.round(performance.now() - started);
+      stop();
+      resolve(ms);
+    };
+    img.onerror = () => {
+      clearTimeout(timer);
+      stop();
+      reject(new Error('스트림 주소에 연결하지 못했어요'));
+    };
+    img.src = url;
+  });
+
 const asRecord = (v: unknown): Record<string, unknown> | null =>
   v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : null;
 
-/** null·NaN을 0으로 만들지 않음 */
 const num = (v: unknown): number | null => {
   const n = Number(v);
   return v === null || v === undefined || Number.isNaN(n) ? null : n;
@@ -68,7 +96,6 @@ const unwrap = (res: AxiosResponse<ApiResponse<unknown>>): QaResult => ({
   result: res.data?.result,
 });
 
-/** 단색이면 품질 판정에 걸려 무늬 필요 */
 async function syntheticJpeg(): Promise<File> {
   const canvas = document.createElement('canvas');
   canvas.width = 640;
@@ -133,14 +160,73 @@ export const QA_CHECKS: QaCheck[] = [
   },
 
   {
+    id: 'camera.address',
+    group: '스캐너 연결',
+    label: '지금 쓰는 스캐너 주소',
+    endpoint: 'NEXT_PUBLIC_ESP32_HOST / localStorage',
+    run: async () => {
+      const stored = localStorage.getItem('deviceIp');
+      const address = deviceAddress(stored);
+      if (!address) {
+        return { status: 0, success: false, message: '페어링된 스캐너가 없어요', result: null };
+      }
+      return {
+        status: 200,
+        result: {
+          address,
+          controlHost: controlHost(address),
+          streamUrl: streamUrl(address),
+          source: CONFIGURED_HOST ? 'env' : 'localStorage',
+          stored,
+        },
+      };
+    },
+    expectKeys: ['address', 'controlHost', 'streamUrl', 'source', 'stored'],
+  },
+  {
+    id: 'camera.identify',
+    group: '스캐너 연결',
+    label: '스캐너 응답 확인 (펌웨어 판별)',
+    endpoint: 'GET /api/camera/pending',
+    run: async () => {
+      const address = deviceAddress(localStorage.getItem('deviceIp'));
+      if (!address) {
+        return { status: 0, success: false, message: '페어링된 스캐너가 없어요', result: null };
+      }
+      const res = await axios.get<{ seq: number; w?: string; u?: string }>(
+        `/api/camera/pending?ip=${controlHost(address)}`,
+      );
+      return { status: res.status, result: res.data };
+    },
+    expectKeys: ['seq'],
+  },
+  {
+    id: 'camera.stream',
+    group: '스캐너 연결',
+    label: '미리보기 스트림 (81 포트가 열려 있어야 함)',
+    endpoint: 'GET http://{host}:81/stream',
+    run: async () => {
+      const address = deviceAddress(localStorage.getItem('deviceIp'));
+      if (!address) {
+        return { status: 0, success: false, message: '페어링된 스캐너가 없어요', result: null };
+      }
+      const url = streamUrl(address);
+      const ms = await firstFrame(url, STREAM_CHECK_MS);
+      return { status: 200, result: { url, firstFrameMs: ms } };
+    },
+    expectKeys: ['url', 'firstFrameMs'],
+  },
+  {
     id: 'camera.discover',
     group: '스캐너 연결',
-    label: '같은 네트워크에서 스캐너 검색 (수십 초 걸림)',
+    label: '같은 네트워크에서 스캐너 검색 (이름으로 못 찾으면 수십 초)',
     endpoint: 'GET /api/camera/discover',
     optIn: true,
     run: () =>
       axios
-        .get<{ devices: Array<{ ip: string; latencyMs: number }> }>('/api/camera/discover')
+        .get<{ devices: Array<{ ip: string; latencyMs: number; kind: string }> }>(
+          '/api/camera/discover',
+        )
         .then((res) => ({ status: res.status, result: res.data })),
     expectKeys: ['devices'],
   },
@@ -155,16 +241,64 @@ export const QA_CHECKS: QaCheck[] = [
       if (!address) {
         return { status: 0, success: false, message: '페어링된 스캐너가 없어요', result: null };
       }
+      const started = performance.now();
       const res = await axios.get<Blob>(
         `/api/camera/capture?ip=${controlHost(address)}&view=UPPER_CENTER`,
         { responseType: 'blob' },
       );
       return {
         status: res.status,
-        result: { contentType: res.data.type, sizeKB: Math.round(res.data.size / 1024) },
+        result: {
+          contentType: res.data.type,
+          sizeKB: Math.round(res.data.size / 1024),
+          ms: Math.round(performance.now() - started),
+        },
       };
     },
-    expectKeys: ['contentType', 'sizeKB'],
+    expectKeys: ['contentType', 'sizeKB', 'ms'],
+  },
+  {
+    id: 'camera.shutter',
+    group: '스캐너 연결',
+    label: '기기 셔터 버튼 (실행하고 15초 안에 버튼 누르기)',
+    endpoint: 'GET /api/camera/pending',
+    manualOnly: true,
+    run: async () => {
+      const address = deviceAddress(localStorage.getItem('deviceIp'));
+      if (!address) {
+        return { status: 0, success: false, message: '페어링된 스캐너가 없어요', result: null };
+      }
+      const host = controlHost(address);
+      const seq = async () =>
+        (await axios.get<{ seq: number }>(`/api/camera/pending?ip=${host}`)).data.seq;
+
+      const before = await seq();
+      for (let i = 0; i < SHUTTER_POLLS; i++) {
+        await wait(SHUTTER_POLL_MS);
+        const now = await seq();
+        if (now <= before) continue;
+
+        const shot = await axios.get<Blob>(`/api/camera/pending?ip=${host}&i=0`, {
+          responseType: 'blob',
+        });
+        return {
+          status: shot.status,
+          result: {
+            seqBefore: before,
+            seqAfter: now,
+            contentType: shot.data.type,
+            sizeKB: Math.round(shot.data.size / 1024),
+          },
+        };
+      }
+      return {
+        status: 0,
+        success: false,
+        message: '15초 안에 셔터 입력이 없었어요',
+        result: null,
+      };
+    },
+    expectKeys: ['seqBefore', 'seqAfter', 'contentType', 'sizeKB'],
   },
 
   {
@@ -297,7 +431,7 @@ export const QA_CHECKS: QaCheck[] = [
     label: '오늘 기록',
     endpoint: 'GET /api/history/today',
     run: () => historyApi.getToday().then(unwrap),
-    expectKeys: ['date', 'time', 'score', 'riskLevel', 'scoreDiff'],
+    expectKeys: ['sessionId', 'date', 'time', 'score', 'riskLevel', 'scoreDiff'],
   },
   {
     id: 'history.graph',
@@ -305,7 +439,7 @@ export const QA_CHECKS: QaCheck[] = [
     label: '점수 추이',
     endpoint: 'GET /api/history/graph',
     run: () => historyApi.getScoreTrend().then(unwrap),
-    expectItemKeys: ['date', 'score'],
+    expectItemKeys: ['sessionId', 'date', 'score'],
   },
   {
     id: 'history.compare',
@@ -313,7 +447,7 @@ export const QA_CHECKS: QaCheck[] = [
     label: '지난 기록 비교',
     endpoint: 'GET /api/history/compare',
     run: () => historyApi.getRecords().then(unwrap),
-    expectItemKeys: ['date', 'time', 'score', 'riskLevel'],
+    expectItemKeys: ['sessionId', 'date', 'time', 'score', 'riskLevel'],
   },
   {
     id: 'history.list',
@@ -433,9 +567,32 @@ export const QA_CHECKS: QaCheck[] = [
     ],
   },
   {
+    id: 'report.llmGet',
+    group: '리포트',
+    label: '저장된 LLM 리포트 조회 (LLM 호출 없어서 빨라야 함)',
+    endpoint: 'GET /api/reports/scan-sessions/{id}/llm-report',
+    needs: ['sessionId'],
+    run: async (ctx) => {
+      try {
+        return unwrap(await reportApi.getLlmReport(ctx.sessionId!));
+      } catch (e) {
+        if (axios.isAxiosError(e) && e.response?.status === 404) {
+          return {
+            status: 404,
+            success: false,
+            message: '아직 생성된 적 없어요. 아래 생성(POST)을 먼저 실행해 주세요.',
+            result: null,
+          };
+        }
+        throw e;
+      }
+    },
+    expectKeys: ['sessionId', 'riskDetail', 'management', 'disclaimer'],
+  },
+  {
     id: 'report.llm',
     group: '리포트',
-    label: 'LLM 리포트 생성 (수 분 걸릴 수 있음)',
+    label: 'LLM 리포트 생성 (수 분 걸림. 이미 있으면 덮어씀)',
     endpoint: 'POST /api/reports/scan-sessions/{id}/llm-report',
     optIn: true,
     needs: ['sessionId'],
