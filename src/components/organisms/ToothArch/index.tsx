@@ -1,24 +1,15 @@
 'use client';
 
+import {
+  GUM_LOWER,
+  GUM_UPPER,
+  PALATE,
+  TONGUE_SHADE,
+  TOOTH_SHAPES,
+} from '@/constants/toothShapes';
 import { LOWER_ROW, UPPER_ROW } from '@/lib/dentition';
 
-const RX = 43;
-const RY = 39;
-const GAP_DEG = 14;
-const SIZE = 12.5;
-
-/** 오른쪽 치아가 화면 왼쪽에 오도록 (거울 기준) */
-function place(index: number, total: number, upper: boolean) {
-  const t = index / (total - 1);
-  const sweep = 180 - GAP_DEG * 2;
-  const deg = upper ? 180 + GAP_DEG + t * sweep : 180 - GAP_DEG - t * sweep;
-  const rad = (deg * Math.PI) / 180;
-
-  return {
-    left: `${50 + RX * Math.cos(rad)}%`,
-    top: `${50 + RY * Math.sin(rad)}%`,
-  };
-}
+const ALL = [...UPPER_ROW, ...LOWER_ROW];
 
 export default function ToothArch({
   missing,
@@ -29,46 +20,98 @@ export default function ToothArch({
   onToggle: (tooth: number) => void;
   selected: number | null;
 }) {
-  const teeth = [
-    ...UPPER_ROW.map((tooth, i) => ({ tooth, ...place(i, UPPER_ROW.length, true) })),
-    ...LOWER_ROW.map((tooth, i) => ({ tooth, ...place(i, LOWER_ROW.length, false) })),
-  ];
+  // SVG는 나중에 그린 게 위로 올라와서, 선택한 치아를 맨 뒤로 보내야 강조 테두리가 안 잘림
+  const order = selected === null ? ALL : [...ALL.filter((t) => t !== selected), selected];
 
   return (
-    <div className="relative w-full max-w-[320px] mx-auto aspect-square">
-      <span className="absolute left-1/2 top-3 -translate-x-1/2 text-[10px] font-semibold text-muted">
-        위쪽
-      </span>
-      <span className="absolute left-1/2 bottom-3 -translate-x-1/2 text-[10px] font-semibold text-muted">
-        아래쪽
-      </span>
-      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-muted">
+    <div className="relative w-full max-w-[300px] mx-auto">
+      {/* 치열이 원본 캔버스의 가운데 절반만 써서 양옆 여백을 잘라낸다 */}
+      <svg viewBox="242 62 540 900" className="w-full h-auto block">
+        <defs>
+          <linearGradient id="arch-gum-upper" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#e8848f" />
+            <stop offset="62%" stopColor="#e37886" />
+            <stop offset="100%" stopColor="#dd6c7c" />
+          </linearGradient>
+          <linearGradient id="arch-gum-lower" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#e37886" />
+            <stop offset="100%" stopColor="#da6a7a" />
+          </linearGradient>
+          {ALL.map((tooth) =>
+            TOOTH_SHAPES[tooth]?.detail ? (
+              <clipPath key={tooth} id={`arch-clip-${tooth}`}>
+                <path d={TOOTH_SHAPES[tooth].base} />
+              </clipPath>
+            ) : null,
+          )}
+        </defs>
+
+        <path d={GUM_UPPER} fill="url(#arch-gum-upper)" />
+        <path d={GUM_LOWER} fill="url(#arch-gum-lower)" />
+        <path d={PALATE} fill="#bf5468" opacity="0.6" />
+        <path d={TONGUE_SHADE} fill="#bf5468" opacity="0.4" />
+
+        {order.map((tooth) => {
+          const shape = TOOTH_SHAPES[tooth];
+          if (!shape) return null;
+
+          const gone = missing.includes(tooth);
+          const active = selected === tooth;
+
+          return (
+            <g
+              key={tooth}
+              role="button"
+              tabIndex={0}
+              aria-label={`${tooth}번 치아`}
+              aria-pressed={gone}
+              onClick={() => onToggle(tooth)}
+              onKeyDown={(e) => {
+                if (e.key !== 'Enter' && e.key !== ' ') return;
+                e.preventDefault();
+                onToggle(tooth);
+              }}
+              className="cursor-pointer outline-none"
+              style={
+                active ? { filter: 'drop-shadow(0 0 5px rgba(74, 134, 217, 0.75))' } : undefined
+              }
+            >
+              <path
+                d={shape.base}
+                fill={gone ? '#cd6d7b' : active ? '#e8f1fd' : '#ffffff'}
+                fillOpacity={gone ? 0.75 : 1}
+                stroke={active ? '#4A86D9' : gone ? '#b8505f' : '#c95460'}
+                strokeWidth={active ? 5 : 3.5}
+                strokeLinejoin="round"
+                className="transition-[fill,stroke] duration-150"
+              />
+              {shape.detail && !gone && (
+                <path
+                  d={shape.detail}
+                  clipPath={`url(#arch-clip-${tooth})`}
+                  fill="#dfe4ea"
+                  opacity={0.55}
+                  pointerEvents="none"
+                />
+              )}
+              {/* 얇은 앞니는 그대로면 누르기 어려워서 투명 스트로크로 영역을 넓힌다 */}
+              <path
+                d={shape.base}
+                fill="transparent"
+                stroke="transparent"
+                strokeWidth={14}
+              />
+            </g>
+          );
+        })}
+      </svg>
+
+      <span className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1 text-[10px] font-semibold text-muted">
         오른쪽
       </span>
-      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-muted">
+      <span className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1 text-[10px] font-semibold text-muted">
         왼쪽
       </span>
-
-      {teeth.map(({ tooth, left, top }) => {
-        const gone = missing.includes(tooth);
-        const active = selected === tooth;
-        return (
-          <button
-            key={tooth}
-            type="button"
-            onClick={() => onToggle(tooth)}
-            aria-pressed={gone}
-            style={{ left, top, width: `${SIZE}%`, height: `${SIZE}%` }}
-            className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-full flex items-center justify-center text-[10px] font-bold tabular-nums transition-all ${
-              gone
-                ? 'bg-hairline text-muted/50 line-through'
-                : 'bg-primary-light text-primary'
-            } ${active ? 'ring-2 ring-primary z-10 scale-110' : ''}`}
-          >
-            {tooth}
-          </button>
-        );
-      })}
     </div>
   );
 }
