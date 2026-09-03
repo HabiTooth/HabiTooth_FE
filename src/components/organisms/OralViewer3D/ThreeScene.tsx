@@ -5,6 +5,9 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RISK_FILL } from '@/lib/riskColors';
+import { LESION_LABEL } from '@/lib/lesionRisk';
+import { toothName } from '@/lib/dentition';
+import type { LesionType } from '@/lib/api/common';
 
 export type RiskLevel = 'VERY_LOW' | 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 
@@ -18,14 +21,22 @@ export interface ToothAnalysisResult {
 interface ThreeSceneProps {
   analysisResults: ToothAnalysisResult[];
   missingTeeth?: number[];
+  scannedTeeth?: number[];
   onToothSelect?: (result: ToothAnalysisResult) => void;
   calibrationMode?: boolean;
 }
 
-interface TooltipState {
+type ToothState = 'lesion' | 'clean' | 'unscanned';
+
+interface ToothInfo {
+  fdi: string;
+  state: ToothState;
+  result?: ToothAnalysisResult;
+}
+
+interface TooltipState extends ToothInfo {
   x: number;
   y: number;
-  result: ToothAnalysisResult;
 }
 
 const MODEL_PATH = '/habitooth_FDI_number.glb';
@@ -38,9 +49,18 @@ const FIT_MARGIN = 1.06;
 const JAW_CLOSE_RATIO = 0.6;
 
 // 이번 스캔에 안 잡힌 치아
-const UNSCANNED_COLOR = '#CDD7E3';
+// 깨끗(하늘색)과 섞이지 않게 파란기 뺀 중립 회색
+const UNSCANNED_COLOR = '#C7C7CC';
 
 const RISK_COLOR_MAP = RISK_FILL;
+
+const labelOf = (fdi: string) => {
+  const tooth = Number(fdi);
+  return Number.isInteger(tooth) ? toothName(tooth) : `${fdi}번 치아`;
+};
+
+const lesionLabel = (lesionType: string) =>
+  LESION_LABEL[lesionType as LesionType] ?? lesionType;
 
 const RISK_LABEL_MAP: Record<RiskLevel, string> = {
   VERY_LOW: '깨끗',
@@ -122,19 +142,28 @@ function closeJaws(model: THREE.Object3D, ratio: number) {
 export default function ThreeScene({
   analysisResults,
   missingTeeth = [],
+  scannedTeeth = [],
   onToothSelect,
   calibrationMode = false,
 }: ThreeSceneProps) {
   const mountRef = useRef<HTMLDivElement>(null);
   const analysisResultsRef = useRef(analysisResults);
   const missingRef = useRef(missingTeeth);
+  const scannedRef = useRef(scannedTeeth);
+  const onSelectRef = useRef(onToothSelect);
+  const applyColorsRef = useRef<(() => void) | null>(null);
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
   const [unscannedCount, setUnscannedCount] = useState(0);
+  const [cleanCount, setCleanCount] = useState(0);
 
+  // 데이터가 바뀌어도 씬은 그대로 두고 색만 다시 칠한다
   useEffect(() => {
     analysisResultsRef.current = analysisResults;
     missingRef.current = missingTeeth;
-  }, [analysisResults, missingTeeth]);
+    scannedRef.current = scannedTeeth;
+    onSelectRef.current = onToothSelect;
+    if (!calibrationMode) applyColorsRef.current?.();
+  }, [analysisResults, missingTeeth, scannedTeeth, onToothSelect, calibrationMode]);
 
   useEffect(() => {
     if (!mountRef.current) return;
@@ -229,7 +258,7 @@ export default function ThreeScene({
       pickableMeshes.length = 0;
       originalMaterials.forEach((mat, mesh) => {
         mesh.material = mat;
-        delete mesh.userData.toothResult;
+        delete mesh.userData.toothInfo;
       });
       createdMaterials.forEach((m) => m.dispose());
       createdMaterials.length = 0;
@@ -256,7 +285,7 @@ export default function ThreeScene({
 
         meshes.forEach((mesh) => {
           mesh.material = mat;
-          mesh.userData.toothResult = result;
+          mesh.userData.toothInfo = { fdi: String(result.toothNumber), state: 'lesion', result };
           pickableMeshes.push(mesh);
         });
       });
@@ -267,24 +296,44 @@ export default function ThreeScene({
         roughness: 0.9,
         metalness: 0,
         transparent: true,
-        opacity: 0.5,
+        opacity: 0.6,
       });
       createdMaterials.push(unscanned);
 
+      // 촬영했는데 결과가 없으면 병변이 없다는 뜻이라 깨끗으로 칠한다
+      const cleanColor = RISK_COLOR_MAP.VERY_LOW;
+      const clean = new THREE.MeshStandardMaterial({
+        color: cleanColor,
+        emissive: cleanColor,
+        emissiveIntensity: 0.08,
+        roughness: 0.62,
+        metalness: 0,
+      });
+      createdMaterials.push(clean);
+
       const gone = new Set(missingRef.current.map(String));
+      const shot = new Set(scannedRef.current.map(String));
 
       let notCaptured = 0;
+      let cleanCount = 0;
       fdiToMeshes.forEach((meshes, fdi) => {
         const absent = gone.has(fdi);
         meshes.forEach((mesh) => {
           mesh.visible = !absent;
         });
         if (absent || analyzed.has(fdi)) return;
-        notCaptured++;
+
+        const scanned = shot.has(fdi);
+        if (scanned) cleanCount++;
+        else notCaptured++;
+
         meshes.forEach((mesh) => {
-          mesh.material = unscanned;
+          mesh.material = scanned ? clean : unscanned;
+          mesh.userData.toothInfo = { fdi, state: scanned ? 'clean' : 'unscanned' };
+          pickableMeshes.push(mesh);
         });
       });
+      setCleanCount(cleanCount);
 
       setUnscannedCount(notCaptured);
     }
@@ -311,10 +360,11 @@ export default function ThreeScene({
         resize();
 
         collectTeeth(model);
+        applyColorsRef.current = applyAnalysisColors;
         if (!calibrationMode) applyAnalysisColors();
       },
       undefined,
-      (error) => console.error('GLB 로딩 실패:', error)
+      (error) => console.error('GLB 로딩 실패:', error),
     );
 
     function updatePointer(event: PointerEvent) {
@@ -333,9 +383,9 @@ export default function ThreeScene({
       updatePointer(event);
       const hit = getIntersectedTooth();
       if (hit) {
-        const result = hit.userData.toothResult as ToothAnalysisResult;
+        const info = hit.userData.toothInfo as ToothInfo;
         const rect = renderer.domElement.getBoundingClientRect();
-        setTooltip({ x: event.clientX - rect.left, y: event.clientY - rect.top, result });
+        setTooltip({ ...info, x: event.clientX - rect.left, y: event.clientY - rect.top });
         renderer.domElement.style.cursor = 'pointer';
       } else {
         setTooltip(null);
@@ -361,17 +411,17 @@ export default function ThreeScene({
 
       const hit = getIntersectedTooth();
       if (!hit) return;
-      const result = hit.userData.toothResult as ToothAnalysisResult;
-      selectedTooth = result.toothNumber;
+      const info = hit.userData.toothInfo as ToothInfo;
+      selectedTooth = info.fdi;
 
       pickableMeshes.forEach((mesh) => {
-        const r = mesh.userData.toothResult as ToothAnalysisResult | undefined;
-        if (r && mesh.material instanceof THREE.MeshStandardMaterial) {
-          mesh.material.emissiveIntensity = r.toothNumber === selectedTooth ? 0.42 : 0.08;
+        const other = mesh.userData.toothInfo as ToothInfo | undefined;
+        if (other && mesh.material instanceof THREE.MeshStandardMaterial) {
+          mesh.material.emissiveIntensity = other.fdi === selectedTooth ? 0.42 : 0.08;
         }
       });
 
-      onToothSelect?.(result);
+      if (info.result) onSelectRef.current?.(info.result);
     }
 
     renderer.domElement.addEventListener('pointermove', handlePointerMove);
@@ -391,6 +441,7 @@ export default function ThreeScene({
     resize();
 
     return () => {
+      applyColorsRef.current = null;
       cancelAnimationFrame(animationId);
       controls.dispose();
       renderer.domElement.removeEventListener('pointermove', handlePointerMove);
@@ -400,7 +451,7 @@ export default function ThreeScene({
       renderer.dispose();
       mount.removeChild(renderer.domElement);
     };
-  }, [onToothSelect, calibrationMode, analysisResults, missingTeeth]);
+  }, [calibrationMode]);
 
   return (
     <div className="relative w-full h-full">
@@ -415,11 +466,19 @@ export default function ThreeScene({
           className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full rounded-lg bg-white px-3 py-2 text-xs shadow-lg"
           style={{ left: tooltip.x, top: tooltip.y - 8 }}
         >
-          <p className="font-semibold text-gray-800">{tooltip.result.toothNumber}번 치아</p>
-          <p className="text-gray-600">{RISK_LABEL_MAP[tooltip.result.riskLevel]}</p>
-          <p className="text-gray-500">
-            {tooltip.result.lesionType} · {Math.round(tooltip.result.areaRatio)}%
-          </p>
+          <p className="font-semibold text-gray-800">{labelOf(tooltip.fdi)}</p>
+          {tooltip.state === 'lesion' && tooltip.result ? (
+            <>
+              <p className="text-gray-600">{RISK_LABEL_MAP[tooltip.result.riskLevel]}</p>
+              <p className="text-gray-500">
+                {lesionLabel(tooltip.result.lesionType)} · {Math.round(tooltip.result.areaRatio)}%
+              </p>
+            </>
+          ) : (
+            <p className="text-gray-500">
+              {tooltip.state === 'clean' ? '병변이 안 보여요' : '이번 스캔에 안 잡혔어요'}
+            </p>
+          )}
         </div>
       )}
       <div className="absolute bottom-3 left-3 right-3 flex flex-wrap gap-x-2.5 gap-y-1 rounded-xl bg-white/85 px-3 py-2 backdrop-blur-sm">
@@ -443,10 +502,12 @@ export default function ThreeScene({
         )}
       </div>
 
-      {unscannedCount > 0 && (
+      {(unscannedCount > 0 || cleanCount > 0) && (
         <div className="pointer-events-none absolute top-3 left-3 right-3 rounded-lg bg-white/85 px-2.5 py-1.5 backdrop-blur-sm">
           <p className="m-0 text-[11px] leading-snug text-gray-600">
-            흐린 회색 치아 {unscannedCount}개는 이번 스캔에 안 잡혀서 결과가 없어요.
+            {cleanCount > 0 && `치아 ${cleanCount}개는 병변이 안 보여요.`}
+            {cleanCount > 0 && unscannedCount > 0 && ' '}
+            {unscannedCount > 0 && `흐린 회색 ${unscannedCount}개는 이번 스캔에서 제외되었어요.`}
           </p>
         </div>
       )}

@@ -63,7 +63,7 @@ export function toothName(tooth: number): string {
   const type = TYPE_BY_POSITION[position];
   if (!type) return `${tooth}번`;
 
-  const jaw = quadrant === 1 || quadrant === 2 ? '위' : '아래';
+  const jaw = quadrant === 1 || quadrant === 2 ? '윗니' : '아랫니';
   const side = quadrant === 1 || quadrant === 4 ? '오른쪽' : '왼쪽';
   return `${jaw} ${side} ${type}`;
 }
