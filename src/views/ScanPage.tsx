@@ -7,6 +7,7 @@ import type { ScanStatusType } from '@/components/molecules/ScanStatusBanner';
 import { useCameraStream, type CameraMode } from '@/hooks/useCameraStream';
 import { useScanDetection } from '@/hooks/useScanDetection';
 import { scanApi, type ViewType, type SessionAnalyzeResult } from '@/lib/api/scan';
+import { deviceApi } from '@/lib/api/device';
 import { evaluateCaptureBlob, type CaptureQuality } from '@/lib/imageQuality';
 import { useAuthStore } from '@/stores/authStore';
 import {
@@ -32,7 +33,6 @@ import Checkbox from '@/components/atoms/Checkbox';
 import { useNotificationStore } from '@/stores/notificationStore';
 import { useDentitionStore } from '@/stores/dentitionStore';
 import { reportReady } from '@/lib/notifications/rules';
-import { rememberSession } from '@/lib/sessionIndex';
 import { readWebcamPreference, writeWebcamPreference } from '@/lib/cameraSource';
 import { controlHost, deviceAddress, streamUrl } from '@/lib/deviceAddress';
 import { useHardwareShutter } from '@/hooks/useHardwareShutter';
@@ -119,26 +119,45 @@ function PageHeader({
 function ZoneChips({
   selectedZones,
   onToggleZone,
+  onSetZones,
 }: {
   selectedZones: ViewType[];
   onToggleZone: (z: ViewType) => void;
+  onSetZones: (zones: ViewType[]) => void;
 }) {
   return (
     <div className="flex flex-col gap-3">
       {ZONE_GROUP_ORDER.map((group) => {
         const zones = zonesOfGroup(group);
-        const on = zones.filter((z) => selectedZones.includes(z.viewType)).length;
+        const picked = zones.filter((z) => selectedZones.includes(z.viewType));
+        const on = picked.length;
+        const teethOn = picked.reduce((sum, z) => sum + z.teeth.length, 0);
+        const teethAll = zones.reduce((sum, z) => sum + z.teeth.length, 0);
         return (
           <div key={group} className="flex flex-col gap-1.5">
             <div className="flex items-baseline gap-1.5">
               <span className="text-[12px] font-bold text-content">{GROUP_LABELS[group]}</span>
               <span className="text-[11px] font-semibold text-muted tabular-nums">
-                {on}/{zones.length}
+                {on}/{zones.length}구역 · 치아 {teethOn}/{teethAll}
               </span>
-              <span className="text-[10px] text-muted">{GROUP_HINTS[group]}</span>
+              <span className="text-[10px] text-muted truncate">{GROUP_HINTS[group]}</span>
+              <button
+                type="button"
+                onClick={() => {
+                  const ids = zones.map((z) => z.viewType);
+                  onSetZones(
+                    on === zones.length
+                      ? selectedZones.filter((z) => !ids.includes(z))
+                      : [...selectedZones, ...ids],
+                  );
+                }}
+                className="ml-auto flex-shrink-0 text-[11px] font-semibold text-muted hover:text-primary transition-colors"
+              >
+                {on === zones.length ? '해제' : '전체'}
+              </button>
             </div>
             <div className="grid grid-cols-3 gap-1.5">
-              {zones.map(({ viewType, label }) => {
+              {zones.map(({ viewType, label, teeth }) => {
                 const active = selectedZones.includes(viewType);
                 return (
                   <button
@@ -146,6 +165,7 @@ function ZoneChips({
                     type="button"
                     onClick={() => onToggleZone(viewType)}
                     aria-pressed={active}
+                    title={`FDI ${teeth.join(', ')}`}
                     className={`rounded-[12px] px-2 py-2 border-[1.5px] transition-colors text-left ${
                       active ? 'border-primary bg-primary/5' : 'border-hairline bg-white'
                     }`}
@@ -165,6 +185,9 @@ function ZoneChips({
                       >
                         {label}
                       </span>
+                    </span>
+                    <span className="block mt-0.5 ml-[18px] text-[10px] text-muted tabular-nums">
+                      치아 {teeth.length}개
                     </span>
                   </button>
                 );
@@ -210,6 +233,8 @@ function Step1({
   onStart,
   selectedZones,
   onToggleZone,
+  onSetZones,
+  startError,
   webcam,
 }: {
   checked: boolean;
@@ -219,8 +244,11 @@ function Step1({
   webcam: { on: boolean; onToggle: (v: boolean) => void } | null;
   selectedZones: ViewType[];
   onToggleZone: (z: ViewType) => void;
+  onSetZones: (zones: ViewType[]) => void;
+  startError: string | null;
 }) {
   const count = selectedZones.length;
+  const allOn = count === ALL_VIEW_TYPES.length;
 
   return (
     <div className="max-w-[430px] min-h-svh mx-auto flex flex-col bg-background relative">
@@ -354,12 +382,25 @@ function Step1({
                   찍고 싶은 곳만 골라도 되고, 여러 곳을 함께 골라도 돼요
                 </p>
               </div>
-              <span className="text-[12px] font-bold text-primary whitespace-nowrap">
-                {count}구역 · 약 {estimateMinutes(count)}분
-              </span>
+              <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                <span className="text-[12px] font-bold text-primary whitespace-nowrap">
+                  {count}구역 · 약 {estimateMinutes(count)}분
+                </span>
+                <button
+                  type="button"
+                  onClick={() => onSetZones(allOn ? [] : ALL_VIEW_TYPES)}
+                  className="px-2 py-0.5 rounded-full border border-hairline text-[11px] font-semibold text-muted hover:text-primary hover:border-primary/40 transition-colors whitespace-nowrap"
+                >
+                  {allOn ? '전체 해제' : '전체 선택'}
+                </button>
+              </div>
             </div>
 
-            <ZoneChips selectedZones={selectedZones} onToggleZone={onToggleZone} />
+            <ZoneChips
+              selectedZones={selectedZones}
+              onToggleZone={onToggleZone}
+              onSetZones={onSetZones}
+            />
 
             {count === 0 && (
               <p className="m-0 text-[12px] text-danger font-medium text-center">
@@ -406,17 +447,17 @@ function Step1({
             </div>
           )}
         </div>
-        <div className="sticky bottom-0 px-5 pt-3 pb-5 bg-white/95 backdrop-blur-sm border-t border-hairline">
+        <div className="sticky bottom-0 px-5 pt-3 pb-4 bg-white/95 backdrop-blur-sm border-t border-hairline">
+          {startError && (
+            <p className="m-0 mb-2 text-[12px] font-medium text-danger text-center">{startError}</p>
+          )}
           <button
             type="button"
             onClick={onStart}
             disabled={!checked || count === 0}
-            className="w-full h-[52px] rounded-[14px] text-white text-[16px] font-semibold
+            className="w-full h-[52px] rounded-[14px] text-white text-[15px] font-semibold
               disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
-            style={{
-              background: 'linear-gradient(135deg, #4B7BF5 0%, #6B9BFF 100%)',
-              boxShadow: '0 4px 16px rgba(75,123,245,0.35)',
-            }}
+            style={{ background: 'linear-gradient(135deg, #4B7BF5 0%, #6B9BFF 100%)' }}
           >
             스캔 시작하기
           </button>
@@ -787,6 +828,7 @@ export default function ScanPage() {
   const router = useRouter();
   const [step, setStep] = useState<Step>(1);
   const [selectedZones, setSelectedZones] = useState<ViewType[]>(ALL_VIEW_TYPES);
+  const [startError, setStartError] = useState<string | null>(null);
   const [capturedZones, setCapturedZones] = useState<ViewType[]>([]);
   const [currentZone, setCurrentZone] = useState<ViewType | null>(null);
   const [surface, setSurface] = useState<Surface>('LINGUAL');
@@ -942,6 +984,8 @@ export default function ScanPage() {
     }
   }, [isCapturing, isReady, currentZone, pending, captureBlob, acceptShot, restartStream]);
 
+  // 촬영 시점에 이미 스트림을 다시 붙였고, 확인 화면은 그 위를 덮기만 함.
+  // 여기서 또 붙이면 붙는 중인 연결을 끊어서 화면이 멈춘다
   const handleRetake = useCallback(() => {
     setPending((prev) => {
       if (prev) URL.revokeObjectURL(prev.previewUrl);
@@ -996,6 +1040,10 @@ export default function ScanPage() {
     }
   }, [pending, sessionId, nextUncapturedZone, capturedZones]);
 
+  const handleSetZones = useCallback((zones: ViewType[]) => {
+    setSelectedZones(sortZones([...new Set(zones)]));
+  }, []);
+
   const handleToggleZone = useCallback((z: ViewType) => {
     setSelectedZones((prev) =>
       sortZones(prev.includes(z) ? prev.filter((v) => v !== z) : [...prev, z]),
@@ -1027,11 +1075,6 @@ export default function ScanPage() {
       .then((res: { data: { result: SessionAnalyzeResult } }) => {
         setAnalysisResult(res.data.result);
         pushNotification(reportReady(sessionId, res.data.result.sessionScore));
-        rememberSession({
-          sessionId,
-          scannedAt: new Date().toISOString(),
-          score: res.data.result.sessionScore,
-        });
         clearInterval(t);
         setAnalyzeStep(ANALYZE_STEPS.length + 1);
         setAnalyzeProgress(100);
@@ -1100,6 +1143,8 @@ export default function ScanPage() {
           onCheck={setChecked}
           selectedZones={selectedZones}
           onToggleZone={handleToggleZone}
+          onSetZones={handleSetZones}
+          startError={startError}
           webcam={isDev ? { on: useWebcam, onToggle: toggleWebcam } : null}
           onExit={() => setShowExitModal(true)}
           onStart={async () => {
@@ -1107,6 +1152,7 @@ export default function ScanPage() {
               console.error('기기가 등록되지 않았습니다');
               return;
             }
+            setStartError(null);
             const enterScan = (sid: number) => {
               setSessionId(sid);
               uploadedImageIds.current = new Map();
@@ -1115,10 +1161,21 @@ export default function ScanPage() {
               setStep(2);
             };
             try {
-              const res = await scanApi.createSession(deviceId ?? 0);
+              // 이 브라우저에 deviceId가 없으면 서버에 등록된 기기를 찾아서 씀
+              let id = deviceId;
+              if (id === null) {
+                const status = await deviceApi.getStatus().catch(() => null);
+                id = status?.data.result?.[0]?.deviceId ?? null;
+              }
+              if (id === null) {
+                setStartError('스캐너가 등록되지 않았어요. 디바이스를 먼저 연결해 주세요.');
+                return;
+              }
+              const res = await scanApi.createSession(id);
               enterScan(res.data.result);
             } catch (e) {
               console.error('세션 생성 실패:', e);
+              setStartError('스캔을 시작하지 못했어요. 잠시 후 다시 시도해 주세요.');
               if (isDev) {
                 console.warn('개발 모드: 업로드 없이 스캔 화면만 띄웁니다');
                 enterScan(DEV_SESSION_ID);

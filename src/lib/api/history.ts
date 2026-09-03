@@ -6,6 +6,7 @@ export type HistoryPeriodFilter = 'ALL' | 'ONE_MONTH' | 'THREE_MONTHS' | 'SIX_MO
 export type HistoryScoreFilter = 'ALL' | 'HIGH' | 'MEDIUM' | 'LOW';
 
 export interface HistoryToday {
+  sessionId: number;
   date: string;
   time: string;
   score: number;
@@ -14,11 +15,13 @@ export interface HistoryToday {
 }
 
 export interface HistoryScoreTrendItem {
+  sessionId: number;
   date: string;
   score: number;
 }
 
 export interface HistoryRecordItem {
+  sessionId: number;
   date: string;
   time: string;
   score: number;
@@ -26,6 +29,7 @@ export interface HistoryRecordItem {
 }
 
 export interface HistoryListItem {
+  sessionId: number;
   date: string;
   score: number;
   plaqueRiskLevel: RiskLevel;

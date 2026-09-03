@@ -9,12 +9,14 @@ const ThreeScene = dynamic(() => import('./ThreeScene'), { ssr: false });
 
 interface OralViewer3DProps {
   analysisResults: ToothAnalysisResult[];
+  scannedTeeth?: number[];
   onToothSelect?: (result: ToothAnalysisResult) => void;
   calibrationMode?: boolean;
 }
 
 export default function OralViewer3D({
   analysisResults,
+  scannedTeeth,
   onToothSelect,
   calibrationMode = false,
 }: OralViewer3DProps) {
@@ -27,6 +29,7 @@ export default function OralViewer3D({
       <ThreeScene
         analysisResults={analysisResults}
         missingTeeth={missing}
+        scannedTeeth={scannedTeeth}
         onToothSelect={onToothSelect}
         calibrationMode={calibrationMode}
       />

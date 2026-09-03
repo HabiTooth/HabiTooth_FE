@@ -1,23 +1,22 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { dashboardApi } from '@/lib/api/dashboard';
 import { historyApi } from '@/lib/api/history';
-import { reportApi } from '@/lib/api/report';
-import {
-  discoverSessions,
-  pairWithDates,
-  readSessions,
-  rememberMany,
-  withSession,
-  type SessionRef,
-} from '@/lib/sessionIndex';
+
+export interface SessionRef {
+  sessionId: number;
+  scannedAt: string;
+  score: number | null;
+}
 
 export interface SessionIndex {
   sessions: SessionRef[];
   loading: boolean;
   idByDate: (date: string | null | undefined) => number | null;
 }
+
+const newestFirst = (list: SessionRef[]) =>
+  [...list].sort((a, b) => b.sessionId - a.sessionId);
 
 export function useSessionIndex(): SessionIndex {
   const [sessions, setSessions] = useState<SessionRef[]>([]);
@@ -26,43 +25,23 @@ export function useSessionIndex(): SessionIndex {
   useEffect(() => {
     let alive = true;
 
-    (async () => {
-      const latest = await dashboardApi
-        .getReport()
-        .then((res) => {
-          const r = res.data.result;
-          return r?.sessionId == null
-            ? null
-            : { sessionId: r.sessionId, scannedAt: r.scannedAt ?? '', score: r.averageScore };
-        })
-        .catch(() => null);
-
-      const dates = await historyApi
-        .getList({ period: 'ALL', size: 200 })
-        .then((res) => (res.data.result?.items ?? []).map((i) => i.date))
-        .catch(() => [] as string[]);
-
-      let known = withSession(readSessions(), latest);
-
-      if (known.length < dates.length && latest !== null) {
-        const owns = (id: number) =>
-          reportApi
-            .getSessionReport(id)
-            .then(() => true)
-            .catch(() => false);
-
-        const ids = await discoverSessions(latest.sessionId, owns, dates.length - 1);
+    historyApi
+      .getRecords()
+      .then((res) =>
+        (res.data.result ?? [])
+          .filter((item) => item.sessionId != null)
+          .map((item) => ({
+            sessionId: item.sessionId,
+            scannedAt: item.time ? `${item.date}T${item.time}` : item.date,
+            score: item.score ?? null,
+          })),
+      )
+      .catch(() => [] as SessionRef[])
+      .then((list) => {
         if (!alive) return;
-
-        if (ids.length > 0) {
-          known = withSession(rememberMany(pairWithDates([latest.sessionId, ...ids], dates)), latest);
-        }
-      }
-
-      if (!alive) return;
-      setSessions(known);
-      setLoading(false);
-    })();
+        setSessions(newestFirst(list));
+        setLoading(false);
+      });
 
     return () => {
       alive = false;

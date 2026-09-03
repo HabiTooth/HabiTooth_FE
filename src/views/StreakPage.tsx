@@ -159,33 +159,36 @@ export default function StreakPage() {
             ))}
           </div>
 
-          <div className="grid grid-cols-7 gap-1">
+          <div className="grid grid-cols-7 gap-y-1">
             {cells.map((cell, i) => {
-              const cls = `aspect-square rounded-lg flex items-center justify-center text-xs tabular-nums ${
-                cell.day === null
-                  ? ''
-                  : cell.scanned
-                    ? 'bg-primary text-white font-semibold'
-                    : cell.isFuture
-                      ? 'text-muted/40'
-                      : 'bg-hairline/50 text-muted'
-              } ${cell.isToday && !cell.scanned ? 'ring-1 ring-primary text-primary' : ''}`;
+              if (cell.day === null) return <div key={`pad-${i}`} className="aspect-square" />;
+
+              const dot = [
+                'w-8 h-8 rounded-full flex items-center justify-center text-[13.5px] tabular-nums transition-colors',
+                cell.scanned
+                  ? 'bg-primary text-white font-semibold'
+                  : cell.isFuture
+                    ? 'text-muted/35'
+                    : 'text-muted',
+                cell.isToday && !cell.scanned ? 'ring-[1.5px] ring-primary text-primary font-semibold' : '',
+              ].join(' ');
 
               const sessionId = cell.scanned ? idByDate(cell.key) : null;
 
-              return sessionId === null ? (
-                <div key={cell.key ?? `pad-${i}`} className={cls}>
-                  {cell.day ?? ''}
+              return (
+                <div key={cell.key} className="aspect-square flex items-center justify-center">
+                  {sessionId === null ? (
+                    <span className={dot}>{cell.day}</span>
+                  ) : (
+                    <Link
+                      href={`/report/${sessionId}`}
+                      aria-label={`${cell.day}일 리포트 보기`}
+                      className={`${dot} no-underline active:scale-90`}
+                    >
+                      {cell.day}
+                    </Link>
+                  )}
                 </div>
-              ) : (
-                <Link
-                  key={cell.key}
-                  href={`/report/${sessionId}`}
-                  aria-label={`${cell.day}일 리포트 보기`}
-                  className={`${cls} no-underline transition-transform active:scale-95`}
-                >
-                  {cell.day}
-                </Link>
               );
             })}
           </div>

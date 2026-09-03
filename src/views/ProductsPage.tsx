@@ -1,31 +1,49 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Check, ChevronLeft, ChevronRight } from 'lucide-react';
 import NavBar from '@/components/organisms/NavBar';
 import PageShell from '@/components/organisms/PageShell';
 import ProductThumb from '@/components/atoms/ProductThumb';
-import { dashboardApi, type DashboardRisk } from '@/lib/api/dashboard';
+import { dashboardApi } from '@/lib/api/dashboard';
+import { reportApi } from '@/lib/api/report';
+import { worstByLesion, type LesionRisk } from '@/lib/lesionRisk';
+import { remapTeeth } from '@/lib/toothMapping';
+import { useDentitionStore } from '@/stores/dentitionStore';
 import { isRisky, recommendProducts, shopUrl } from '@/constants/products';
 import { LESION_LABEL } from '@/lib/notifications/rules';
 import { RISK_LABEL } from '@/lib/score';
 
 export default function ProductsPage() {
   const router = useRouter();
-  const [risk, setRisk] = useState<DashboardRisk | null>(null);
+  const params = useSearchParams();
+  const sessionId = Number(params.get('session'));
+  const fromReport = Number.isFinite(sessionId) && sessionId > 0;
+
+  const [categories, setCategories] = useState<LesionRisk[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const { missing, hydrate } = useDentitionStore();
+
+  useEffect(() => hydrate(), [hydrate]);
 
   useEffect(() => {
-    dashboardApi
-      .getRisk()
-      .then((res) => setRisk(res.data.result))
-      .catch(() => {})
-      .finally(() => setLoaded(true));
-  }, []);
+    setLoaded(false);
+    // 리포트에서 넘어왔으면 그 스캔 기준으로, 아니면 최신 스캔 기준으로 고른다
+    const load = fromReport
+      ? reportApi
+          .getSessionReport(sessionId)
+          .then((res) => worstByLesion(remapTeeth(res.data.result?.toothStatuses ?? [], missing)))
+      : dashboardApi.getRisk().then((res) => res.data.result?.categories ?? []);
 
-  const risky = (risk?.categories ?? []).filter((c) => isRisky(c.riskLevel));
-  const products = useMemo(() => recommendProducts(risk?.categories), [risk]);
+    load
+      .then(setCategories)
+      .catch(() => setCategories([]))
+      .finally(() => setLoaded(true));
+  }, [fromReport, sessionId, missing]);
+
+  const risky = categories.filter((c) => isRisky(c.riskLevel));
+  const products = useMemo(() => recommendProducts(categories), [categories]);
 
   const matched = (helpsWith: string[]) => risky.some((c) => helpsWith.includes(c.lesionType));
 
@@ -47,7 +65,12 @@ export default function ProductsPage() {
 
       <div className="px-5 pt-4 flex flex-col gap-3">
         <div className="bg-white/90 backdrop-blur-sm rounded-[20px] shadow-card p-5">
-          <h2 className="m-0 text-sm font-semibold text-content mb-2">추천 기준</h2>
+          <div className="flex items-baseline justify-between mb-2">
+            <h2 className="m-0 text-sm font-semibold text-content">추천 기준</h2>
+            <span className="text-[11px] text-muted">
+              {fromReport ? '이 리포트 기준' : '가장 최근 스캔 기준'}
+            </span>
+          </div>
           {!loaded ? (
             <p className="m-0 text-[12px] text-muted">불러오는 중이에요.</p>
           ) : risky.length === 0 ? (

@@ -19,6 +19,7 @@ const getIcon = (type: GuideType) => {
 export default function LLMGuideSection({
   items,
   isLoading = false,
+  generating = false,
   failed = false,
   onRetry,
 }: LLMGuideSectionProps) {
@@ -34,7 +35,17 @@ export default function LLMGuideSection({
         {isLoading ? (
           <div className="flex flex-col items-center gap-2 py-2">
             <Loader2 size={16} className="animate-spin text-primary" />
-            <p className="m-0 text-xs text-muted">AI가 결과를 읽고 있어요. 1~2분 걸릴 수 있어요.</p>
+            <p className="m-0 text-xs text-muted text-center leading-relaxed">
+              {generating ? (
+                <>
+                  이 스캔은 처음 열어서 AI 가이드를 만들고 있어요.
+                  <br />
+                  몇 분 걸릴 수 있어요.
+                </>
+              ) : (
+                'AI 가이드를 불러오는 중이에요.'
+              )}
+            </p>
           </div>
         ) : failed ? (
           <div className="flex flex-col items-center gap-2.5 py-2">

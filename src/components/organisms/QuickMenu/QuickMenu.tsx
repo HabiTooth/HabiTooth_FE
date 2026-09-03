@@ -1,15 +1,15 @@
 'use client';
 
 import Link from 'next/link';
-import { BookOpen, Flame, GitCompareArrows, MapPin, ShoppingBag, Sparkles } from 'lucide-react';
+import { BookOpen, GitCompareArrows, MapPin, ShoppingBag, Smile, Sparkles } from 'lucide-react';
 
 const MENU = [
-  { href: '/streak', label: '스캔 기록', Icon: Flame },
+  { href: '/mypage/teeth', label: '치아 정보', Icon: Smile },
   { href: '/habits', label: '구강 습관', Icon: Sparkles },
   { href: '/compare', label: '스캔 비교', Icon: GitCompareArrows },
-  { href: '/articles', label: '건강 정보', Icon: BookOpen },
-  { href: '/products', label: '관리 용품', Icon: ShoppingBag },
   { href: '/clinics', label: '근처 치과', Icon: MapPin },
+  { href: '/products', label: '관리 용품', Icon: ShoppingBag },
+  { href: '/articles', label: '건강 정보', Icon: BookOpen },
 ];
 
 export default function QuickMenu() {

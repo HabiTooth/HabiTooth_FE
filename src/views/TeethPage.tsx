@@ -110,11 +110,11 @@ export default function TeethPage() {
 
           <div className="flex items-center gap-3 mt-3">
             <span className="flex items-center gap-1.5 text-[11px] text-muted">
-              <span className="w-3.5 h-3.5 rounded-full bg-primary-light" />
+              <span className="w-3.5 h-3.5 rounded-full bg-white border-2 border-[#c95460]" />
               있어요
             </span>
             <span className="flex items-center gap-1.5 text-[11px] text-muted">
-              <span className="w-3.5 h-3.5 rounded-full bg-hairline" />
+              <span className="w-3.5 h-3.5 rounded-full bg-[#cd6d7b]/75 border-2 border-[#b8505f]" />
               없어요
             </span>
             <span className="text-[11px] text-muted">거울 볼 때 기준이에요</span>

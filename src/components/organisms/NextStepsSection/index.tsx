@@ -9,9 +9,13 @@ import type { LesionType, RiskLevel } from '@/lib/api/common';
 
 export default function NextStepsSection({
   categories,
+  sessionId,
 }: {
   categories: Array<{ lesionType: LesionType; riskLevel: RiskLevel }>;
+  sessionId?: number;
 }) {
+  // 어느 스캔 기준인지 넘겨야 관리 용품 페이지가 최신 스캔으로 갈아치우지 않음
+  const productsHref = sessionId ? `/products?session=${sessionId}` : '/products';
   const risky = categories.filter((c) => isRisky(c.riskLevel)).map((c) => c.lesionType);
   const products = recommendProducts(categories).slice(0, 2);
   const articles = sortByRelevance(ARTICLES, risky).slice(0, 2);
@@ -29,7 +33,7 @@ export default function NextStepsSection({
         {products.map((product) => (
           <Link
             key={product.id}
-            href="/products"
+            href={productsHref}
             className="flex items-center gap-3 p-2.5 rounded-[14px] border border-hairline no-underline transition-colors active:bg-hairline/40"
           >
             <ProductThumb art={product.art} tint={product.tint} size={40} />
