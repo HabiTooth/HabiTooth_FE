@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import axios from 'axios';
 import { useParams, useRouter } from 'next/navigation';
 import { Brush, Scissors, Calendar, ChevronLeft } from 'lucide-react';
 import NavBar from '@/components/organisms/NavBar';
@@ -20,11 +21,13 @@ import { historyApi, type HistoryScoreTrendItem } from '@/lib/api/history';
 import { formatDate, formatShortDate, scoreStatus, toSummaryRisk } from '@/lib/score';
 import { ALL_TEETH } from '@/lib/dentition';
 import { useDentitionStore } from '@/stores/dentitionStore';
+import { remapTeeth } from '@/lib/toothMapping';
+import { RISK_ORDER, worstByLesion } from '@/lib/lesionRisk';
+import { teethInZones } from '@/lib/scanCoverage';
+import { scanApi, type ViewType } from '@/lib/api/scan';
 import { compareTeeth } from '@/lib/compare';
 import { useSessionIndex } from '@/hooks/useSessionIndex';
-import type { LesionType, RiskLevel } from '@/lib/api/common';
-
-const RISK_ORDER: RiskLevel[] = ['VERY_LOW', 'LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
+import type { RiskLevel } from '@/lib/api/common';
 
 const GUIDE_TYPE: Record<RiskLevel, GuideItem['type']> = {
   VERY_LOW: 'good',
@@ -33,6 +36,8 @@ const GUIDE_TYPE: Record<RiskLevel, GuideItem['type']> = {
   HIGH: 'warning',
   CRITICAL: 'danger',
 };
+
+const NOT_STORED = Symbol('llm-not-stored');
 
 const CARE_ICONS = [
   <Brush key="brush" size={20} className="text-[#4A86D9]" />,
@@ -49,11 +54,13 @@ export default function ReportPage() {
   const [llm, setLlm] = useState<LlmReport | null>(null);
   const [llmLoading, setLlmLoading] = useState(true);
   const [llmFailed, setLlmFailed] = useState(false);
+  const [llmGenerating, setLlmGenerating] = useState(false);
   const [llmKey, setLlmKey] = useState(0);
   const [previous, setPrevious] = useState<SessionReport | null>(null);
   const { sessions } = useSessionIndex();
   const { missing, hydrate: hydrateDentition } = useDentitionStore();
   const [trend, setTrend] = useState<HistoryScoreTrendItem[]>([]);
+  const [capturedZones, setCapturedZones] = useState<ViewType[]>([]);
 
   useEffect(() => hydrateDentition(), [hydrateDentition]);
 
@@ -62,15 +69,46 @@ export default function ReportPage() {
 
     reportApi.getSessionReport(sessionId).then((res) => setReport(res.data.result)).catch(() => {});
 
+    // 저장된 게 있으면 바로 쓰고, 없을 때만 생성을 부른다. 생성은 수 분 걸림
     setLlmLoading(true);
     setLlmFailed(false);
+    setLlmGenerating(false);
     reportApi
-      .generateLlmReport(sessionId)
-      .then((res) => setLlm(res.data.result))
-      .catch(() => setLlmFailed(true))
-      .finally(() => setLlmLoading(false));
+      .getLlmReport(sessionId)
+      .then((res) => {
+        // 프록시가 끼면 200에 엉뚱한 본문이 실려 와서 상태 코드만으로는 못 가림
+        if (!res.data?.result) return Promise.reject(NOT_STORED);
+        setLlm(res.data.result);
+      })
+      .catch((e) => {
+        // 404만 "아직 없음". 나머지 오류로 수 분짜리 생성을 돌리면 안 됨
+        const status = axios.isAxiosError(e) ? e.response?.status : undefined;
+        if (e !== NOT_STORED && status !== 404) {
+          console.error(`LLM 리포트 조회 실패 (status ${status ?? '응답 없음'})`, e);
+          setLlmFailed(true);
+          return;
+        }
+        setLlmGenerating(true);
+        return reportApi
+          .generateLlmReport(sessionId)
+          .then((res) => setLlm(res.data.result))
+          .catch((err) => {
+            console.error('LLM 리포트 생성 실패', err);
+            setLlmFailed(true);
+          });
+      })
+      .finally(() => {
+        setLlmLoading(false);
+        setLlmGenerating(false);
+      });
 
     historyApi.getScoreTrend().then((res) => setTrend(res.data.result)).catch(() => {});
+
+    // BE는 병변 있는 치아만 보내서, 어느 구역을 찍었는지 알아야 "깨끗"과 "미촬영"을 가른다
+    scanApi
+      .getCaptureStatus(sessionId)
+      .then((res) => setCapturedZones((res.data.result?.capturedZones ?? []).map((z) => z.viewType)))
+      .catch(() => setCapturedZones([]));
   }, [sessionId, llmKey]);
 
   const currentRef = sessions.find((x) => x.sessionId === sessionId) ?? null;
@@ -85,53 +123,52 @@ export default function ReportPage() {
       .catch(() => setPrevious(null));
   }, [previousId]);
 
+  const scannedTeeth = useMemo(() => teethInZones(capturedZones), [capturedZones]);
+
+  // AI가 발치를 모르고 번호를 앞으로 당겨 보내서, 결번을 건너뛰며 실제 FDI로 되돌린다
+  const teeth = useMemo(
+    () => remapTeeth(report?.toothStatuses ?? [], missing),
+    [report, missing],
+  );
+  const prevTeeth = useMemo(
+    () => remapTeeth(previous?.toothStatuses ?? [], missing),
+    [previous, missing],
+  );
+
   const diff = useMemo(
     () =>
       compareTeeth(
-        (previous?.toothStatuses ?? []).map((t) => ({
-          toothNumber: t.toothNumber,
-          riskLevel: t.riskLevel,
-        })),
-        (report?.toothStatuses ?? []).map((t) => ({
-          toothNumber: t.toothNumber,
-          riskLevel: t.riskLevel,
-        })),
+        prevTeeth.map((t) => ({ toothNumber: t.toothNumber, riskLevel: t.riskLevel })),
+        teeth.map((t) => ({ toothNumber: t.toothNumber, riskLevel: t.riskLevel })),
       ),
-    [previous, report],
+    [prevTeeth, teeth],
   );
 
   // 한 치아에 치태·치석 행이 따로 오기 때문에 치아별로 제일 나쁜 등급만 남김
   const toothRisks = useMemo(() => {
     const worst = new Map<number, number>();
-    for (const t of report?.toothStatuses ?? []) {
+    for (const t of teeth) {
       const rank = RISK_ORDER.indexOf(t.riskLevel);
       worst.set(t.toothNumber, Math.max(worst.get(t.toothNumber) ?? 0, rank));
     }
+    // 찍었는데 결과가 없는 치아는 병변이 없다는 뜻
+    for (const tooth of scannedTeeth) {
+      if (!worst.has(tooth) && !missing.includes(tooth)) worst.set(tooth, 0);
+    }
     return [...worst.values()].map((rank) => RISK_ORDER[rank]);
-  }, [report]);
+  }, [teeth, scannedTeeth, missing]);
 
-  const riskCategories: Array<{ lesionType: LesionType; riskLevel: RiskLevel }> = useMemo(() => {
-    const worst = (type: LesionType): RiskLevel => {
-      const levels = (report?.toothStatuses ?? [])
-        .filter((t) => t.lesionType === type)
-        .map((t) => RISK_ORDER.indexOf(t.riskLevel));
-      return RISK_ORDER[levels.length > 0 ? Math.max(...levels) : 0];
-    };
-    return [
-      { lesionType: 'PLAQUE', riskLevel: worst('PLAQUE') },
-      { lesionType: 'CALCULUS', riskLevel: worst('CALCULUS') },
-    ];
-  }, [report]);
+  const riskCategories = useMemo(() => worstByLesion(teeth), [teeth]);
 
   const analysisResults: ToothAnalysisResult[] = useMemo(
     () =>
-      (report?.toothStatuses ?? []).map((t) => ({
+      teeth.map((t) => ({
         toothNumber: String(t.toothNumber),
         lesionType: t.lesionType ?? '',
         areaRatio: t.areaRatio,
         riskLevel: t.riskLevel as ToothAnalysisResult['riskLevel'],
       })),
-    [report],
+    [teeth],
   );
 
   const guideItems: GuideItem[] = (llm?.riskDetail ?? []).map((r) => ({
@@ -182,18 +219,21 @@ export default function ReportPage() {
         plaque={report?.summary.totalPlaqueRatio ?? 0}
         calculus={report?.summary.totalCalculusRatio ?? 0}
         analysisResults={analysisResults}
+        scannedTeeth={scannedTeeth}
+        capturedZones={capturedZones}
       />
 
       <LLMGuideSection
         items={guideItems}
         isLoading={llmLoading}
+        generating={llmGenerating}
         failed={llmFailed}
         onRetry={() => setLlmKey((k) => k + 1)}
       />
 
       {careGuideItems.length > 0 && <CareGuideSection items={careGuideItems} />}
 
-      <NextStepsSection categories={riskCategories} />
+      <NextStepsSection categories={riskCategories} sessionId={sessionId} />
 
       {llm?.disclaimer && (
         <p className="m-0 mt-3 px-1 text-[11px] leading-relaxed text-gray-400">{llm.disclaimer}</p>

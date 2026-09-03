@@ -10,10 +10,15 @@ import type { ToothAnalysisResult } from '@/components/organisms/OralViewer3D/Th
 import { reportApi, type SessionReport } from '@/lib/api/report';
 import { useSessionIndex } from '@/hooks/useSessionIndex';
 import { compareSummary, compareTeeth, type ToothChange } from '@/lib/compare';
+import { useDentitionStore } from '@/stores/dentitionStore';
+import { remapTeeth } from '@/lib/toothMapping';
 import { RISK_LABEL, formatDateTime } from '@/lib/score';
 
-const toViewerResults = (report: SessionReport | null): ToothAnalysisResult[] =>
-  (report?.toothStatuses ?? []).map((t) => ({
+const toViewerResults = (
+  report: SessionReport | null,
+  missing: number[],
+): ToothAnalysisResult[] =>
+  remapTeeth(report?.toothStatuses ?? [], missing).map((t) => ({
     toothNumber: String(t.toothNumber),
     lesionType: t.lesionType ?? '',
     areaRatio: t.areaRatio,
@@ -45,6 +50,10 @@ export default function ComparePage() {
   const [before, setBefore] = useState<SessionReport | null>(null);
   const [after, setAfter] = useState<SessionReport | null>(null);
   const [showing, setShowing] = useState<'before' | 'after'>('after');
+  const [failed, setFailed] = useState<number[]>([]);
+  const { missing, hydrate: hydrateDentition } = useDentitionStore();
+
+  useEffect(() => hydrateDentition(), [hydrateDentition]);
   useEffect(() => {
     if (sessions.length < 2 || afterId !== null) return;
     setAfterId(sessions[0].sessionId);
@@ -56,7 +65,10 @@ export default function ComparePage() {
     reportApi
       .getSessionReport(beforeId)
       .then((res) => setBefore(res.data.result))
-      .catch(() => setBefore(null));
+      .catch(() => {
+        setBefore(null);
+        setFailed((prev) => [...new Set([...prev, beforeId])]);
+      });
   }, [beforeId]);
 
   useEffect(() => {
@@ -64,28 +76,32 @@ export default function ComparePage() {
     reportApi
       .getSessionReport(afterId)
       .then((res) => setAfter(res.data.result))
-      .catch(() => setAfter(null));
+      .catch(() => {
+        setAfter(null);
+        setFailed((prev) => [...new Set([...prev, afterId])]);
+      });
   }, [afterId]);
 
   const diff = useMemo(
     () =>
       compareTeeth(
-        (before?.toothStatuses ?? []).map((t) => ({
+        remapTeeth(before?.toothStatuses ?? [], missing).map((t) => ({
           toothNumber: t.toothNumber,
           riskLevel: t.riskLevel,
         })),
-        (after?.toothStatuses ?? []).map((t) => ({
+        remapTeeth(after?.toothStatuses ?? [], missing).map((t) => ({
           toothNumber: t.toothNumber,
           riskLevel: t.riskLevel,
         })),
       ),
-    [before, after],
+    [before, after, missing],
   );
 
   const scoreDelta =
     before && after ? after.totalScore - before.totalScore : null;
 
   const shown = showing === 'after' ? after : before;
+  const viewerResults = useMemo(() => toViewerResults(shown, missing), [shown, missing]);
   const ready = before !== null && after !== null;
 
   const Select = ({
@@ -153,6 +169,17 @@ export default function ComparePage() {
             <Select value={afterId} onChange={setAfterId} label="비교" />
           </div>
 
+          {!ready && failed.length > 0 && (
+            <div className="bg-white/90 backdrop-blur-sm rounded-[20px] shadow-card p-5">
+              <p className="m-0 text-[13px] font-semibold text-content">
+                이 스캔의 결과를 불러오지 못했어요
+              </p>
+              <p className="m-0 mt-1 text-[11.5px] text-muted leading-relaxed">
+                잠시 후 다시 시도하거나 위에서 다른 날짜를 골라 주세요.
+              </p>
+            </div>
+          )}
+
           {ready && (
             <div className="bg-white/90 backdrop-blur-sm rounded-[20px] shadow-card p-5">
               <div className="flex items-center gap-4">
@@ -206,9 +233,20 @@ export default function ComparePage() {
             </p>
 
             <div className="bg-[#F0F4FF] rounded-xl overflow-hidden h-[300px]">
-              <OralViewer3D analysisResults={toViewerResults(shown)} />
+              <OralViewer3D analysisResults={viewerResults} />
             </div>
           </div>
+
+          {ready && diff.improved.length === 0 && diff.worsened.length === 0 && (
+            <div className="bg-white/90 backdrop-blur-sm rounded-[20px] shadow-card p-5">
+              <h2 className="m-0 text-sm font-semibold text-content mb-1">치아별 변화</h2>
+              <p className="m-0 text-[11.5px] text-muted leading-relaxed">
+                {beforeId === afterId
+                  ? '같은 스캔끼리 비교하고 있어요. 위에서 다른 날짜를 골라 주세요.'
+                  : '두 스캔 사이에 위험도가 바뀐 치아가 없어요.'}
+              </p>
+            </div>
+          )}
 
           {ready && (diff.improved.length > 0 || diff.worsened.length > 0) && (
             <div className="bg-white/90 backdrop-blur-sm rounded-[20px] shadow-card p-5">
