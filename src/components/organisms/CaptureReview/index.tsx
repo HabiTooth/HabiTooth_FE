@@ -33,14 +33,14 @@ export default function CaptureReview({
           src={previewUrl}
           alt=""
           aria-hidden
-          className="absolute inset-0 w-full h-full object-cover scale-125 blur-2xl opacity-70"
+          className="absolute inset-0 w-full h-full object-cover scale-125 blur-2xl opacity-70 scale-x-[-1]"
         />
         {/* 촬영본은 잘라 보여주면 확인이 안 되므로 contain */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={previewUrl}
           alt={`${zoneLabel} 촬영본`}
-          className="absolute inset-0 w-full h-full object-contain"
+          className="absolute inset-0 w-full h-full object-contain scale-x-[-1]"
         />
 
         <div className="absolute top-3 left-1/2 -translate-x-1/2">

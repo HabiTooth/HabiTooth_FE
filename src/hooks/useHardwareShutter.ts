@@ -3,6 +3,8 @@
 import { useEffect, useRef } from 'react';
 
 const POLL_MS = 1200;
+// 촬영 직후에는 기기가 바빠서 계속 실패하므로 간격을 벌린다
+const MAX_POLL_MS = 9600;
 
 interface Pending {
   seq: number;
@@ -33,13 +35,24 @@ export function useHardwareShutter({
 
     let alive = true;
     let busy = false;
+    let wait = POLL_MS;
+    let timer: ReturnType<typeof setTimeout>;
+
+    const schedule = () => {
+      if (!alive) return;
+      timer = setTimeout(tick, wait);
+    };
 
     const tick = async () => {
       if (busy) return;
       busy = true;
       try {
         const res = await fetch(`/api/camera/pending?ip=${host}`);
-        if (!res.ok) return;
+        if (!res.ok) {
+          wait = Math.min(wait * 2, MAX_POLL_MS);
+          return;
+        }
+        wait = POLL_MS;
 
         const { seq } = (await res.json()) as Pending;
         if (typeof seq !== 'number') return;
@@ -58,18 +71,18 @@ export function useHardwareShutter({
 
         onCaptureRef.current(await image.blob());
       } catch {
-        // 다음 폴에서 다시
+        wait = Math.min(wait * 2, MAX_POLL_MS);
       } finally {
         busy = false;
+        schedule();
       }
     };
 
-    const id = setInterval(tick, POLL_MS);
     tick();
 
     return () => {
       alive = false;
-      clearInterval(id);
+      clearTimeout(timer);
     };
   }, [host, enabled]);
 }
