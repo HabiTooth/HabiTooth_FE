@@ -1,5 +1,6 @@
 'use client';
 
+import axios from 'axios';
 import { useState, useEffect, useRef, useCallback, useMemo, type RefObject } from 'react';
 import { useRouter } from 'next/navigation';
 import { X, HelpCircle, Check, CheckCircle2, Lock, Loader2, AlertTriangle, Sun, Camera, Bell, User, Smile, ChevronRight } from 'lucide-react';
@@ -8,7 +9,7 @@ import { useCameraStream, type CameraMode } from '@/hooks/useCameraStream';
 import { useScanDetection } from '@/hooks/useScanDetection';
 import { scanApi, type ViewType, type SessionAnalyzeResult } from '@/lib/api/scan';
 import { deviceApi } from '@/lib/api/device';
-import { evaluateCaptureBlob, type CaptureQuality } from '@/lib/imageQuality';
+import { applyServerVerdict, evaluateCaptureBlob, type CaptureQuality } from '@/lib/imageQuality';
 import { useAuthStore } from '@/stores/authStore';
 import {
   SCAN_ZONES,
@@ -209,7 +210,7 @@ function TeethNotice() {
 
   return (
     <Link
-      href="/mypage/teeth"
+      href="/mypage/teeth?from=scan"
       className="flex items-center gap-3 p-3.5 rounded-[14px] bg-primary-light border border-primary/20 no-underline"
     >
       <Smile size={18} className="text-primary flex-shrink-0" />
@@ -218,7 +219,7 @@ function TeethNotice() {
           빠진 치아가 있나요?
         </span>
         <span className="block text-[11px] text-muted">
-          사랑니나 교정 발치를 알려주면 그 자리를 미촬영으로 안 세요.
+          등록해야 스캔을 시작할 수 있어요. 분석 결과를 실제 치아 번호에 맞추는 데 써요.
         </span>
       </span>
       <ChevronRight size={16} className="text-primary flex-shrink-0" />
@@ -235,6 +236,8 @@ function Step1({
   onToggleZone,
   onSetZones,
   startError,
+  needsToothProfile,
+  onSetupProfile,
   webcam,
 }: {
   checked: boolean;
@@ -246,6 +249,8 @@ function Step1({
   onToggleZone: (z: ViewType) => void;
   onSetZones: (zones: ViewType[]) => void;
   startError: string | null;
+  needsToothProfile: boolean;
+  onSetupProfile: () => void;
 }) {
   const count = selectedZones.length;
   const allOn = count === ALL_VIEW_TYPES.length;
@@ -453,13 +458,13 @@ function Step1({
           )}
           <button
             type="button"
-            onClick={onStart}
-            disabled={!checked || count === 0}
+            onClick={needsToothProfile ? onSetupProfile : onStart}
+            disabled={!needsToothProfile && (!checked || count === 0)}
             className="w-full h-[52px] rounded-[14px] text-white text-[15px] font-semibold
               disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
             style={{ background: 'linear-gradient(135deg, #4B7BF5 0%, #6B9BFF 100%)' }}
           >
-            스캔 시작하기
+            {needsToothProfile ? '치아 정보 등록하러 가기' : '스캔 시작하기'}
           </button>
         </div>
       </div>
@@ -829,6 +834,11 @@ export default function ScanPage() {
   const [step, setStep] = useState<Step>(1);
   const [selectedZones, setSelectedZones] = useState<ViewType[]>(ALL_VIEW_TYPES);
   const [startError, setStartError] = useState<string | null>(null);
+  const {
+    answered: toothProfileSet,
+    profileLoaded,
+    hydrate: hydrateDentition,
+  } = useDentitionStore();
   const [capturedZones, setCapturedZones] = useState<ViewType[]>([]);
   const [currentZone, setCurrentZone] = useState<ViewType | null>(null);
   const [surface, setSurface] = useState<Surface>('LINGUAL');
@@ -863,6 +873,8 @@ export default function ScanPage() {
   }, []);
   const uploadedImageIds = useRef<Map<ViewType, number>>(new Map());
   const pendingRef = useRef<PendingShot | null>(null);
+
+  useEffect(() => hydrateDentition(), [hydrateDentition]);
 
   useEffect(() => {
     pendingRef.current = pending;
@@ -948,10 +960,31 @@ export default function ScanPage() {
   const acceptShot = useCallback(
     async (blob: Blob) => {
       if (!currentZone) return;
-      const quality = await evaluateCaptureBlob(blob);
-      setPending({ zone: currentZone, blob, previewUrl: URL.createObjectURL(blob), quality });
+      const zone = currentZone;
+      const local = await evaluateCaptureBlob(blob);
+      const previewUrl = URL.createObjectURL(blob);
+
+      // 밝기/흔들림에서 이미 걸렸으면 서버까지 갈 것 없이 바로 다시 찍게 한다
+      const ask = local.ok && sessionId !== null && sessionId !== DEV_SESSION_ID;
+      setPending({ zone, blob, previewUrl, quality: { ...local, checking: ask } });
+      if (!ask) return;
+
+      const settle = (quality: CaptureQuality) =>
+        setPending((prev) => (prev?.previewUrl === previewUrl ? { ...prev, quality } : prev));
+
+      try {
+        const res = await scanApi.checkCaptureQuality(sessionId, {
+          file: new File([blob], 'shot.jpg', { type: blob.type || 'image/jpeg' }),
+          viewType: zone,
+          lightType: 'WHITE_LIGHT',
+        });
+        settle(applyServerVerdict(local, res.data.result ?? null));
+      } catch {
+        // 판정 서버가 죽어도 촬영은 계속 되어야 함
+        settle({ ...local, checking: false });
+      }
     },
-    [currentZone],
+    [currentZone, sessionId],
   );
 
   // 기기 셔터 버튼으로 찍은 컷도 웹 버튼과 같은 확인 화면으로 넘긴다
@@ -1145,6 +1178,8 @@ export default function ScanPage() {
           onToggleZone={handleToggleZone}
           onSetZones={handleSetZones}
           startError={startError}
+          needsToothProfile={profileLoaded && !toothProfileSet}
+          onSetupProfile={() => router.push('/mypage/teeth?from=scan')}
           webcam={isDev ? { on: useWebcam, onToggle: toggleWebcam } : null}
           onExit={() => setShowExitModal(true)}
           onStart={async () => {
@@ -1175,7 +1210,15 @@ export default function ScanPage() {
               enterScan(res.data.result);
             } catch (e) {
               console.error('세션 생성 실패:', e);
-              setStartError('스캔을 시작하지 못했어요. 잠시 후 다시 시도해 주세요.');
+              // 결손치를 모르면 AI 번호 매핑이 틀어져서 BE가 세션 생성부터 막는다
+              const code = axios.isAxiosError(e)
+                ? (e.response?.data as { code?: string } | undefined)?.code
+                : undefined;
+              setStartError(
+                code === 'TOOTH_PROFILE_5010'
+                  ? '빠진 치아를 먼저 등록해 주세요. 마이페이지 > 치아 정보에서 등록할 수 있어요.'
+                  : '스캔을 시작하지 못했어요. 잠시 후 다시 시도해 주세요.',
+              );
               if (isDev) {
                 console.warn('개발 모드: 업로드 없이 스캔 화면만 띄웁니다');
                 enterScan(DEV_SESSION_ID);

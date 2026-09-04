@@ -460,6 +460,14 @@ export const QA_CHECKS: QaCheck[] = [
   },
 
   {
+    id: 'user.toothProfile',
+    group: '마이페이지',
+    label: '치아 프로필 조회 (미설정이면 isSet=false)',
+    endpoint: 'GET /api/user/tooth-profile',
+    run: () => userApi.getToothProfile().then(unwrap),
+    expectKeys: ['isSet', 'missingTeeth'],
+  },
+  {
     id: 'user.profile',
     group: '마이페이지',
     label: '프로필 조회',
