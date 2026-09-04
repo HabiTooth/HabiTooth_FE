@@ -2,8 +2,9 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, Camera, User } from 'lucide-react';
+import { ChevronLeft, Camera, User, CalendarDays } from 'lucide-react';
 import Input from '@/components/atoms/Input';
+import { asIsoDate, formatBirthDate, todayIso } from '@/lib/birthDate';
 import { userApi } from '@/lib/api/user';
 import { apiErrorMessage } from '@/lib/apiError';
 
@@ -46,6 +47,7 @@ function SocialButton({ linked, onToggle }: { linked: boolean; onToggle: () => v
 export default function ProfileEditPage() {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
+  const dateRef = useRef<HTMLInputElement>(null);
 
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
@@ -130,7 +132,42 @@ export default function ProfileEditPage() {
       <div className="bg-white/90 backdrop-blur-sm rounded-[20px] shadow-card p-5 flex flex-col gap-4 relative z-10 mb-4">
         <ReadOnlyField label="이메일" value={email} />
         <Input label="이름" type="text" placeholder="이름을 입력해주세요" value={name} onChange={setName} />
-        <Input label="생년월일" type="text" placeholder="1995-03-15" value={birthDate} onChange={setBirthDate} />
+        <Input
+          label="생년월일"
+          type="text"
+          inputMode="numeric"
+          placeholder="1995-03-15"
+          value={birthDate}
+          onChange={(v) => setBirthDate(formatBirthDate(v))}
+          rightIcon={
+            <span className="relative flex items-center">
+              <button
+                type="button"
+                aria-label="달력에서 고르기"
+                onClick={() => {
+                  const el = dateRef.current;
+                  if (!el) return;
+                  // showPicker를 막는 브라우저에서는 포커스만 줘서 기본 UI가 뜨게 한다
+                  if (typeof el.showPicker === 'function') el.showPicker();
+                  else el.focus();
+                }}
+                className="p-1 -m-1 text-muted hover:text-primary transition-colors"
+              >
+                <CalendarDays size={18} />
+              </button>
+              <input
+                ref={dateRef}
+                type="date"
+                tabIndex={-1}
+                aria-hidden
+                max={todayIso()}
+                value={asIsoDate(birthDate)}
+                onChange={(e) => setBirthDate(e.target.value)}
+                className="absolute inset-0 w-full h-full opacity-0 pointer-events-none"
+              />
+            </span>
+          }
+        />
       </div>
 
       <div className="bg-white/90 backdrop-blur-sm rounded-[20px] shadow-card px-5 py-4 relative z-10 mb-4">

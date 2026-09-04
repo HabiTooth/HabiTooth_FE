@@ -5,7 +5,7 @@ import type { InputProps } from './Input.types';
 
 export type { InputProps } from './Input.types';
 
-export default function Input({ label, type, placeholder, value, onChange, error, rightIcon, shake }: InputProps) {
+export default function Input({ label, type, placeholder, value, onChange, error, rightIcon, shake, inputMode }: InputProps) {
   const [focused, setFocused] = useState(false);
   const active = focused || !!value;
 
@@ -22,6 +22,7 @@ export default function Input({ label, type, placeholder, value, onChange, error
         <label className="float-label">{label}</label>
         <input
           type={type}
+          inputMode={inputMode}
           value={value}
           placeholder={placeholder}
           onChange={(e) => onChange(e.target.value)}
