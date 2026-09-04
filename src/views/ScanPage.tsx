@@ -964,24 +964,51 @@ export default function ScanPage() {
       const local = await evaluateCaptureBlob(blob);
       const previewUrl = URL.createObjectURL(blob);
 
-      // 밝기/흔들림에서 이미 걸렸으면 서버까지 갈 것 없이 바로 다시 찍게 한다
-      const ask = local.ok && sessionId !== null && sessionId !== DEV_SESSION_ID;
-      setPending({ zone, blob, previewUrl, quality: { ...local, checking: ask } });
+      // 로컬은 힌트일 뿐이라 걸렸어도 서버에 물어본다. 세션이 없을 때만 로컬 판정으로 끝냄
+      const ask = sessionId !== null && sessionId !== DEV_SESSION_ID;
+      setPending({
+        zone,
+        blob,
+        previewUrl,
+        quality: { ...local, checking: ask, verified: local.ok && !ask ? false : undefined },
+      });
       if (!ask) return;
 
       const settle = (quality: CaptureQuality) =>
         setPending((prev) => (prev?.previewUrl === previewUrl ? { ...prev, quality } : prev));
 
-      try {
-        const res = await scanApi.checkCaptureQuality(sessionId, {
-          file: new File([blob], 'shot.jpg', { type: blob.type || 'image/jpeg' }),
+      const file = new File([blob], 'shot.jpg', { type: blob.type || 'image/jpeg' });
+      if (isDev) {
+        console.groupCollapsed(`[화질판정] 요청 ${zone}`);
+        console.log('POST', `/api/scan-sessions/${sessionId}/images/quality-check`);
+        console.log('form', {
+          file: `${file.name} ${file.type} ${(file.size / 1024).toFixed(1)}KB`,
           viewType: zone,
           lightType: 'WHITE_LIGHT',
         });
+        console.log('로컬 판정', { brightness: local.brightness, sharpness: local.sharpness });
+        console.groupEnd();
+      }
+
+      try {
+        const res = await scanApi.checkCaptureQuality(sessionId, {
+          file,
+          viewType: zone,
+          lightType: 'WHITE_LIGHT',
+        });
+        if (isDev) {
+          console.groupCollapsed(`[화질판정] 응답 ${zone} · ${res.status}`);
+          console.log('body', res.data);
+          console.log('result', res.data.result);
+          console.groupEnd();
+        }
         settle(applyServerVerdict(local, res.data.result ?? null));
-      } catch {
-        // 판정 서버가 죽어도 촬영은 계속 되어야 함
-        settle({ ...local, checking: false });
+      } catch (e) {
+        // 막지는 않되, 확인 못 했다는 건 화면에 밝힌다
+        const status = axios.isAxiosError(e) ? e.response?.status : undefined;
+        const body = axios.isAxiosError(e) ? e.response?.data : undefined;
+        console.error(`[화질판정] 실패 ${zone} · status ${status ?? '응답 없음'}`, body ?? e);
+        settle({ ...local, checking: false, verified: false });
       }
     },
     [currentZone, sessionId],
