@@ -43,6 +43,7 @@ interface NotificationState {
   remove: (id: string) => void;
   clearAll: () => void;
   reset: () => void;
+  clear: () => void;
 }
 
 export const useNotificationStore = create<NotificationState>((set, get) => ({
@@ -106,6 +107,8 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
     writeJson(SEEN_KEY, []);
     set({ items: [] });
   },
+
+  clear: () => set({ items: [], hydrated: false }),
 }));
 
 export const unreadCount = (items: AppNotification[]) => items.filter((n) => !n.read).length;
