@@ -1,15 +1,13 @@
 import type { LesionType, RiskLevel } from '@/lib/api/common';
 import { RISK_LABEL } from '@/lib/score';
+import { LESION_LABEL } from '@/lib/lesionRisk';
 import type { NewNotification } from './types';
+
+export { LESION_LABEL };
 
 const DAY_MS = 86_400_000;
 const REMIND_AFTER_DAYS = 3;
 const CHECKUP_INTERVAL_DAYS = 182;
-
-export const LESION_LABEL: Record<LesionType, string> = {
-  PLAQUE: '치태',
-  CALCULUS: '치석',
-};
 
 const today = () => new Date().toISOString().slice(0, 10);
 
