@@ -3,11 +3,12 @@
 import axios from 'axios';
 import { useState, useEffect, useRef, useCallback, useMemo, type RefObject } from 'react';
 import { useRouter } from 'next/navigation';
-import { X, HelpCircle, Check, CheckCircle2, Lock, Loader2, AlertTriangle, Sun, Camera, Bell, User, Smile, ChevronRight } from 'lucide-react';
+import { X, HelpCircle, Check, CheckCircle2, Lock, Loader2, AlertTriangle, Sun, Camera, Bell, User, Smile, ChevronRight, ChevronDown } from 'lucide-react';
 import type { ScanStatusType } from '@/components/molecules/ScanStatusBanner';
-import { useCameraStream, type CameraMode } from '@/hooks/useCameraStream';
+import { useCameraStream, type CameraMode, type LedMode } from '@/hooks/useCameraStream';
 import { useScanDetection } from '@/hooks/useScanDetection';
 import { scanApi, type ViewType, type SessionAnalyzeResult } from '@/lib/api/scan';
+import type { LightType } from '@/lib/api/common';
 import { deviceApi } from '@/lib/api/device';
 import { applyServerVerdict, evaluateCaptureBlob, type CaptureQuality } from '@/lib/imageQuality';
 import { useAuthStore } from '@/stores/authStore';
@@ -39,7 +40,6 @@ import { controlHost, deviceAddress, streamUrl } from '@/lib/deviceAddress';
 import { useHardwareShutter } from '@/hooks/useHardwareShutter';
 
 type Step = 1 | 2 | 3 | 4;
-type ScanPhase = 'guide' | 'white' | 'uv';
 
 const ANALYZE_STEPS = [
   '이미지 품질 확인',
@@ -478,9 +478,8 @@ function Step2({
   isReady,
   cameraError,
   cameraMode,
-  phase,
   status,
-  lightOn,
+  ledMode,
   selectedZones,
   capturedZones,
   currentZone,
@@ -491,8 +490,7 @@ function Step2({
   onHelp,
   onCapture,
   isCapturing,
-  onLightToggle,
-  onCameraFlip,
+  onLedToggle,
   onRetry,
   onFinish,
   reviewOverlay,
@@ -502,9 +500,8 @@ function Step2({
   isReady: boolean;
   cameraError: string | null;
   cameraMode: CameraMode;
-  phase: ScanPhase;
   status: ScanStatusType;
-  lightOn: boolean;
+  ledMode: LedMode;
   selectedZones: ViewType[];
   capturedZones: ViewType[];
   currentZone: ViewType | null;
@@ -515,12 +512,12 @@ function Step2({
   onHelp: () => void;
   onCapture: () => void;
   isCapturing: boolean;
-  onLightToggle: () => void;
-  onCameraFlip: () => void;
+  onLedToggle: (mode: LedMode) => void;
   onRetry: () => void;
   onFinish: () => void;
   reviewOverlay?: React.ReactNode;
 }) {
+  const [archFolded, setArchFolded] = useState(false);
   const info = zoneInfo(currentZone);
   const done = capturedZones.length;
   const total = selectedZones.length;
@@ -531,6 +528,7 @@ function Step2({
       <PageHeader title="실시간 구강 스캔" onExit={onExit} onHelp={onHelp} />
 
       <div className="bg-white px-3 pt-2 pb-2 flex-shrink-0 border-b border-hairline">
+        {!archFolded && (
         <ToothArchSelector
           compact
           lockUnselected
@@ -541,6 +539,7 @@ function Step2({
           current={currentZone}
           onZoneClick={onZoneClick}
         />
+        )}
         <div className="flex items-center justify-between px-1 mt-0.5">
           <span className="text-[13px] font-bold text-content truncate">
             {info ? info.fullLabel : '구역을 선택해 주세요'}
@@ -549,6 +548,18 @@ function Step2({
             <span className="text-[12px] font-bold text-muted tabular-nums">
               {done}/{total}
             </span>
+            <button
+              type="button"
+              onClick={() => setArchFolded((v) => !v)}
+              aria-expanded={!archFolded}
+              className="flex items-center gap-0.5 px-2 py-1 rounded-full bg-hairline/60 text-[11px] font-semibold text-muted"
+            >
+              {archFolded ? '치아도 보기' : '접기'}
+              <ChevronDown
+                size={13}
+                className={`transition-transform ${archFolded ? '' : 'rotate-180'}`}
+              />
+            </button>
             {allDone && (
               <button
                 type="button"
@@ -568,11 +579,10 @@ function Step2({
         isReady={isReady}
         cameraError={cameraError}
         cameraMode={cameraMode}
-        phase={phase}
-        lightOn={lightOn}
+        ledMode={ledMode}
+        archFolded={archFolded}
         status={status}
-        onLightToggle={onLightToggle}
-        onCameraFlip={onCameraFlip}
+        onLedToggle={onLedToggle}
         onCapture={onCapture}
         isCapturing={isCapturing}
         onRetry={onRetry}
@@ -857,7 +867,6 @@ export default function ScanPage() {
   const [analyzeError, setAnalyzeError] = useState<string | null>(null);
   const [analyzeKey, setAnalyzeKey] = useState(0);
 
-  const phase: ScanPhase = 'white';
 
   const { deviceId, deviceIp } = useAuthStore();
   const scannerAddress = deviceAddress(deviceIp);
@@ -885,13 +894,19 @@ export default function ScanPage() {
     imgRef,
     isReady,
     error: cameraError,
-    lightOn,
+    ledMode,
     cameraMode,
     startCamera,
     stopCamera,
-    toggleLight,
-    flipCamera,
+    setLed,
   } = useCameraStream();
+
+  // 조명이 UV로 켜져 있으면 그 상태로 찍히므로 저장되는 광원도 따라간다
+  const light: LightType = ledMode === 'UV' ? 'UV_LIGHT' : 'WHITE_LIGHT';
+  const toggleLed = useCallback(
+    (mode: LedMode) => void setLed(ledMode === mode ? 'OFF' : mode),
+    [ledMode, setLed],
+  );
 
   const { detectedStatus } = useScanDetection({
     videoRef,
@@ -932,7 +947,8 @@ export default function ScanPage() {
   const captureBlob = useCallback(async (zone: ViewType): Promise<Blob> => {
     if (cameraMode === 'esp32' && scannerAddress) {
       const res = await fetch(
-        `/api/camera/capture?ip=${controlHost(scannerAddress)}&view=${zone}`,
+        `/api/camera/capture?ip=${controlHost(scannerAddress)}&view=${zone}` +
+          `&light=${light === 'UV_LIGHT' ? 'uv' : 'white'}`,
       );
       if (!res.ok) {
         const detail = await res.json().catch(() => null);
@@ -948,7 +964,7 @@ export default function ScanPage() {
     return new Promise<Blob>((resolve) =>
       canvas.toBlob((b) => resolve(b ?? new Blob()), 'image/jpeg', 0.9),
     );
-  }, [cameraMode, scannerAddress, videoRef]);
+  }, [cameraMode, scannerAddress, videoRef, light]);
 
   // 기기가 풀해상도로 한 컷 잡는 동안 스트림이 끊겨서, 촬영 뒤에는 다시 붙여줘야 함
   const restartStream = useCallback(() => {
@@ -984,7 +1000,7 @@ export default function ScanPage() {
         console.log('form', {
           file: `${file.name} ${file.type} ${(file.size / 1024).toFixed(1)}KB`,
           viewType: zone,
-          lightType: 'WHITE_LIGHT',
+          lightType: light,
         });
         console.log('로컬 판정', { brightness: local.brightness, sharpness: local.sharpness });
         console.groupEnd();
@@ -994,7 +1010,7 @@ export default function ScanPage() {
         const res = await scanApi.checkCaptureQuality(sessionId, {
           file,
           viewType: zone,
-          lightType: 'WHITE_LIGHT',
+          lightType: light,
         });
         if (isDev) {
           console.groupCollapsed(`[화질판정] 응답 ${zone} · ${res.status}`);
@@ -1011,7 +1027,7 @@ export default function ScanPage() {
         settle({ ...local, checking: false, verified: false });
       }
     },
-    [currentZone, sessionId],
+    [currentZone, sessionId, light],
   );
 
   // 기기 셔터 버튼으로 찍은 컷도 웹 버튼과 같은 확인 화면으로 넘긴다
@@ -1079,7 +1095,7 @@ export default function ScanPage() {
         const res = await scanApi.uploadImageToSession(sessionId, {
           file,
           viewType: zone,
-          lightType: 'WHITE_LIGHT',
+          lightType: light,
         });
         uploadedImageIds.current.set(zone, res.data.result.imageId);
       }
@@ -1098,7 +1114,7 @@ export default function ScanPage() {
     } finally {
       setIsUploading(false);
     }
-  }, [pending, sessionId, nextUncapturedZone, capturedZones]);
+  }, [pending, sessionId, nextUncapturedZone, capturedZones, light]);
 
   const handleSetZones = useCallback((zones: ViewType[]) => {
     setSelectedZones(sortZones([...new Set(zones)]));
@@ -1261,9 +1277,8 @@ export default function ScanPage() {
           isReady={isReady}
           cameraError={cameraError}
           cameraMode={cameraMode}
-          phase={phase}
           status={detectedStatus}
-          lightOn={lightOn}
+          ledMode={ledMode}
           selectedZones={selectedZones}
           capturedZones={capturedZones}
           currentZone={currentZone}
@@ -1274,8 +1289,7 @@ export default function ScanPage() {
           onHelp={() => setShowHelp(true)}
           onCapture={handleCapture}
           isCapturing={isCapturing}
-          onLightToggle={toggleLight}
-          onCameraFlip={flipCamera}
+          onLedToggle={toggleLed}
           onFinish={() => setStep(3)}
           onRetry={() => {
             stopCamera();
