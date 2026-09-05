@@ -7,11 +7,13 @@ export interface Profile {
   email: string;
   name: string;
   birthDate: string | null;
+  lastDentalVisitAt: string | null;
 }
 
 export interface ProfileUpdatePayload {
   name: string;
   birthDate?: string;
+  lastDentalVisitAt?: string;
 }
 
 export interface NotificationSetting {

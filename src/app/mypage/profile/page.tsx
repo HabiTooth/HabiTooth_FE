@@ -48,10 +48,12 @@ export default function ProfileEditPage() {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
   const dateRef = useRef<HTMLInputElement>(null);
+  const visitRef = useRef<HTMLInputElement>(null);
 
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [birthDate, setBirthDate] = useState('');
+  const [lastVisit, setLastVisit] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [kakaoLinked, setKakaoLinked] = useState(false);
   const [googleLinked, setGoogleLinked] = useState(false);
@@ -67,6 +69,7 @@ export default function ProfileEditPage() {
         setEmail(p.email);
         setName(p.name ?? '');
         setBirthDate(p.birthDate ?? '');
+        setLastVisit(p.lastDentalVisitAt ?? '');
       })
       .catch((e) => setLoadError(apiErrorMessage(e, '프로필을 불러오지 못했어요.')));
   }, []);
@@ -81,7 +84,11 @@ export default function ProfileEditPage() {
     setIsSaving(true);
     setSaveError(null);
     try {
-      await userApi.updateProfile({ name: name.trim(), birthDate: birthDate || undefined });
+      await userApi.updateProfile({
+        name: name.trim(),
+        birthDate: birthDate || undefined,
+        lastDentalVisitAt: lastVisit || undefined,
+      });
       router.back();
     } catch (e) {
       setSaveError(apiErrorMessage(e, '저장에 실패했어요. 잠시 후 다시 시도해 주세요.'));
@@ -168,6 +175,44 @@ export default function ProfileEditPage() {
             </span>
           }
         />
+        <Input
+          label="마지막 치과 방문일"
+          type="text"
+          inputMode="numeric"
+          placeholder="2026-03-01"
+          value={lastVisit}
+          onChange={(v) => setLastVisit(formatBirthDate(v))}
+          rightIcon={
+            <span className="relative flex items-center">
+              <button
+                type="button"
+                aria-label="달력에서 고르기"
+                onClick={() => {
+                  const el = visitRef.current;
+                  if (!el) return;
+                  if (typeof el.showPicker === 'function') el.showPicker();
+                  else el.focus();
+                }}
+                className="p-1 -m-1 text-muted hover:text-primary transition-colors"
+              >
+                <CalendarDays size={18} />
+              </button>
+              <input
+                ref={visitRef}
+                type="date"
+                tabIndex={-1}
+                aria-hidden
+                max={todayIso()}
+                value={asIsoDate(lastVisit)}
+                onChange={(e) => setLastVisit(e.target.value)}
+                className="absolute inset-0 w-full h-full opacity-0 pointer-events-none"
+              />
+            </span>
+          }
+        />
+        <p className="m-0 -mt-1 px-1 text-[10.5px] text-muted leading-relaxed">
+          6개월이 지나면 정기 검진 알림을 보내요.
+        </p>
       </div>
 
       <div className="bg-white/90 backdrop-blur-sm rounded-[20px] shadow-card px-5 py-4 relative z-10 mb-4">

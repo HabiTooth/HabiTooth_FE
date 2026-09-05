@@ -10,8 +10,6 @@ import { historyApi, type HistoryRecordItem } from '@/lib/api/history';
 import HistoryListSection from '@/components/organisms/HistoryListSection';
 import { useSessionIndex } from '@/hooks/useSessionIndex';
 import { formatDate, formatTime, scoreGrade } from '@/lib/score';
-import { useNotificationStore } from '@/stores/notificationStore';
-import { streakReached } from '@/lib/notifications/rules';
 import {
   DAY_LABELS,
   computeStreak,
@@ -35,7 +33,6 @@ export default function StreakPage() {
   const [records, setRecords] = useState<HistoryRecordItem[]>([]);
   const { idByDate } = useSessionIndex();
   const [cursor, setCursor] = useState(() => new Date());
-  const push = useNotificationStore((s) => s.push);
 
   useEffect(() => {
     historyApi
@@ -52,10 +49,6 @@ export default function StreakPage() {
   const stats = useMemo(() => computeStreak(dates), [dates]);
 
   const { current } = stats;
-  useEffect(() => {
-    const n = streakReached(current);
-    if (n) push(n);
-  }, [current, push]);
 
   const cells = useMemo(
     () => monthGrid(cursor.getFullYear(), cursor.getMonth(), stats.scanned),

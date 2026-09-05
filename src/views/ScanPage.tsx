@@ -34,7 +34,6 @@ import Link from 'next/link';
 import Checkbox from '@/components/atoms/Checkbox';
 import { useNotificationStore } from '@/stores/notificationStore';
 import { useDentitionStore } from '@/stores/dentitionStore';
-import { reportReady } from '@/lib/notifications/rules';
 import { readWebcamPreference, writeWebcamPreference } from '@/lib/cameraSource';
 import { controlHost, deviceAddress, streamUrl } from '@/lib/deviceAddress';
 import { useHardwareShutter } from '@/hooks/useHardwareShutter';
@@ -529,16 +528,16 @@ function Step2({
 
       <div className="bg-white px-3 pt-2 pb-2 flex-shrink-0 border-b border-hairline">
         {!archFolded && (
-        <ToothArchSelector
-          compact
-          lockUnselected
-          surface={surface}
-          onSurfaceChange={onSurfaceChange}
-          selected={selectedZones}
-          captured={capturedZones}
-          current={currentZone}
-          onZoneClick={onZoneClick}
-        />
+          <ToothArchSelector
+            compact
+            lockUnselected
+            surface={surface}
+            onSurfaceChange={onSurfaceChange}
+            selected={selectedZones}
+            captured={capturedZones}
+            current={currentZone}
+            onZoneClick={onZoneClick}
+          />
         )}
         <div className="flex items-center justify-between px-1 mt-0.5">
           <span className="text-[13px] font-bold text-content truncate">
@@ -863,7 +862,7 @@ export default function ScanPage() {
   const [analyzeProgress, setAnalyzeProgress] = useState(0);
   const [sessionId, setSessionId] = useState<number | null>(null);
   const [analysisResult, setAnalysisResult] = useState<SessionAnalyzeResult | null>(null);
-  const pushNotification = useNotificationStore((s) => s.push);
+  const refreshNotifications = useNotificationStore((s) => s.refresh);
   const [analyzeError, setAnalyzeError] = useState<string | null>(null);
   const [analyzeKey, setAnalyzeKey] = useState(0);
 
@@ -1150,7 +1149,8 @@ export default function ScanPage() {
       .analyzeSession(sessionId)
       .then((res: { data: { result: SessionAnalyzeResult } }) => {
         setAnalysisResult(res.data.result);
-        pushNotification(reportReady(sessionId, res.data.result.sessionScore));
+        // 서버가 분석 커밋 직후 알림을 만들어 두므로 그걸 받아와 띄운다
+        void refreshNotifications({ popNew: true });
         clearInterval(t);
         setAnalyzeStep(ANALYZE_STEPS.length + 1);
         setAnalyzeProgress(100);
@@ -1164,7 +1164,7 @@ export default function ScanPage() {
       });
 
     return () => clearInterval(t);
-  }, [step, sessionId, analyzeKey, capturedZones, pushNotification]);
+  }, [step, sessionId, analyzeKey, capturedZones, refreshNotifications]);
 
   const handleReset = () => {
     uploadedImageIds.current = new Map();
