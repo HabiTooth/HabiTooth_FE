@@ -2,7 +2,8 @@
 
 import { useEffect, useRef } from 'react';
 
-const POLL_MS = 1200;
+// 스트림이랑 같은 기기를 두드리는 거라 너무 잦으면 스트림이 끊긴다
+const POLL_MS = 3000;
 // 촬영 직후에는 기기가 바빠서 계속 실패하므로 간격을 벌린다
 const MAX_POLL_MS = 9600;
 
