@@ -1,4 +1,5 @@
 export interface HistoryItem {
+  sessionId?: number | null;
   date: string;
   time: string;
   score: number;

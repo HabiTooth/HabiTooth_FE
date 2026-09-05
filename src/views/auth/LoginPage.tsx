@@ -69,7 +69,7 @@ export default function LoginPage() {
     setApiError(null);
     try {
       const res = await authApi.login({ email, password });
-      setToken(res.data.result.accessToken);
+      setToken(res.data.result.accessToken, rememberMe);
       router.push(await destinationAfterLogin());
     } catch {
       setApiError('이메일 또는 비밀번호가 올바르지 않아요.');

@@ -32,4 +32,6 @@ export const authApi = {
 
   socialLogin: (payload: SocialLoginPayload) =>
     apiClient.post<ApiResponse<LoginResult>>('/api/auth/social', payload),
+
+  logout: () => apiClient.post<ApiResponse<string>>('/api/auth/logout'),
 };

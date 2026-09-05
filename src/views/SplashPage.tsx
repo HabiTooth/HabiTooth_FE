@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/authStore';
 import { destinationAfterLogin } from '@/lib/authRouting';
+import { isTokenExpired } from '@/lib/tokenStorage';
 
 const OUTLINE_D =
   'M 194 79 C 171 59 138 58 116 76 C 95 94 91 122 100 151 C 106 171 115 194 126 219 L 147 268 C 152 281 160 286 174 283 L 174 221 C 174 202 185 190 200 190 C 215 190 226 202 226 221 L 226 283 C 240 286 248 281 253 268 L 274 219 C 285 194 294 171 300 151 C 309 122 305 94 284 76 C 267 62 245 58 225 64';
@@ -28,9 +29,12 @@ export default function SplashPage() {
 
     let cancelled = false;
     (async () => {
-      const token = useAuthStore.getState().token;
+      const { token, clearAuth } = useAuthStore.getState();
+      // 만료 토큰은 서버 안 거치고 정리
+      if (token && isTokenExpired(token)) clearAuth();
+      const valid = token && !isTokenExpired(token);
       const [dest] = await Promise.all([
-        token ? destinationAfterLogin() : Promise.resolve('/onboarding'),
+        valid ? destinationAfterLogin() : Promise.resolve('/onboarding'),
         new Promise((r) => setTimeout(r, 3500)), // 애니메이션 최소 노출 시간
       ]);
       if (!cancelled) router.push(dest);

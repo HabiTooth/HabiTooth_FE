@@ -2,20 +2,22 @@
 
 import { useRef, useState, useCallback, useEffect } from 'react';
 
+export type LedMode = 'OFF' | 'WHITE' | 'UV';
+
 export type CameraMode = 'device' | 'esp32';
+
+const STREAM_TIMEOUT = 8000;
 
 export interface UseCameraStreamReturn {
   videoRef: React.RefObject<HTMLVideoElement | null>;
   imgRef: React.RefObject<HTMLImageElement | null>;
   isReady: boolean;
   error: string | null;
-  lightOn: boolean;
-  facingMode: 'user' | 'environment';
+  ledMode: LedMode;
   cameraMode: CameraMode;
   startCamera: (mode?: CameraMode, esp32Url?: string) => Promise<void>;
   stopCamera: () => void;
-  toggleLight: () => Promise<void>;
-  flipCamera: () => Promise<void>;
+  setLed: (mode: LedMode) => Promise<void>;
   captureFrame: () => string | null;
 }
 
@@ -23,19 +25,24 @@ export function useCameraStream(): UseCameraStreamReturn {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  // 스트림은 81, 제어(/led, /control)는 80
+  const controlHostRef = useRef<string | null>(null);
+  const streamWatchdog = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [lightOn, setLightOn] = useState(false);
-  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('environment');
+  const [ledMode, setLedMode] = useState<LedMode>('OFF');
+  const facingMode = 'environment';
   const [cameraMode, setCameraMode] = useState<CameraMode>('device');
 
   const stopCamera = useCallback(() => {
+    if (streamWatchdog.current) clearTimeout(streamWatchdog.current);
+    streamWatchdog.current = null;
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
     if (videoRef.current) videoRef.current.srcObject = null;
     if (imgRef.current) imgRef.current.src = '';
     setIsReady(false);
-    setLightOn(false);
+    setLedMode('OFF');
   }, []);
 
   const startCamera = useCallback(
@@ -45,25 +52,49 @@ export function useCameraStream(): UseCameraStreamReturn {
 
         if (mode === 'esp32' && esp32Url) {
           setCameraMode('esp32');
-          // ESP32 기본 해상도가 QVGA(320x240)라 화면에 꽉 채우면 뭉개짐 - SVGA + 고화질로 세팅
-          // 주의: 스트림은 :81, /control은 80 포트라 포트 떼고 요청해야 함
-          const controlHost = esp32Url.replace(/^https?:\/\//, '').split('/')[0].split(':')[0];
-          // XCLK 20MHz(기본값)에서 색이 핑크로 틀어지는 이슈가 있어 12로 고정 (재부팅 시 초기화되므로 연결 때마다 세팅)
-          fetch(`http://${controlHost}/xclk?xclk=12`, { mode: 'no-cors' }).catch(() => {});
-          fetch(`http://${controlHost}/control?var=framesize&val=9`, { mode: 'no-cors' }).catch(() => {});
-          fetch(`http://${controlHost}/control?var=quality&val=10`, { mode: 'no-cors' }).catch(() => {});
+          // 스트림은 :81, /led 같은 제어는 80 포트
+          controlHostRef.current = esp32Url
+            .replace(/^https?:\/\//, '')
+            .split('/')[0]
+            .split(':')[0];
+          // 스트림 포트가 닫혀 있으면 onerror도 안 뜨고 TCP 타임아웃까지 멈춰 있어서 직접 끊는다
+          streamWatchdog.current = setTimeout(() => {
+            setError(
+              `스캐너 미리보기에 연결하지 못했어요.\n${esp32Url}\n기기 전원과 WiFi 연결을 확인해 주세요.`,
+            );
+          }, STREAM_TIMEOUT);
+
           // img 엘리먼트가 마운트된 후 src 설정을 위해 requestAnimationFrame 사용
           requestAnimationFrame(() => {
             const img = imgRef.current;
             if (!img) return;
-            img.onload = () => { setIsReady(true); setError(null); };
-            img.onerror = () => { setError(`ESP32 카메라 연결 실패\n${esp32Url}`); };
+            img.onload = () => {
+              if (streamWatchdog.current) clearTimeout(streamWatchdog.current);
+              setIsReady(true);
+              setError(null);
+            };
+            img.onerror = () => {
+              if (streamWatchdog.current) clearTimeout(streamWatchdog.current);
+              setError(`스캐너 카메라 연결 실패\n${esp32Url}`);
+            };
             img.src = esp32Url;
           });
         } else {
           setCameraMode('device');
+          // getUserMedia는 HTTPS나 localhost에서만 쓸 수 있다.
+          // 폰에서 http://192.168.x.x 로 붙으면 mediaDevices 자체가 없어 권한 창도 안 뜬다.
+          if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
+            setError(
+              '휴대폰에서는 HTTPS로 접속해야 카메라를 쓸 수 있어요.\nnpm run dev:https 로 실행한 뒤 https:// 주소로 접속해 주세요.',
+            );
+            return;
+          }
           const stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: { ideal: facingMode }, width: { ideal: 1280 }, height: { ideal: 960 } },
+            video: {
+              facingMode: { ideal: facingMode },
+              width: { ideal: 1280 },
+              height: { ideal: 960 },
+            },
             audio: false,
           });
           streamRef.current = stream;
@@ -77,32 +108,50 @@ export function useCameraStream(): UseCameraStreamReturn {
           }
           setError(null);
         }
-      } catch {
-        setError('카메라 접근 권한이 필요합니다.\n설정에서 카메라 권한을 허용해 주세요.');
+      } catch (e) {
+        const name = e instanceof DOMException ? e.name : '';
+        if (name === 'NotAllowedError') {
+          setError('카메라 접근이 거부됐어요.\n브라우저 설정에서 카메라 권한을 허용해 주세요.');
+        } else if (name === 'NotFoundError' || name === 'OverconstrainedError') {
+          setError('쓸 수 있는 카메라를 찾지 못했어요.');
+        } else if (name === 'NotReadableError') {
+          setError('카메라를 다른 앱이 쓰고 있어요.\n해당 앱을 끄고 다시 시도해 주세요.');
+        } else {
+          setError('카메라를 열지 못했어요.\n다시 시도해 주세요.');
+        }
       }
     },
     [facingMode, stopCamera],
   );
 
-  const toggleLight = useCallback(async () => {
-    if (cameraMode === 'esp32') { setLightOn((prev) => !prev); return; }
-    const track = streamRef.current?.getVideoTracks()[0];
-    if (!track) return;
-    try {
-      const next = !lightOn;
-      await track.applyConstraints({ advanced: [{ torch: next } as MediaTrackConstraintSet] });
-      setLightOn(next);
-    } catch {
-      // torch not supported
-    }
-  }, [lightOn, cameraMode]);
-
-  const flipCamera = useCallback(async () => {
-    if (cameraMode === 'esp32') return;
-    const next = facingMode === 'environment' ? 'user' : 'environment';
-    setFacingMode(next);
-    await startCamera('device');
-  }, [facingMode, startCamera, cameraMode]);
+  const setLed = useCallback(
+    async (mode: LedMode) => {
+      if (cameraMode === 'esp32') {
+        const host = controlHostRef.current;
+        if (!host) return;
+        try {
+          // 펌웨어가 적용된 상태를 문자열로 돌려주므로 그 값을 그대로 신뢰한다
+          const res = await fetch(`http://${host}/led?mode=${mode.toLowerCase()}`);
+          const applied = (await res.text()).trim().toUpperCase();
+          setLedMode(applied === 'UV' || applied === 'WHITE' ? applied : 'OFF');
+        } catch {
+          // 조명이 안 바뀌어도 촬영은 계속 되어야 함
+        }
+        return;
+      }
+      const track = streamRef.current?.getVideoTracks()[0];
+      if (!track) return;
+      try {
+        await track.applyConstraints({
+          advanced: [{ torch: mode !== 'OFF' } as MediaTrackConstraintSet],
+        });
+        setLedMode(mode);
+      } catch {
+        // torch not supported
+      }
+    },
+    [cameraMode],
+  );
 
   const captureFrame = useCallback((): string | null => {
     if (cameraMode === 'esp32') {
@@ -134,13 +183,11 @@ export function useCameraStream(): UseCameraStreamReturn {
     imgRef,
     isReady,
     error,
-    lightOn,
-    facingMode,
+    ledMode,
     cameraMode,
     startCamera,
     stopCamera,
-    toggleLight,
-    flipCamera,
+    setLed,
     captureFrame,
   };
 }

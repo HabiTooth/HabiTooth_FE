@@ -2,22 +2,34 @@
 
 import { useRef, useEffect, useState } from 'react';
 import type { ScanStatusType } from '@/components/molecules/ScanStatusBanner';
+import { DARK_THRESHOLD, meanLuma } from '@/lib/imageQuality';
 
 interface Options {
   videoRef: React.RefObject<HTMLVideoElement | null>;
+  imgRef?: React.RefObject<HTMLImageElement | null>;
   enabled: boolean;
 }
 
-const SHAKE_THRESHOLD = 18;     // m/s² — 이 이상이면 흔들림으로 판정
-const DARK_THRESHOLD = 45;      // 0-255 평균 밝기 — 이 이하면 어두움으로 판정
-const SHAKE_COOLDOWN_MS = 1500;
+const SHAKE_THRESHOLD = 18; // m/s²
+const SHAKE_COOLDOWN_MS = 1200;
 
-export function useScanDetection({ videoRef, enabled }: Options) {
+const SAMPLE_MS = 250;
+const DARK_EXIT_MARGIN = 10;
+
+export function useScanDetection({ videoRef, imgRef, enabled }: Options) {
   const [detectedStatus, setDetectedStatus] = useState<ScanStatusType>('good');
   const isShakingRef = useRef(false);
+  const isDarkRef = useRef(false);
   const shakeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ── 흔들림 감지 (DeviceMotionEvent) ─────────────────────────────────────
+  useEffect(() => {
+    if (!enabled) {
+      isShakingRef.current = false;
+      isDarkRef.current = false;
+      setDetectedStatus('good');
+    }
+  }, [enabled]);
+
   useEffect(() => {
     if (!enabled) return;
 
@@ -25,15 +37,13 @@ export function useScanDetection({ videoRef, enabled }: Options) {
       const g = e.accelerationIncludingGravity;
       if (!g) return;
       const mag = Math.sqrt((g.x ?? 0) ** 2 + (g.y ?? 0) ** 2 + (g.z ?? 0) ** 2);
+      if (mag <= SHAKE_THRESHOLD) return;
 
-      if (mag > SHAKE_THRESHOLD) {
-        isShakingRef.current = true;
-        setDetectedStatus('shaking');
-        if (shakeTimerRef.current) clearTimeout(shakeTimerRef.current);
-        shakeTimerRef.current = setTimeout(() => {
-          isShakingRef.current = false;
-        }, SHAKE_COOLDOWN_MS);
-      }
+      isShakingRef.current = true;
+      if (shakeTimerRef.current) clearTimeout(shakeTimerRef.current);
+      shakeTimerRef.current = setTimeout(() => {
+        isShakingRef.current = false;
+      }, SHAKE_COOLDOWN_MS);
     };
 
     window.addEventListener('devicemotion', onMotion, true);
@@ -43,35 +53,51 @@ export function useScanDetection({ videoRef, enabled }: Options) {
     };
   }, [enabled]);
 
-  // ── 밝기 감지 (Canvas 픽셀 샘플링, 1초 간격) ────────────────────────────
+  // 밝기 감지
   useEffect(() => {
     if (!enabled) return;
 
     const canvas = document.createElement('canvas');
     canvas.width = 32;
     canvas.height = 24;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
     if (!ctx) return;
 
-    const timer = setInterval(() => {
-      // 흔들림 감지 중엔 밝기 판정 스킵 (더 긴급한 상태 우선)
-      if (isShakingRef.current) return;
+    // 스캐너 스트림은 타 오리진 — 캔버스 오염 시 재시도 중단
+    let pixelsReadable = true;
 
+    const sampleBrightness = (): number | null => {
       const video = videoRef.current;
-      if (!video || video.readyState < 2 || video.paused) return;
+      const img = imgRef?.current;
 
-      ctx.drawImage(video, 0, 0, 32, 24);
-      const { data } = ctx.getImageData(0, 0, 32, 24);
-      let sum = 0;
-      for (let i = 0; i < data.length; i += 4) {
-        sum += (data[i] + data[i + 1] + data[i + 2]) / 3;
+      let source: CanvasImageSource | null = null;
+      if (video && video.readyState >= 2 && !video.paused) source = video;
+      else if (img?.complete && img.naturalWidth > 0) source = img;
+      if (!source) return null;
+
+      try {
+        ctx.drawImage(source, 0, 0, canvas.width, canvas.height);
+        return meanLuma(ctx.getImageData(0, 0, canvas.width, canvas.height).data);
+      } catch {
+        pixelsReadable = false;
+        return null;
       }
-      const brightness = sum / (data.length / 4);
-      setDetectedStatus(brightness < DARK_THRESHOLD ? 'dark' : 'good');
-    }, 1000);
+    };
+
+    const timer = setInterval(() => {
+      if (pixelsReadable) {
+        const brightness = sampleBrightness();
+        if (brightness !== null) {
+          isDarkRef.current = isDarkRef.current
+            ? brightness < DARK_THRESHOLD + DARK_EXIT_MARGIN
+            : brightness < DARK_THRESHOLD;
+        }
+      }
+      setDetectedStatus(isShakingRef.current ? 'shaking' : isDarkRef.current ? 'dark' : 'good');
+    }, SAMPLE_MS);
 
     return () => clearInterval(timer);
-  }, [enabled, videoRef]);
+  }, [enabled, videoRef, imgRef]);
 
   return { detectedStatus };
 }
