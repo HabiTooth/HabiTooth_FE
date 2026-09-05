@@ -4,7 +4,8 @@ import { NextRequest, NextResponse } from 'next/server';
 // wand 펌웨어는 버튼을 누르면 백색광/UV 두 장을 들고 있다가 /pend 로 넘겨준다.
 // 이걸 안 가져가면 기기가 촬영 상태에 머물러서 스트림도 멈추고 /snap 도 실패한다.
 
-const PENDING_TIMEOUT = 3000;
+// 기기가 스트림 때문에 바쁘면 어차피 다음 폴에서 다시 묻는다. 오래 붙잡지 않는다
+const PENDING_TIMEOUT = 1500;
 const IMAGE_TIMEOUT = 10000;
 
 const get = async (url: string, timeoutMs: number) => {

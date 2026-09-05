@@ -13,7 +13,7 @@ export default function NavBar({ activeTab = 'home' }: NavBarProps) {
   ];
 
   return (
-    <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-white/95 backdrop-blur-sm border-t border-hairline flex items-stretch h-14 box-content pb-[max(env(safe-area-inset-bottom),6px)] z-50">
+    <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-white/95 backdrop-blur-sm border-t border-hairline flex items-stretch h-14 box-content pb-[env(safe-area-inset-bottom)] z-50">
       {tabs.map((tab) => {
         const Icon = tab.icon;
         const isActive = activeTab === tab.id;

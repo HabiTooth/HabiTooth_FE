@@ -7,16 +7,23 @@ export interface Profile {
   email: string;
   name: string;
   birthDate: string | null;
+  lastDentalVisitAt: string | null;
 }
 
 export interface ProfileUpdatePayload {
   name: string;
   birthDate?: string;
+  lastDentalVisitAt?: string;
 }
 
 export interface NotificationSetting {
   pushNotificationEnabled: boolean;
   reportNotificationEnabled: boolean;
+}
+
+export interface ToothProfile {
+  isSet: boolean;
+  missingTeeth: number[];
 }
 
 export const userApi = {
@@ -33,6 +40,12 @@ export const userApi = {
 
   updateNotification: (payload: NotificationSetting) =>
     apiClient.patch<ApiResponse<NotificationSetting>>('/api/user/notification', payload),
+
+  getToothProfile: () => apiClient.get<ApiResponse<ToothProfile>>('/api/user/tooth-profile'),
+
+  // 토글이 아니라 목록 통째로 덮어쓴다
+  updateToothProfile: (missingTeeth: number[]) =>
+    apiClient.put<ApiResponse<null>>('/api/user/tooth-profile', { missingTeeth }),
 
   deleteData: () => apiClient.delete<ApiResponse<null>>('/api/user/data'),
 };

@@ -60,7 +60,7 @@ export default function NotificationsPage() {
 
   const unread = items.filter((n) => !n.read).length;
 
-  const open = (id: string, link?: string) => {
+  const open = (id: number, link?: string) => {
     markRead(id);
     if (link) router.push(link);
   };

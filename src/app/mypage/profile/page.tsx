@@ -2,8 +2,9 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, Camera, User } from 'lucide-react';
+import { ChevronLeft, Camera, User, CalendarDays } from 'lucide-react';
 import Input from '@/components/atoms/Input';
+import { asIsoDate, formatBirthDate, todayIso } from '@/lib/birthDate';
 import { userApi } from '@/lib/api/user';
 import { apiErrorMessage } from '@/lib/apiError';
 
@@ -46,10 +47,13 @@ function SocialButton({ linked, onToggle }: { linked: boolean; onToggle: () => v
 export default function ProfileEditPage() {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
+  const dateRef = useRef<HTMLInputElement>(null);
+  const visitRef = useRef<HTMLInputElement>(null);
 
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [birthDate, setBirthDate] = useState('');
+  const [lastVisit, setLastVisit] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [kakaoLinked, setKakaoLinked] = useState(false);
   const [googleLinked, setGoogleLinked] = useState(false);
@@ -65,6 +69,7 @@ export default function ProfileEditPage() {
         setEmail(p.email);
         setName(p.name ?? '');
         setBirthDate(p.birthDate ?? '');
+        setLastVisit(p.lastDentalVisitAt ?? '');
       })
       .catch((e) => setLoadError(apiErrorMessage(e, '프로필을 불러오지 못했어요.')));
   }, []);
@@ -79,7 +84,11 @@ export default function ProfileEditPage() {
     setIsSaving(true);
     setSaveError(null);
     try {
-      await userApi.updateProfile({ name: name.trim(), birthDate: birthDate || undefined });
+      await userApi.updateProfile({
+        name: name.trim(),
+        birthDate: birthDate || undefined,
+        lastDentalVisitAt: lastVisit || undefined,
+      });
       router.back();
     } catch (e) {
       setSaveError(apiErrorMessage(e, '저장에 실패했어요. 잠시 후 다시 시도해 주세요.'));
@@ -130,7 +139,80 @@ export default function ProfileEditPage() {
       <div className="bg-white/90 backdrop-blur-sm rounded-[20px] shadow-card p-5 flex flex-col gap-4 relative z-10 mb-4">
         <ReadOnlyField label="이메일" value={email} />
         <Input label="이름" type="text" placeholder="이름을 입력해주세요" value={name} onChange={setName} />
-        <Input label="생년월일" type="text" placeholder="1995-03-15" value={birthDate} onChange={setBirthDate} />
+        <Input
+          label="생년월일"
+          type="text"
+          inputMode="numeric"
+          placeholder="1995-03-15"
+          value={birthDate}
+          onChange={(v) => setBirthDate(formatBirthDate(v))}
+          rightIcon={
+            <span className="relative flex items-center">
+              <button
+                type="button"
+                aria-label="달력에서 고르기"
+                onClick={() => {
+                  const el = dateRef.current;
+                  if (!el) return;
+                  // showPicker를 막는 브라우저에서는 포커스만 줘서 기본 UI가 뜨게 한다
+                  if (typeof el.showPicker === 'function') el.showPicker();
+                  else el.focus();
+                }}
+                className="p-1 -m-1 text-muted hover:text-primary transition-colors"
+              >
+                <CalendarDays size={18} />
+              </button>
+              <input
+                ref={dateRef}
+                type="date"
+                tabIndex={-1}
+                aria-hidden
+                max={todayIso()}
+                value={asIsoDate(birthDate)}
+                onChange={(e) => setBirthDate(e.target.value)}
+                className="absolute inset-0 w-full h-full opacity-0 pointer-events-none"
+              />
+            </span>
+          }
+        />
+        <Input
+          label="마지막 치과 방문일"
+          type="text"
+          inputMode="numeric"
+          placeholder="2026-03-01"
+          value={lastVisit}
+          onChange={(v) => setLastVisit(formatBirthDate(v))}
+          rightIcon={
+            <span className="relative flex items-center">
+              <button
+                type="button"
+                aria-label="달력에서 고르기"
+                onClick={() => {
+                  const el = visitRef.current;
+                  if (!el) return;
+                  if (typeof el.showPicker === 'function') el.showPicker();
+                  else el.focus();
+                }}
+                className="p-1 -m-1 text-muted hover:text-primary transition-colors"
+              >
+                <CalendarDays size={18} />
+              </button>
+              <input
+                ref={visitRef}
+                type="date"
+                tabIndex={-1}
+                aria-hidden
+                max={todayIso()}
+                value={asIsoDate(lastVisit)}
+                onChange={(e) => setLastVisit(e.target.value)}
+                className="absolute inset-0 w-full h-full opacity-0 pointer-events-none"
+              />
+            </span>
+          }
+        />
+        <p className="m-0 -mt-1 px-1 text-[10.5px] text-muted leading-relaxed">
+          6개월이 지나면 정기 검진 알림을 보내요.
+        </p>
       </div>
 
       <div className="bg-white/90 backdrop-blur-sm rounded-[20px] shadow-card px-5 py-4 relative z-10 mb-4">

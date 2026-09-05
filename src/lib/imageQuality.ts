@@ -1,16 +1,22 @@
-export type CaptureIssue = 'dark' | 'bright' | 'blurry';
+export type CaptureIssue = 'dark' | 'bright' | 'blurry' | 'noTeeth' | 'lowConfidence';
 
 export interface CaptureQuality {
   ok: boolean;
   issues: CaptureIssue[];
   brightness: number;
   sharpness: number;
+  checking?: boolean;
+  // 서버 판정을 실제로 받았는지. 못 받았으면 통과로 말하면 안 됨
+  verified?: boolean;
+  message?: string | null;
+  // 개발 화면에서 판정 근거를 보려고 들고 다닌다
+  detail?: Record<string, number | string | undefined> | null;
 }
 
 // 실시간 배너와 공유
 export const DARK_THRESHOLD = 60;
 export const BRIGHT_THRESHOLD = 228;
-const SHARPNESS_THRESHOLD = 55;
+export const SHARPNESS_THRESHOLD = 55;
 
 const SAMPLE_W = 160;
 const SAMPLE_H = 120;
@@ -19,7 +25,50 @@ export const CAPTURE_ISSUE_TEXT: Record<CaptureIssue, { label: string; hint: str
   dark: { label: '너무 어두워요', hint: '조명을 켜거나 카메라를 조금 떨어뜨려 주세요.' },
   bright: { label: '빛이 너무 반사됐어요', hint: '각도를 살짝 틀어 반사를 피해 주세요.' },
   blurry: { label: '흔들리거나 초점이 안 맞았어요', hint: '카메라를 고정하고 다시 찍어 주세요.' },
+  noTeeth: { label: '치아가 잘 안 잡혔어요', hint: '구역이 화면 가운데 오도록 맞춰 주세요.' },
+  lowConfidence: { label: '치아를 알아보기 어려워요', hint: '조금 더 가까이서 정면으로 찍어 주세요.' },
 };
+
+const RETAKE_ISSUE = {
+  BLURRY: 'blurry',
+  TOOTH_NOT_DETECTED: 'noTeeth',
+  LOW_CONFIDENCE: 'lowConfidence',
+} as const satisfies Record<string, CaptureIssue>;
+
+// 서버는 치아가 잡혔는지까지 보므로 로컬 판정 위에 덮어쓴다
+export function applyServerVerdict(
+  local: CaptureQuality,
+  verdict: {
+    needsRetake: boolean;
+    reason: string | null;
+    message: string | null;
+    detail?: Record<string, number | string | undefined> | null;
+  } | null,
+): CaptureQuality {
+  if (!verdict) return { ...local, checking: false, verified: false };
+
+  const detail = verdict.detail ?? null;
+  if (!verdict.needsRetake) {
+    // BE는 판정 서버가 죽으면 needsRetake=false만 담아 200을 준다(fail-open).
+    // 근거가 하나도 없는 통과는 실제로 판정을 받은 게 아니다
+    const judged = detail !== null && Object.keys(detail).length > 0;
+    // 실제로 판정을 받았으면 치아를 보고 내린 결론이라 로컬 추정보다 우선한다
+    return judged
+      ? { ...local, ok: true, issues: [], checking: false, verified: true, detail }
+      : { ...local, checking: false, verified: false, detail };
+  }
+
+  const issue = RETAKE_ISSUE[verdict.reason as keyof typeof RETAKE_ISSUE];
+  return {
+    ...local,
+    ok: false,
+    checking: false,
+    verified: true,
+    detail,
+    message: verdict.message,
+    issues: issue && !local.issues.includes(issue) ? [issue, ...local.issues] : local.issues,
+  };
+}
 
 // 판정 불가 시 통과 처리
 const UNJUDGED: CaptureQuality = { ok: true, issues: [], brightness: 128, sharpness: 999 };

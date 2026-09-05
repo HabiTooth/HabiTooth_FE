@@ -8,6 +8,7 @@ import { aiApi } from '@/lib/api/ai';
 import { dashboardApi } from '@/lib/api/dashboard';
 import { historyApi } from '@/lib/api/history';
 import { userApi } from '@/lib/api/user';
+import { notificationApi } from '@/lib/api/notification';
 import { reportApi } from '@/lib/api/report';
 
 export type QaGroup =
@@ -17,6 +18,7 @@ export type QaGroup =
   | '대시보드'
   | '기록'
   | '마이페이지'
+  | '알림'
   | '리포트'
   | '인증';
 
@@ -460,6 +462,29 @@ export const QA_CHECKS: QaCheck[] = [
   },
 
   {
+    id: 'notification.list',
+    group: '알림',
+    label: '알림 목록 조회',
+    endpoint: 'GET /api/notifications',
+    run: () => notificationApi.getAll().then(unwrap),
+  },
+  {
+    id: 'notification.unread',
+    group: '알림',
+    label: '미읽음 개수',
+    endpoint: 'GET /api/notifications/unread-count',
+    run: () => notificationApi.getUnreadCount().then(unwrap),
+    expectKeys: ['count'],
+  },
+  {
+    id: 'user.toothProfile',
+    group: '마이페이지',
+    label: '치아 프로필 조회 (미설정이면 isSet=false)',
+    endpoint: 'GET /api/user/tooth-profile',
+    run: () => userApi.getToothProfile().then(unwrap),
+    expectKeys: ['isSet', 'missingTeeth'],
+  },
+  {
     id: 'user.profile',
     group: '마이페이지',
     label: '프로필 조회',
@@ -633,6 +658,7 @@ export const QA_GROUPS: QaGroup[] = [
   '대시보드',
   '기록',
   '마이페이지',
+  '알림',
   '리포트',
   '인증',
 ];
