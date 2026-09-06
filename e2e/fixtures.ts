@@ -204,6 +204,34 @@ export async function mockApi(page: Page) {
       return route.fulfill({ json: ok({ sessionId: 42, meshData: [] }) });
     }
 
+    if (/\/api\/habits/.test(path)) {
+      if (route.request().method() !== 'GET') return route.fulfill({ json: ok(null) });
+      return route.fulfill({
+        json: ok({
+          logs: [
+            { date: '2026-09-04', habits: ['BRUSH_MORNING', 'BRUSH_NIGHT', 'FLOSS'] },
+            { date: '2026-09-05', habits: ['BRUSH_MORNING', 'BRUSH_NOON', 'BRUSH_NIGHT', 'FLOSS', 'MOUTHWASH'] },
+          ],
+        }),
+      });
+    }
+
+    if (/\/tooth-profile$/.test(path)) {
+      if (route.request().method() !== 'GET') return route.fulfill({ json: ok(null) });
+      return route.fulfill({ json: ok({ isSet: true, missingTeeth: [18, 28, 38, 48] }) });
+    }
+
+    if (/\/images\/quality-check$/.test(path)) {
+      return route.fulfill({
+        json: ok({
+          needsRetake: false,
+          reason: null,
+          message: null,
+          detail: { blurScore: 142.5, blurThreshold: 60, detectedCount: 3, expectedCount: 3, meanConfidence: 0.88 },
+        }),
+      });
+    }
+
     for (const [key, body] of Object.entries(BODIES)) {
       if (path.includes(key)) return route.fulfill({ json: body });
     }
