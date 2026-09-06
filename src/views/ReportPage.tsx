@@ -43,8 +43,18 @@ const GUIDE_TYPE: Record<RiskLevel, GuideItem['type']> = {
 const ICON_SIZE = 20;
 const ICON_CLASS = 'text-[#4A86D9]';
 const renderLucide = (Icon: LucideIcon) => <Icon size={ICON_SIZE} className={ICON_CLASS} />;
-const renderPng = (src: string, alt: string) => (
-  <Image src={src} alt={alt} width={ICON_SIZE} height={ICON_SIZE} />
+
+// PNG는 원본 비율이 제각각이라 Tailwind preflight(img { height: auto })에 밀려
+// 세로로 길어지는 경우가 있음. style로 박스를 고정하고 object-contain으로 맞춤.
+const renderPng = (src: string, alt: string, size: number = ICON_SIZE) => (
+  <Image
+    src={src}
+    alt={alt}
+    width={size}
+    height={size}
+    className="shrink-0 object-contain"
+    style={{ width: size, height: size }}
+  />
 );
 
 // 백엔드 MANAGEMENT_CATALOG의 title → 아이콘 매핑
@@ -55,7 +65,7 @@ const MANAGEMENT_ICONS: Record<string, () => React.ReactNode> = {
   '집중 부위 칫솔질':           () => renderLucide(Target),
   '올바른 칫솔질 방법':         () => renderPng('/icons/management/toothbrush.png', '칫솔'),
   '치실 사용':                  () => renderPng('/icons/management/dental-floss.png', '치실'),
-  '치간칫솔 사용':              () => renderPng('/icons/management/interdental-brush.png', '치간칫솔'),
+  '치간칫솔 사용': () => renderPng('/icons/management/interdental-brush.png', '치간칫솔', 34),
   '구강세정제 사용':            () => renderLucide(PillBottle),
   '혀 세정':                    () => renderPng('/icons/management/tongue-scraper.png', '혀 세정'),
   '취침 전 칫솔질':             () => renderLucide(Moon),
