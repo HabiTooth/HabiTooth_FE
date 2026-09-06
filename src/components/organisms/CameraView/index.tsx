@@ -1,14 +1,11 @@
 'use client';
 
-import type { ReactNode, RefObject } from 'react';
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import {
-  Camera, Loader2, CheckCircle2, AlertTriangle, Sun,
-  Lightbulb, FlipHorizontal2,
+  Camera, Loader2, CheckCircle2, AlertTriangle, Sun, Sparkles,
 } from 'lucide-react';
-import type { CameraMode } from '@/hooks/useCameraStream';
+import type { CameraMode, LedMode } from '@/hooks/useCameraStream';
 import type { ScanStatusType } from '@/components/molecules/ScanStatusBanner';
-
-type ScanPhase = 'guide' | 'white' | 'uv';
 
 export default function CameraView({
   videoRef,
@@ -16,11 +13,10 @@ export default function CameraView({
   isReady,
   cameraError,
   cameraMode,
-  phase,
-  lightOn,
+  ledMode,
+  archFolded,
   status,
-  onLightToggle,
-  onCameraFlip,
+  onLedToggle,
   onCapture,
   isCapturing,
   onRetry,
@@ -31,17 +27,30 @@ export default function CameraView({
   isReady: boolean;
   cameraError: string | null;
   cameraMode: CameraMode;
-  phase: ScanPhase;
-  lightOn: boolean;
+  ledMode: LedMode;
+  archFolded: boolean;
   status: ScanStatusType;
-  onLightToggle: () => void;
-  onCameraFlip: () => void;
+  onLedToggle: (mode: LedMode) => void;
   onCapture: () => void;
   isCapturing: boolean;
   onRetry: () => void;
   reviewOverlay?: ReactNode;
 }) {
-  const uvMode = phase === 'uv';
+  const boxRef = useRef<HTMLDivElement>(null);
+  // 접었을 때 영상이 커지지 않게, 펼친 상태의 높이를 기억해 두고 그대로 쓴다
+  const [openHeight, setOpenHeight] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (archFolded) return;
+    const el = boxRef.current;
+    if (!el) return;
+    const update = () => setOpenHeight(el.clientHeight);
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [archFolded]);
+
   const streamVisible = isReady && !cameraError;
   const reviewing = Boolean(reviewOverlay);
 
@@ -49,21 +58,29 @@ export default function CameraView({
   const mirror = 'scale-x-[-1]';
 
   return (
-    <div className={`relative w-full flex-1 overflow-hidden ${uvMode ? 'bg-[#1A0A2E]' : 'bg-[#1A1A2E]'}`}>
-      <video
-        ref={videoRef}
-        autoPlay
-        playsInline
-        muted
-        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${mirror}
-          ${cameraMode === 'device' && streamVisible ? 'opacity-100' : 'opacity-0'}`}
-      />
-      <img
-        ref={imgRef}
-        alt=""
-        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${mirror}
-          ${cameraMode === 'esp32' && streamVisible ? 'opacity-100' : 'opacity-0'}`}
-      />
+    <div
+      ref={boxRef}
+      className="relative w-full flex-1 overflow-hidden bg-[#1A1A2E] flex items-center justify-center"
+    >
+      <div
+        className="relative w-full overflow-hidden"
+        style={{ height: archFolded && openHeight ? `${openHeight}px` : '100%' }}
+      >
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${mirror}
+            ${cameraMode === 'device' && streamVisible ? 'opacity-100' : 'opacity-0'}`}
+        />
+        <img
+          ref={imgRef}
+          alt=""
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${mirror}
+            ${cameraMode === 'esp32' && streamVisible ? 'opacity-100' : 'opacity-0'}`}
+        />
+      </div>
 
       {(!isReady || cameraError) && (
         <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-2.5 bg-[#1A1A2E]">
@@ -89,20 +106,11 @@ export default function CameraView({
         </div>
       )}
 
-      {uvMode && (
-        <div className="absolute inset-0 bg-purple-900/25 pointer-events-none mix-blend-multiply" />
-      )}
-
       {isReady && !cameraError && !reviewing && (
-        <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-          <rect x="12" y="15" width="76" height="70" fill="none" stroke="white" strokeWidth="0.8" strokeDasharray="3 2" strokeOpacity="0.55" rx="1" />
-          <polyline points="19,15 12,15 12,22" fill="none" stroke="white" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-          <polyline points="81,15 88,15 88,22" fill="none" stroke="white" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-          <polyline points="12,78 12,85 19,85" fill="none" stroke="white" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-          <polyline points="81,85 88,85 88,78" fill="none" stroke="white" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-          <line x1="50" y1="44" x2="50" y2="56" stroke="#4BC8A0" strokeWidth="0.9" strokeOpacity="0.9" />
-          <line x1="44" y1="50" x2="56" y2="50" stroke="#4BC8A0" strokeWidth="0.9" strokeOpacity="0.9" />
-        </svg>
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
+          <div className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1px] h-4 bg-[#4BC8A0]/70" />
+          <div className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-[1px] bg-[#4BC8A0]/70" />
+        </div>
       )}
 
       {isReady && !cameraError && !reviewing && (
@@ -130,27 +138,27 @@ export default function CameraView({
 
       {!reviewing && (
         <>
-          <div className="absolute left-3 top-1/2 -translate-y-1/2">
-            <button
-              type="button"
-              onClick={onLightToggle}
-              className={`flex flex-col items-center gap-0.5 px-2.5 py-2 rounded-xl text-[10px] font-medium transition-colors
-                ${lightOn ? 'bg-warning/80 text-white' : 'bg-black/30 text-white'}`}
-            >
-              <Lightbulb size={16} />
-              <span>{lightOn ? 'ON' : 'OFF'}</span>
-            </button>
-          </div>
-
-          <div className="absolute right-3 top-1/2 -translate-y-1/2">
-            <button
-              type="button"
-              onClick={onCameraFlip}
-              className="flex flex-col items-center gap-0.5 px-2.5 py-2 rounded-xl bg-black/30 text-white text-[10px] font-medium"
-            >
-              <FlipHorizontal2 size={16} />
-              <span>카메라전환</span>
-            </button>
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 flex flex-col gap-2">
+            {([
+              ['WHITE', '백색', Sun],
+              ['UV', 'UV', Sparkles],
+            ] as const).map(([mode, label, Icon]) => {
+              const on = ledMode === mode;
+              return (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => onLedToggle(mode)}
+                  aria-pressed={on}
+                  className={`w-11 h-11 rounded-full flex flex-col items-center justify-center gap-0.5
+                    text-[9px] font-bold transition-colors
+                    ${on ? 'bg-white text-content' : 'bg-white/15 text-white backdrop-blur-sm'}`}
+                >
+                  <Icon size={15} />
+                  <span>{label}</span>
+                </button>
+              );
+            })}
           </div>
 
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10">

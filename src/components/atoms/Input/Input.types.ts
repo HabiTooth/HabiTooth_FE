@@ -9,4 +9,5 @@ export interface InputProps {
   error?: string;
   rightIcon?: ReactNode;
   shake?: boolean;
+  inputMode?: 'text' | 'numeric';
 }

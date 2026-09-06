@@ -1,14 +1,16 @@
 'use client';
 
+import axios from 'axios';
 import { useState, useEffect, useRef, useCallback, useMemo, type RefObject } from 'react';
 import { useRouter } from 'next/navigation';
-import { X, HelpCircle, Check, CheckCircle2, Lock, Loader2, AlertTriangle, Sun, Camera, Bell, User, Smile, ChevronRight } from 'lucide-react';
+import { X, HelpCircle, Check, CheckCircle2, Lock, Loader2, AlertTriangle, Sun, Camera, Bell, User, Smile, ChevronRight, ChevronDown } from 'lucide-react';
 import type { ScanStatusType } from '@/components/molecules/ScanStatusBanner';
-import { useCameraStream, type CameraMode } from '@/hooks/useCameraStream';
+import { useCameraStream, type CameraMode, type LedMode } from '@/hooks/useCameraStream';
 import { useScanDetection } from '@/hooks/useScanDetection';
 import { scanApi, type ViewType, type SessionAnalyzeResult } from '@/lib/api/scan';
+import type { LightType } from '@/lib/api/common';
 import { deviceApi } from '@/lib/api/device';
-import { evaluateCaptureBlob, type CaptureQuality } from '@/lib/imageQuality';
+import { applyServerVerdict, evaluateCaptureBlob, type CaptureQuality } from '@/lib/imageQuality';
 import { useAuthStore } from '@/stores/authStore';
 import {
   SCAN_ZONES,
@@ -32,13 +34,11 @@ import Link from 'next/link';
 import Checkbox from '@/components/atoms/Checkbox';
 import { useNotificationStore } from '@/stores/notificationStore';
 import { useDentitionStore } from '@/stores/dentitionStore';
-import { reportReady } from '@/lib/notifications/rules';
 import { readWebcamPreference, writeWebcamPreference } from '@/lib/cameraSource';
 import { controlHost, deviceAddress, streamUrl } from '@/lib/deviceAddress';
 import { useHardwareShutter } from '@/hooks/useHardwareShutter';
 
 type Step = 1 | 2 | 3 | 4;
-type ScanPhase = 'guide' | 'white' | 'uv';
 
 const ANALYZE_STEPS = [
   '이미지 품질 확인',
@@ -209,7 +209,7 @@ function TeethNotice() {
 
   return (
     <Link
-      href="/mypage/teeth"
+      href="/mypage/teeth?from=scan"
       className="flex items-center gap-3 p-3.5 rounded-[14px] bg-primary-light border border-primary/20 no-underline"
     >
       <Smile size={18} className="text-primary flex-shrink-0" />
@@ -218,7 +218,7 @@ function TeethNotice() {
           빠진 치아가 있나요?
         </span>
         <span className="block text-[11px] text-muted">
-          사랑니나 교정 발치를 알려주면 그 자리를 미촬영으로 안 세요.
+          등록해야 스캔을 시작할 수 있어요. 분석 결과를 실제 치아 번호에 맞추는 데 써요.
         </span>
       </span>
       <ChevronRight size={16} className="text-primary flex-shrink-0" />
@@ -235,6 +235,8 @@ function Step1({
   onToggleZone,
   onSetZones,
   startError,
+  needsToothProfile,
+  onSetupProfile,
   webcam,
 }: {
   checked: boolean;
@@ -246,6 +248,8 @@ function Step1({
   onToggleZone: (z: ViewType) => void;
   onSetZones: (zones: ViewType[]) => void;
   startError: string | null;
+  needsToothProfile: boolean;
+  onSetupProfile: () => void;
 }) {
   const count = selectedZones.length;
   const allOn = count === ALL_VIEW_TYPES.length;
@@ -453,13 +457,13 @@ function Step1({
           )}
           <button
             type="button"
-            onClick={onStart}
-            disabled={!checked || count === 0}
+            onClick={needsToothProfile ? onSetupProfile : onStart}
+            disabled={!needsToothProfile && (!checked || count === 0)}
             className="w-full h-[52px] rounded-[14px] text-white text-[15px] font-semibold
               disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
             style={{ background: 'linear-gradient(135deg, #4B7BF5 0%, #6B9BFF 100%)' }}
           >
-            스캔 시작하기
+            {needsToothProfile ? '치아 정보 등록하러 가기' : '스캔 시작하기'}
           </button>
         </div>
       </div>
@@ -473,9 +477,8 @@ function Step2({
   isReady,
   cameraError,
   cameraMode,
-  phase,
   status,
-  lightOn,
+  ledMode,
   selectedZones,
   capturedZones,
   currentZone,
@@ -486,8 +489,7 @@ function Step2({
   onHelp,
   onCapture,
   isCapturing,
-  onLightToggle,
-  onCameraFlip,
+  onLedToggle,
   onRetry,
   onFinish,
   reviewOverlay,
@@ -497,9 +499,8 @@ function Step2({
   isReady: boolean;
   cameraError: string | null;
   cameraMode: CameraMode;
-  phase: ScanPhase;
   status: ScanStatusType;
-  lightOn: boolean;
+  ledMode: LedMode;
   selectedZones: ViewType[];
   capturedZones: ViewType[];
   currentZone: ViewType | null;
@@ -510,12 +511,12 @@ function Step2({
   onHelp: () => void;
   onCapture: () => void;
   isCapturing: boolean;
-  onLightToggle: () => void;
-  onCameraFlip: () => void;
+  onLedToggle: (mode: LedMode) => void;
   onRetry: () => void;
   onFinish: () => void;
   reviewOverlay?: React.ReactNode;
 }) {
+  const [archFolded, setArchFolded] = useState(false);
   const info = zoneInfo(currentZone);
   const done = capturedZones.length;
   const total = selectedZones.length;
@@ -526,16 +527,18 @@ function Step2({
       <PageHeader title="실시간 구강 스캔" onExit={onExit} onHelp={onHelp} />
 
       <div className="bg-white px-3 pt-2 pb-2 flex-shrink-0 border-b border-hairline">
-        <ToothArchSelector
-          compact
-          lockUnselected
-          surface={surface}
-          onSurfaceChange={onSurfaceChange}
-          selected={selectedZones}
-          captured={capturedZones}
-          current={currentZone}
-          onZoneClick={onZoneClick}
-        />
+        {!archFolded && (
+          <ToothArchSelector
+            compact
+            lockUnselected
+            surface={surface}
+            onSurfaceChange={onSurfaceChange}
+            selected={selectedZones}
+            captured={capturedZones}
+            current={currentZone}
+            onZoneClick={onZoneClick}
+          />
+        )}
         <div className="flex items-center justify-between px-1 mt-0.5">
           <span className="text-[13px] font-bold text-content truncate">
             {info ? info.fullLabel : '구역을 선택해 주세요'}
@@ -544,6 +547,18 @@ function Step2({
             <span className="text-[12px] font-bold text-muted tabular-nums">
               {done}/{total}
             </span>
+            <button
+              type="button"
+              onClick={() => setArchFolded((v) => !v)}
+              aria-expanded={!archFolded}
+              className="flex items-center gap-0.5 px-2 py-1 rounded-full bg-hairline/60 text-[11px] font-semibold text-muted"
+            >
+              {archFolded ? '치아도 보기' : '접기'}
+              <ChevronDown
+                size={13}
+                className={`transition-transform ${archFolded ? '' : 'rotate-180'}`}
+              />
+            </button>
             {allDone && (
               <button
                 type="button"
@@ -563,11 +578,10 @@ function Step2({
         isReady={isReady}
         cameraError={cameraError}
         cameraMode={cameraMode}
-        phase={phase}
-        lightOn={lightOn}
+        ledMode={ledMode}
+        archFolded={archFolded}
         status={status}
-        onLightToggle={onLightToggle}
-        onCameraFlip={onCameraFlip}
+        onLedToggle={onLedToggle}
         onCapture={onCapture}
         isCapturing={isCapturing}
         onRetry={onRetry}
@@ -829,6 +843,11 @@ export default function ScanPage() {
   const [step, setStep] = useState<Step>(1);
   const [selectedZones, setSelectedZones] = useState<ViewType[]>(ALL_VIEW_TYPES);
   const [startError, setStartError] = useState<string | null>(null);
+  const {
+    answered: toothProfileSet,
+    profileLoaded,
+    hydrate: hydrateDentition,
+  } = useDentitionStore();
   const [capturedZones, setCapturedZones] = useState<ViewType[]>([]);
   const [currentZone, setCurrentZone] = useState<ViewType | null>(null);
   const [surface, setSurface] = useState<Surface>('LINGUAL');
@@ -843,11 +862,10 @@ export default function ScanPage() {
   const [analyzeProgress, setAnalyzeProgress] = useState(0);
   const [sessionId, setSessionId] = useState<number | null>(null);
   const [analysisResult, setAnalysisResult] = useState<SessionAnalyzeResult | null>(null);
-  const pushNotification = useNotificationStore((s) => s.push);
+  const refreshNotifications = useNotificationStore((s) => s.refresh);
   const [analyzeError, setAnalyzeError] = useState<string | null>(null);
   const [analyzeKey, setAnalyzeKey] = useState(0);
 
-  const phase: ScanPhase = 'white';
 
   const { deviceId, deviceIp } = useAuthStore();
   const scannerAddress = deviceAddress(deviceIp);
@@ -864,6 +882,8 @@ export default function ScanPage() {
   const uploadedImageIds = useRef<Map<ViewType, number>>(new Map());
   const pendingRef = useRef<PendingShot | null>(null);
 
+  useEffect(() => hydrateDentition(), [hydrateDentition]);
+
   useEffect(() => {
     pendingRef.current = pending;
   }, [pending]);
@@ -873,13 +893,19 @@ export default function ScanPage() {
     imgRef,
     isReady,
     error: cameraError,
-    lightOn,
+    ledMode,
     cameraMode,
     startCamera,
     stopCamera,
-    toggleLight,
-    flipCamera,
+    setLed,
   } = useCameraStream();
+
+  // 조명이 UV로 켜져 있으면 그 상태로 찍히므로 저장되는 광원도 따라간다
+  const light: LightType = ledMode === 'UV' ? 'UV_LIGHT' : 'WHITE_LIGHT';
+  const toggleLed = useCallback(
+    (mode: LedMode) => void setLed(ledMode === mode ? 'OFF' : mode),
+    [ledMode, setLed],
+  );
 
   const { detectedStatus } = useScanDetection({
     videoRef,
@@ -920,7 +946,8 @@ export default function ScanPage() {
   const captureBlob = useCallback(async (zone: ViewType): Promise<Blob> => {
     if (cameraMode === 'esp32' && scannerAddress) {
       const res = await fetch(
-        `/api/camera/capture?ip=${controlHost(scannerAddress)}&view=${zone}`,
+        `/api/camera/capture?ip=${controlHost(scannerAddress)}&view=${zone}` +
+          `&light=${light === 'UV_LIGHT' ? 'uv' : 'white'}`,
       );
       if (!res.ok) {
         const detail = await res.json().catch(() => null);
@@ -936,7 +963,7 @@ export default function ScanPage() {
     return new Promise<Blob>((resolve) =>
       canvas.toBlob((b) => resolve(b ?? new Blob()), 'image/jpeg', 0.9),
     );
-  }, [cameraMode, scannerAddress, videoRef]);
+  }, [cameraMode, scannerAddress, videoRef, light]);
 
   // 기기가 풀해상도로 한 컷 잡는 동안 스트림이 끊겨서, 촬영 뒤에는 다시 붙여줘야 함
   const restartStream = useCallback(() => {
@@ -948,10 +975,58 @@ export default function ScanPage() {
   const acceptShot = useCallback(
     async (blob: Blob) => {
       if (!currentZone) return;
-      const quality = await evaluateCaptureBlob(blob);
-      setPending({ zone: currentZone, blob, previewUrl: URL.createObjectURL(blob), quality });
+      const zone = currentZone;
+      const local = await evaluateCaptureBlob(blob);
+      const previewUrl = URL.createObjectURL(blob);
+
+      // 로컬은 힌트일 뿐이라 걸렸어도 서버에 물어본다. 세션이 없을 때만 로컬 판정으로 끝냄
+      const ask = sessionId !== null && sessionId !== DEV_SESSION_ID;
+      setPending({
+        zone,
+        blob,
+        previewUrl,
+        quality: { ...local, checking: ask, verified: local.ok && !ask ? false : undefined },
+      });
+      if (!ask) return;
+
+      const settle = (quality: CaptureQuality) =>
+        setPending((prev) => (prev?.previewUrl === previewUrl ? { ...prev, quality } : prev));
+
+      const file = new File([blob], 'shot.jpg', { type: blob.type || 'image/jpeg' });
+      if (isDev) {
+        console.groupCollapsed(`[화질판정] 요청 ${zone}`);
+        console.log('POST', `/api/scan-sessions/${sessionId}/images/quality-check`);
+        console.log('form', {
+          file: `${file.name} ${file.type} ${(file.size / 1024).toFixed(1)}KB`,
+          viewType: zone,
+          lightType: light,
+        });
+        console.log('로컬 판정', { brightness: local.brightness, sharpness: local.sharpness });
+        console.groupEnd();
+      }
+
+      try {
+        const res = await scanApi.checkCaptureQuality(sessionId, {
+          file,
+          viewType: zone,
+          lightType: light,
+        });
+        if (isDev) {
+          console.groupCollapsed(`[화질판정] 응답 ${zone} · ${res.status}`);
+          console.log('body', res.data);
+          console.log('result', res.data.result);
+          console.groupEnd();
+        }
+        settle(applyServerVerdict(local, res.data.result ?? null));
+      } catch (e) {
+        // 막지는 않되, 확인 못 했다는 건 화면에 밝힌다
+        const status = axios.isAxiosError(e) ? e.response?.status : undefined;
+        const body = axios.isAxiosError(e) ? e.response?.data : undefined;
+        console.error(`[화질판정] 실패 ${zone} · status ${status ?? '응답 없음'}`, body ?? e);
+        settle({ ...local, checking: false, verified: false });
+      }
     },
-    [currentZone],
+    [currentZone, sessionId, light],
   );
 
   // 기기 셔터 버튼으로 찍은 컷도 웹 버튼과 같은 확인 화면으로 넘긴다
@@ -1019,7 +1094,7 @@ export default function ScanPage() {
         const res = await scanApi.uploadImageToSession(sessionId, {
           file,
           viewType: zone,
-          lightType: 'WHITE_LIGHT',
+          lightType: light,
         });
         uploadedImageIds.current.set(zone, res.data.result.imageId);
       }
@@ -1038,7 +1113,7 @@ export default function ScanPage() {
     } finally {
       setIsUploading(false);
     }
-  }, [pending, sessionId, nextUncapturedZone, capturedZones]);
+  }, [pending, sessionId, nextUncapturedZone, capturedZones, light]);
 
   const handleSetZones = useCallback((zones: ViewType[]) => {
     setSelectedZones(sortZones([...new Set(zones)]));
@@ -1074,7 +1149,8 @@ export default function ScanPage() {
       .analyzeSession(sessionId)
       .then((res: { data: { result: SessionAnalyzeResult } }) => {
         setAnalysisResult(res.data.result);
-        pushNotification(reportReady(sessionId, res.data.result.sessionScore));
+        // 서버가 분석 커밋 직후 알림을 만들어 두므로 그걸 받아와 띄운다
+        void refreshNotifications({ popNew: true });
         clearInterval(t);
         setAnalyzeStep(ANALYZE_STEPS.length + 1);
         setAnalyzeProgress(100);
@@ -1088,7 +1164,7 @@ export default function ScanPage() {
       });
 
     return () => clearInterval(t);
-  }, [step, sessionId, analyzeKey, capturedZones, pushNotification]);
+  }, [step, sessionId, analyzeKey, capturedZones, refreshNotifications]);
 
   const handleReset = () => {
     uploadedImageIds.current = new Map();
@@ -1145,6 +1221,8 @@ export default function ScanPage() {
           onToggleZone={handleToggleZone}
           onSetZones={handleSetZones}
           startError={startError}
+          needsToothProfile={profileLoaded && !toothProfileSet}
+          onSetupProfile={() => router.push('/mypage/teeth?from=scan')}
           webcam={isDev ? { on: useWebcam, onToggle: toggleWebcam } : null}
           onExit={() => setShowExitModal(true)}
           onStart={async () => {
@@ -1175,7 +1253,15 @@ export default function ScanPage() {
               enterScan(res.data.result);
             } catch (e) {
               console.error('세션 생성 실패:', e);
-              setStartError('스캔을 시작하지 못했어요. 잠시 후 다시 시도해 주세요.');
+              // 결손치를 모르면 AI 번호 매핑이 틀어져서 BE가 세션 생성부터 막는다
+              const code = axios.isAxiosError(e)
+                ? (e.response?.data as { code?: string } | undefined)?.code
+                : undefined;
+              setStartError(
+                code === 'TOOTH_PROFILE_5010'
+                  ? '빠진 치아를 먼저 등록해 주세요. 마이페이지 > 치아 정보에서 등록할 수 있어요.'
+                  : '스캔을 시작하지 못했어요. 잠시 후 다시 시도해 주세요.',
+              );
               if (isDev) {
                 console.warn('개발 모드: 업로드 없이 스캔 화면만 띄웁니다');
                 enterScan(DEV_SESSION_ID);
@@ -1191,9 +1277,8 @@ export default function ScanPage() {
           isReady={isReady}
           cameraError={cameraError}
           cameraMode={cameraMode}
-          phase={phase}
           status={detectedStatus}
-          lightOn={lightOn}
+          ledMode={ledMode}
           selectedZones={selectedZones}
           capturedZones={capturedZones}
           currentZone={currentZone}
@@ -1204,8 +1289,7 @@ export default function ScanPage() {
           onHelp={() => setShowHelp(true)}
           onCapture={handleCapture}
           isCapturing={isCapturing}
-          onLightToggle={toggleLight}
-          onCameraFlip={flipCamera}
+          onLedToggle={toggleLed}
           onFinish={() => setStep(3)}
           onRetry={() => {
             stopCamera();

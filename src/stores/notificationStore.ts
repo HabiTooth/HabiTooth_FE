@@ -1,111 +1,95 @@
 'use client';
 
 import { create } from 'zustand';
-import type { AppNotification, NewNotification } from '@/lib/notifications/types';
+import type { AppNotification } from '@/lib/notifications/types';
 import { showLocal } from '@/lib/notifications/browser';
-import { readSettings } from '@/lib/notifications/settings';
+import { notificationApi } from '@/lib/api/notification';
 
-const KEY = 'habitooth.notifications';
-// 지운 알림이 다시 생기지 않게 발생 이력을 따로 남김
-const SEEN_KEY = 'habitooth.notifications.seen';
+// 브라우저 팝업을 이미 띄운 알림. 새로고침해도 같은 걸 또 띄우지 않게 남긴다
+const POPPED_KEY = 'habitooth.notifications.popped';
+const MAX_POPPED = 300;
 
-const MAX_ITEMS = 50;
-const MAX_SEEN = 300;
-
-function readJson<T>(key: string, fallback: T): T {
-  if (typeof window === 'undefined') return fallback;
+function readPopped(): number[] {
+  if (typeof window === 'undefined') return [];
   try {
-    const raw = localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as T) : fallback;
+    const raw = localStorage.getItem(POPPED_KEY);
+    return raw ? (JSON.parse(raw) as number[]) : [];
   } catch {
-    return fallback;
+    return [];
   }
 }
 
-function writeJson(key: string, value: unknown) {
+function writePopped(ids: number[]) {
   try {
-    localStorage.setItem(key, JSON.stringify(value));
+    localStorage.setItem(POPPED_KEY, JSON.stringify(ids.slice(0, MAX_POPPED)));
   } catch {
   }
 }
-
-const readItems = () => readJson<AppNotification[]>(KEY, []);
-const readSeen = () => readJson<string[]>(SEEN_KEY, []);
 
 interface NotificationState {
   items: AppNotification[];
   hydrated: boolean;
+  loading: boolean;
   hydrate: () => void;
-  current: () => AppNotification[];
-  push: (n: NewNotification) => void;
-  markRead: (id: string) => void;
+  refresh: (options?: { popNew?: boolean }) => Promise<void>;
+  markRead: (id: number) => void;
   markAllRead: () => void;
-  remove: (id: string) => void;
+  remove: (id: number) => void;
   clearAll: () => void;
-  reset: () => void;
+  clear: () => void;
 }
 
 export const useNotificationStore = create<NotificationState>((set, get) => ({
   items: [],
   hydrated: false,
+  loading: false,
 
   hydrate: () => {
     if (get().hydrated) return;
-    set({ items: readItems(), hydrated: true });
+    set({ hydrated: true });
+    void get().refresh();
   },
 
-  current: () => (get().hydrated ? get().items : readItems()),
+  refresh: async ({ popNew = false } = {}) => {
+    set({ loading: true });
+    try {
+      const items = (await notificationApi.getAll()).data.result ?? [];
+      set({ items, hydrated: true });
 
-  push: ({ dedupeKey, ...rest }) => {
-    const settings = readSettings();
-    if (!settings.push) return;
-    if (rest.type === 'REPORT_READY' && !settings.report) return;
-
-    const id = dedupeKey ?? `${rest.type}:${Date.now()}`;
-
-    const seen = readSeen();
-    if (seen.includes(id)) return;
-    writeJson(SEEN_KEY, [id, ...seen].slice(0, MAX_SEEN));
-
-    const items = get().current();
-    const next = [
-      { ...rest, id, createdAt: new Date().toISOString(), read: false },
-      ...items,
-    ].slice(0, MAX_ITEMS);
-
-    writeJson(KEY, next);
-    set({ items: next, hydrated: true });
-    showLocal(rest);
+      if (!popNew) return;
+      const popped = readPopped();
+      const fresh = items.filter((n) => !n.read && !popped.includes(n.id));
+      if (fresh.length === 0) return;
+      fresh.forEach(showLocal);
+      writePopped([...fresh.map((n) => n.id), ...popped]);
+    } catch {
+      // 목록을 못 가져와도 화면은 그대로 둔다
+    } finally {
+      set({ loading: false });
+    }
   },
 
   markRead: (id) => {
-    const next = get().current().map((n) => (n.id === id ? { ...n, read: true } : n));
-    writeJson(KEY, next);
-    set({ items: next, hydrated: true });
+    set({ items: get().items.map((n) => (n.id === id ? { ...n, read: true } : n)) });
+    notificationApi.markRead(id).catch(() => get().refresh());
   },
 
   markAllRead: () => {
-    const next = get().current().map((n) => ({ ...n, read: true }));
-    writeJson(KEY, next);
-    set({ items: next, hydrated: true });
+    set({ items: get().items.map((n) => ({ ...n, read: true })) });
+    notificationApi.markAllRead().catch(() => get().refresh());
   },
 
   remove: (id) => {
-    const next = get().current().filter((n) => n.id !== id);
-    writeJson(KEY, next);
-    set({ items: next, hydrated: true });
+    set({ items: get().items.filter((n) => n.id !== id) });
+    notificationApi.remove(id).catch(() => get().refresh());
   },
 
   clearAll: () => {
-    writeJson(KEY, []);
     set({ items: [] });
+    notificationApi.removeAll().catch(() => get().refresh());
   },
 
-  reset: () => {
-    writeJson(KEY, []);
-    writeJson(SEEN_KEY, []);
-    set({ items: [] });
-  },
+  clear: () => set({ items: [], hydrated: false, loading: false }),
 }));
 
 export const unreadCount = (items: AppNotification[]) => items.filter((n) => !n.read).length;

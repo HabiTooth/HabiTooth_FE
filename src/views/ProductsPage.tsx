@@ -8,11 +8,11 @@ import PageShell from '@/components/organisms/PageShell';
 import ProductThumb from '@/components/atoms/ProductThumb';
 import { dashboardApi } from '@/lib/api/dashboard';
 import { reportApi } from '@/lib/api/report';
-import { worstByLesion, type LesionRisk } from '@/lib/lesionRisk';
+import { LESION_LABEL, worstByLesion, type LesionRisk } from '@/lib/lesionRisk';
 import { remapTeeth } from '@/lib/toothMapping';
 import { useDentitionStore } from '@/stores/dentitionStore';
 import { isRisky, recommendProducts, shopUrl } from '@/constants/products';
-import { LESION_LABEL } from '@/lib/notifications/rules';
+
 import { RISK_LABEL } from '@/lib/score';
 
 export default function ProductsPage() {

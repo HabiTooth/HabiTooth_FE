@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Check, ChevronLeft } from 'lucide-react';
 import PageShell from '@/components/organisms/PageShell';
 import ToothArch from '@/components/organisms/ToothArch';
@@ -18,16 +18,19 @@ import {
 
 export default function TeethPage() {
   const router = useRouter();
-  const { missing, hydrate, toggle, setPreset, save, reset } = useDentitionStore();
+  const fromScan = useSearchParams().get('from') === 'scan';
+  const { missing, hydrate, toggle, setPreset, save, reset, saving, saveError } =
+    useDentitionStore();
   const [saved, setSaved] = useState(false);
   const [touched, setTouched] = useState<number | null>(null);
 
   useEffect(() => hydrate(), [hydrate]);
 
-  const handleSave = () => {
-    save();
+  const handleSave = async () => {
+    if (!(await save())) return;
     setSaved(true);
-    setTimeout(() => router.back(), 400);
+    // 저장됐다는 걸 보고 나갈 수 있게
+    setTimeout(() => (fromScan ? router.replace('/scan') : router.back()), 900);
   };
 
   const preset = (label: string, group: number[]) => {
@@ -133,13 +136,20 @@ export default function TeethPage() {
           </span>
         </div>
 
+        {saveError && (
+          <p className="m-0 px-3 py-2 rounded-[10px] bg-danger/10 text-[11.5px] font-medium text-danger leading-snug">
+            {saveError}
+          </p>
+        )}
+
         <button
           type="button"
           onClick={handleSave}
-          className="w-full h-13 py-4 rounded-[14px] bg-primary-gradient text-white text-[15px] font-semibold shadow-button flex items-center justify-center gap-2"
+          disabled={saving || saved}
+          className="w-full h-13 py-4 rounded-[14px] bg-primary-gradient text-white text-[15px] font-semibold shadow-button flex items-center justify-center gap-2 disabled:opacity-60"
         >
           {saved ? <Check size={18} /> : null}
-          {saved ? '저장했어요' : '저장'}
+          {saving ? '저장 중이에요' : saved ? '저장했어요' : '저장'}
         </button>
 
         <p className="m-0 px-1 text-[10px] text-muted leading-relaxed">

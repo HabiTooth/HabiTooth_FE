@@ -57,6 +57,25 @@ export interface ScanCaptureStatus {
   }>;
 }
 
+export type RetakeReason = 'BLURRY' | 'TOOTH_NOT_DETECTED' | 'LOW_CONFIDENCE';
+
+export interface CaptureQualityResult {
+  needsRetake: boolean;
+  reason: RetakeReason | null;
+  message: string | null;
+  detail: {
+    blurScore?: number;
+    blurThreshold?: number;
+    lightType?: string;
+    detectedCount?: number;
+    expectedCount?: number;
+    meanConfidence?: number;
+    minConfidence?: number;
+    coverageRatio?: number;
+    borderTouchingCount?: number;
+  } | null;
+}
+
 export const scanApi = {
   createSession: (deviceId: number) =>
     apiClient.post<ApiResponse<number>>('/api/scan-sessions', null, { params: { deviceId } }),
@@ -75,6 +94,21 @@ export const scanApi = {
     formData.append('metadata', metadataBlob);
     return apiClient.post<ApiResponse<{ imageId: number; imageUrl: string }>>(
       `/api/scan-sessions/${sessionId}/images`,
+      formData,
+    );
+  },
+
+  // 업로드 전에 한 컷씩 판정만 받는다. 저장은 안 함
+  checkCaptureQuality: (
+    sessionId: number,
+    params: { file: File; viewType: ViewType; lightType?: LightType },
+  ) => {
+    const formData = new FormData();
+    formData.append('file', params.file);
+    formData.append('viewType', params.viewType);
+    if (params.lightType) formData.append('lightType', params.lightType);
+    return apiClient.post<ApiResponse<CaptureQualityResult>>(
+      `/api/scan-sessions/${sessionId}/images/quality-check`,
       formData,
     );
   },

@@ -2,6 +2,8 @@
 
 import { useRef, useState, useCallback, useEffect } from 'react';
 
+export type LedMode = 'OFF' | 'WHITE' | 'UV';
+
 export type CameraMode = 'device' | 'esp32';
 
 const STREAM_TIMEOUT = 8000;
@@ -11,13 +13,11 @@ export interface UseCameraStreamReturn {
   imgRef: React.RefObject<HTMLImageElement | null>;
   isReady: boolean;
   error: string | null;
-  lightOn: boolean;
-  facingMode: 'user' | 'environment';
+  ledMode: LedMode;
   cameraMode: CameraMode;
   startCamera: (mode?: CameraMode, esp32Url?: string) => Promise<void>;
   stopCamera: () => void;
-  toggleLight: () => Promise<void>;
-  flipCamera: () => Promise<void>;
+  setLed: (mode: LedMode) => Promise<void>;
   captureFrame: () => string | null;
 }
 
@@ -30,8 +30,8 @@ export function useCameraStream(): UseCameraStreamReturn {
   const streamWatchdog = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [lightOn, setLightOn] = useState(false);
-  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('environment');
+  const [ledMode, setLedMode] = useState<LedMode>('OFF');
+  const facingMode = 'environment';
   const [cameraMode, setCameraMode] = useState<CameraMode>('device');
 
   const stopCamera = useCallback(() => {
@@ -42,7 +42,7 @@ export function useCameraStream(): UseCameraStreamReturn {
     if (videoRef.current) videoRef.current.srcObject = null;
     if (imgRef.current) imgRef.current.src = '';
     setIsReady(false);
-    setLightOn(false);
+    setLedMode('OFF');
   }, []);
 
   const startCamera = useCallback(
@@ -90,7 +90,11 @@ export function useCameraStream(): UseCameraStreamReturn {
             return;
           }
           const stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: { ideal: facingMode }, width: { ideal: 1280 }, height: { ideal: 960 } },
+            video: {
+              facingMode: { ideal: facingMode },
+              width: { ideal: 1280 },
+              height: { ideal: 960 },
+            },
             audio: false,
           });
           streamRef.current = stream;
@@ -120,35 +124,34 @@ export function useCameraStream(): UseCameraStreamReturn {
     [facingMode, stopCamera],
   );
 
-  const toggleLight = useCallback(async () => {
-    if (cameraMode === 'esp32') {
-      const next = !lightOn;
-      const host = controlHostRef.current;
-      if (host) {
-        fetch(`http://${host}/led?mode=${next ? 'white' : 'off'}`, { mode: 'no-cors' }).catch(
-          () => {},
-        );
+  const setLed = useCallback(
+    async (mode: LedMode) => {
+      if (cameraMode === 'esp32') {
+        const host = controlHostRef.current;
+        if (!host) return;
+        try {
+          // 펌웨어가 적용된 상태를 문자열로 돌려주므로 그 값을 그대로 신뢰한다
+          const res = await fetch(`http://${host}/led?mode=${mode.toLowerCase()}`);
+          const applied = (await res.text()).trim().toUpperCase();
+          setLedMode(applied === 'UV' || applied === 'WHITE' ? applied : 'OFF');
+        } catch {
+          // 조명이 안 바뀌어도 촬영은 계속 되어야 함
+        }
+        return;
       }
-      setLightOn(next);
-      return;
-    }
-    const track = streamRef.current?.getVideoTracks()[0];
-    if (!track) return;
-    try {
-      const next = !lightOn;
-      await track.applyConstraints({ advanced: [{ torch: next } as MediaTrackConstraintSet] });
-      setLightOn(next);
-    } catch {
-      // torch not supported
-    }
-  }, [lightOn, cameraMode]);
-
-  const flipCamera = useCallback(async () => {
-    if (cameraMode === 'esp32') return;
-    const next = facingMode === 'environment' ? 'user' : 'environment';
-    setFacingMode(next);
-    await startCamera('device');
-  }, [facingMode, startCamera, cameraMode]);
+      const track = streamRef.current?.getVideoTracks()[0];
+      if (!track) return;
+      try {
+        await track.applyConstraints({
+          advanced: [{ torch: mode !== 'OFF' } as MediaTrackConstraintSet],
+        });
+        setLedMode(mode);
+      } catch {
+        // torch not supported
+      }
+    },
+    [cameraMode],
+  );
 
   const captureFrame = useCallback((): string | null => {
     if (cameraMode === 'esp32') {
@@ -180,13 +183,11 @@ export function useCameraStream(): UseCameraStreamReturn {
     imgRef,
     isReady,
     error,
-    lightOn,
-    facingMode,
+    ledMode,
     cameraMode,
     startCamera,
     stopCamera,
-    toggleLight,
-    flipCamera,
+    setLed,
     captureFrame,
   };
 }

@@ -1,7 +1,13 @@
 'use client';
 
 import { RotateCcw, ArrowRight, CheckCircle2, AlertTriangle, Loader2 } from 'lucide-react';
-import { CAPTURE_ISSUE_TEXT, type CaptureQuality } from '@/lib/imageQuality';
+import {
+  BRIGHT_THRESHOLD,
+  CAPTURE_ISSUE_TEXT,
+  DARK_THRESHOLD,
+  SHARPNESS_THRESHOLD,
+  type CaptureQuality,
+} from '@/lib/imageQuality';
 
 export default function CaptureReview({
   previewUrl,
@@ -23,6 +29,8 @@ export default function CaptureReview({
   onConfirm: () => void;
 }) {
   const problem = quality.issues[0];
+  const checking = quality.checking === true;
+  const unverified = quality.verified === false;
 
   return (
     <div className="absolute inset-0 z-30 flex flex-col bg-black">
@@ -51,7 +59,19 @@ export default function CaptureReview({
       </div>
 
       <div className="flex-shrink-0 bg-white rounded-t-[20px] px-4 pt-3.5 pb-4 flex flex-col gap-3">
-        {problem ? (
+        {checking ? (
+          <div className="flex items-start gap-2.5">
+            <div className="w-7 h-7 rounded-full bg-hairline flex items-center justify-center flex-shrink-0">
+              <Loader2 size={15} className="text-muted animate-spin" />
+            </div>
+            <div className="min-w-0">
+              <p className="m-0 text-[13px] font-bold text-content">사진을 확인하고 있어요</p>
+              <p className="m-0 mt-0.5 text-[12px] text-muted leading-snug">
+                치아가 제대로 잡혔는지 보는 중이에요.
+              </p>
+            </div>
+          </div>
+        ) : problem ? (
           <div className="flex items-start gap-2.5">
             <div className="w-7 h-7 rounded-full bg-warning/15 flex items-center justify-center flex-shrink-0">
               <AlertTriangle size={15} className="text-warning" />
@@ -59,7 +79,19 @@ export default function CaptureReview({
             <div className="min-w-0">
               <p className="m-0 text-[13px] font-bold text-content">{CAPTURE_ISSUE_TEXT[problem].label}</p>
               <p className="m-0 mt-0.5 text-[12px] text-muted leading-snug">
-                {CAPTURE_ISSUE_TEXT[problem].hint}
+                {quality.message ?? CAPTURE_ISSUE_TEXT[problem].hint}
+              </p>
+            </div>
+          </div>
+        ) : unverified ? (
+          <div className="flex items-start gap-2.5">
+            <div className="w-7 h-7 rounded-full bg-warning/15 flex items-center justify-center flex-shrink-0">
+              <AlertTriangle size={15} className="text-warning" />
+            </div>
+            <div className="min-w-0">
+              <p className="m-0 text-[13px] font-bold text-content">치아가 잡혔는지 확인 못 했어요</p>
+              <p className="m-0 mt-0.5 text-[12px] text-muted leading-snug">
+                판정 서버에 연결되지 않았어요. 화면에 치아가 다 들어왔는지 직접 확인해 주세요.
               </p>
             </div>
           </div>
@@ -75,6 +107,19 @@ export default function CaptureReview({
               </p>
             </div>
           </div>
+        )}
+
+        {process.env.NODE_ENV === 'development' && (
+          <p className="m-0 text-[10px] text-muted tabular-nums">
+            밝기 {Math.round(quality.brightness)} (기준 {DARK_THRESHOLD}~{BRIGHT_THRESHOLD}) · 선명도{' '}
+            {Math.round(quality.sharpness)} (기준 {SHARPNESS_THRESHOLD} 이상) · 서버판정{' '}
+            {quality.verified === true ? '받음' : quality.verified === false ? '못 받음' : '생략'}
+            {quality.detail &&
+              Object.entries(quality.detail)
+                .filter(([, v]) => v !== undefined && v !== null)
+                .map(([k, v]) => ` · ${k} ${typeof v === 'number' ? Math.round(v * 100) / 100 : v}`)
+                .join('')}
+          </p>
         )}
 
         {uploadError && (
@@ -95,15 +140,15 @@ export default function CaptureReview({
           <button
             type="button"
             onClick={onConfirm}
-            disabled={isUploading}
+            disabled={isUploading || checking}
             className={`flex-1 h-12 rounded-[14px] text-white text-[14px] font-semibold
               flex items-center justify-center gap-1.5 disabled:opacity-60
-              ${problem ? 'bg-muted' : 'bg-primary-gradient shadow-button'}`}
+              ${problem || checking ? 'bg-muted' : 'bg-primary-gradient shadow-button'}`}
           >
-            {isUploading ? (
+            {isUploading || checking ? (
               <>
                 <Loader2 size={16} className="animate-spin" />
-                저장 중
+                {checking ? '확인 중' : '저장 중'}
               </>
             ) : (
               <>

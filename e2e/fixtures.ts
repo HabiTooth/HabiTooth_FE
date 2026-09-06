@@ -23,7 +23,7 @@ const toothStatuses = () =>
 const DATES = ['2026-08-24', '2026-08-26', '2026-08-28', '2026-08-30', '2026-08-31'];
 
 const BODIES: Record<string, unknown> = {
-  'user/profile': ok({ userId: 1, email: 'qa@habitooth.test', name: 'QA 테스트', birthDate: '2000-01-01' }),
+  'user/profile': ok({ userId: 1, email: 'qa@habitooth.test', name: 'QA 테스트', birthDate: '2000-01-01', lastDentalVisitAt: '2026-02-14' }),
   'user/notification': ok({ pushNotificationEnabled: true, reportNotificationEnabled: true }),
   'user/status': ok([
     {
@@ -127,6 +127,44 @@ export async function mockApi(page: Page) {
     }
     if (path.startsWith('/api/camera/capture')) {
       return route.fulfill({ status: 502, json: { error: 'device responded 404' } });
+    }
+
+    if (/\/notifications\/unread-count$/.test(path)) {
+      return route.fulfill({ json: ok({ count: 2 }) });
+    }
+    if (/\/api\/notifications/.test(path)) {
+      if (route.request().method() !== 'GET') return route.fulfill({ json: ok(null) });
+      return route.fulfill({
+        json: ok([
+          {
+            id: 1,
+            type: 'REPORT_READY',
+            title: '분석 리포트가 준비됐어요',
+            body: '이번 스캔 점수는 90점이에요.',
+            link: '/report/42',
+            createdAt: '2026-08-31T09:12:00',
+            read: false,
+          },
+          {
+            id: 2,
+            type: 'RISK_ALERT',
+            title: "치석 위험도가 '주의'예요",
+            body: '리포트에서 어느 부위인지 확인해 보세요.',
+            link: '/report/42',
+            createdAt: '2026-08-30T21:04:00',
+            read: false,
+          },
+          {
+            id: 3,
+            type: 'SCAN_REMINDER',
+            title: '3일째 스캔 기록이 없어요',
+            body: '오늘 한 번 찍어두면 변화를 이어서 볼 수 있어요.',
+            link: '/scan',
+            createdAt: '2026-08-28T09:00:00',
+            read: true,
+          },
+        ]),
+      });
     }
 
     const report = /\/reports\/scan-sessions\/(\d+)\/simple/.exec(path);

@@ -27,6 +27,7 @@ interface HabitState {
   hydrated: boolean;
   hydrate: () => void;
   toggleHabit: (dateKey: string, id: HabitId) => void;
+  clear: () => void;
 }
 
 export const useHabitStore = create<HabitState>((set, get) => ({
@@ -43,4 +44,6 @@ export const useHabitStore = create<HabitState>((set, get) => ({
     write(next);
     set({ log: next });
   },
+
+  clear: () => set({ log: {}, hydrated: false }),
 }));

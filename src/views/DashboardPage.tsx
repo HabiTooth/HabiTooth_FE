@@ -14,14 +14,11 @@ import {
   type DashboardScore,
 } from '@/lib/api/dashboard';
 import { formatDateTime, scoreStatus, toSummaryRisk } from '@/lib/score';
-import { riskAlert, scanReminder } from '@/lib/notifications/rules';
-import { useNotificationStore } from '@/stores/notificationStore';
 
 export default function DashboardPage() {
   const [score, setScore] = useState<DashboardScore | null>(null);
   const [report, setReport] = useState<DashboardReport | null>(null);
   const [risk, setRisk] = useState<DashboardRisk | null>(null);
-  const push = useNotificationStore((s) => s.push);
 
   useEffect(() => {
     Promise.allSettled([
@@ -34,12 +31,6 @@ export default function DashboardPage() {
       if (k.status === 'fulfilled') setRisk(k.value.data.result);
     });
   }, []);
-
-  useEffect(() => {
-    for (const n of [scanReminder(score?.scannedAt), riskAlert(risk?.categories, risk?.sessionId)]) {
-      if (n) push(n);
-    }
-  }, [score, risk, push]);
 
   const plaque = risk?.categories.find((c) => c.lesionType === 'PLAQUE');
   const calculus = risk?.categories.find((c) => c.lesionType === 'CALCULUS');

@@ -3,6 +3,10 @@
 import { create } from 'zustand';
 import { authApi } from '@/lib/api/auth';
 import { readToken, readEmail, writeAuth, clearStoredAuth } from '@/lib/tokenStorage';
+import { clearAppData } from '@/lib/localData';
+import { useDentitionStore } from './dentitionStore';
+import { useNotificationStore } from './notificationStore';
+import { useHabitStore } from './habitStore';
 
 function decodeEmail(token: string): string | null {
   try {
@@ -46,8 +50,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
   clearAuth: () => {
     clearStoredAuth();
+    clearAppData();
     localStorage.removeItem('deviceId');
     localStorage.removeItem('deviceIp');
+    useDentitionStore.getState().clear();
+    useNotificationStore.getState().clear();
+    useHabitStore.getState().clear();
     set({ token: null, email: null, deviceId: null, deviceIp: null });
   },
   logout: async () => {

@@ -6,7 +6,7 @@ export type NotificationType =
   | 'CHECKUP';
 
 export interface AppNotification {
-  id: string;
+  id: number;
   type: NotificationType;
   title: string;
   body: string;
@@ -14,7 +14,3 @@ export interface AppNotification {
   createdAt: string;
   read: boolean;
 }
-
-export type NewNotification = Omit<AppNotification, 'id' | 'createdAt' | 'read'> & {
-  dedupeKey?: string;
-};
