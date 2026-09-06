@@ -11,6 +11,11 @@ interface Pending {
   seq: number;
 }
 
+export interface HardwareShot {
+  white: Blob;
+  uv: Blob | null;
+}
+
 /**
  * 기기 셔터 버튼 감시. seq가 오르면 기기가 들고 있는 컷을 가져온다.
  * 안 가져가면 기기가 촬영 상태에 머물러서 스트림이 멈춘 채로 있는다.
@@ -22,7 +27,7 @@ export function useHardwareShutter({
 }: {
   host: string | null;
   enabled: boolean;
-  onCapture: (blob: Blob) => void;
+  onCapture: (shot: HardwareShot) => void;
 }) {
   const lastSeq = useRef<number | null>(null);
   const onCaptureRef = useRef(onCapture);
@@ -66,11 +71,17 @@ export function useHardwareShutter({
         if (seq <= lastSeq.current) return;
         lastSeq.current = seq;
 
-        // 0번이 백색광, 1번이 UV. 지금은 백색광만 분석에 씀
-        const image = await fetch(`/api/camera/pending?ip=${host}&i=0`);
-        if (!image.ok || !alive) return;
+        // 기기가 백색(0)·UV(1) 두 장을 들고 있다. 둘 다 가져가야 촬영 상태에서 빠져나온다
+        const pick = async (i: 0 | 1) => {
+          const res = await fetch(`/api/camera/pending?ip=${host}&i=${i}`);
+          return res.ok ? res.blob() : null;
+        };
 
-        onCaptureRef.current(await image.blob());
+        const white = await pick(0);
+        const uv = await pick(1);
+        if (!white || !alive) return;
+
+        onCaptureRef.current({ white, uv });
       } catch {
         wait = Math.min(wait * 2, MAX_POLL_MS);
       } finally {
