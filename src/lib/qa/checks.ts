@@ -9,6 +9,7 @@ import { dashboardApi } from '@/lib/api/dashboard';
 import { historyApi } from '@/lib/api/history';
 import { userApi } from '@/lib/api/user';
 import { notificationApi } from '@/lib/api/notification';
+import { habitApi } from '@/lib/api/habit';
 import { reportApi } from '@/lib/api/report';
 
 export type QaGroup =
@@ -461,6 +462,19 @@ export const QA_CHECKS: QaCheck[] = [
     expectKeys: ['totalCount', 'page', 'size', 'totalPages', 'items'],
   },
 
+  {
+    id: 'habit.list',
+    group: '기록',
+    label: '습관 기록 조회 (최근 30일)',
+    endpoint: 'GET /api/habits?from=&to=',
+    run: () => {
+      const to = new Date();
+      const from = new Date(to.getTime() - 30 * 86_400_000);
+      const key = (d: Date) => d.toISOString().slice(0, 10);
+      return habitApi.getHabits(key(from), key(to)).then(unwrap);
+    },
+    expectKeys: ['logs'],
+  },
   {
     id: 'notification.list',
     group: '알림',
