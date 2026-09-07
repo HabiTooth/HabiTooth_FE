@@ -831,9 +831,15 @@ function Step4({
   );
 }
 
+// 기기는 한 번 누르면 백색·UV 두 컷을 찍는다. 웹캠은 UV가 없어 백색만 나온다
+interface Shot {
+  white: Blob;
+  uv: Blob | null;
+}
+
 interface PendingShot {
   zone: ViewType;
-  blob: Blob;
+  shot: Shot;
   previewUrl: string;
   quality: CaptureQuality;
 }
@@ -900,8 +906,6 @@ export default function ScanPage() {
     setLed,
   } = useCameraStream();
 
-  // 조명이 UV로 켜져 있으면 그 상태로 찍히므로 저장되는 광원도 따라간다
-  const light: LightType = ledMode === 'UV' ? 'UV_LIGHT' : 'WHITE_LIGHT';
   const toggleLed = useCallback(
     (mode: LedMode) => void setLed(ledMode === mode ? 'OFF' : mode),
     [ledMode, setLed],
@@ -943,27 +947,37 @@ export default function ScanPage() {
     if (g) setSurface(g === 'OUTER' ? 'BUCCAL' : 'LINGUAL');
   }, [currentZone]);
 
-  const captureBlob = useCallback(async (zone: ViewType): Promise<Blob> => {
-    if (cameraMode === 'esp32' && scannerAddress) {
+  const snap = useCallback(
+    async (zone: ViewType, mode: 'white' | 'uv'): Promise<Blob> => {
       const res = await fetch(
-        `/api/camera/capture?ip=${controlHost(scannerAddress)}&view=${zone}` +
-          `&light=${light === 'UV_LIGHT' ? 'uv' : 'white'}`,
+        `/api/camera/capture?ip=${controlHost(scannerAddress!)}&view=${zone}&light=${mode}`,
       );
       if (!res.ok) {
         const detail = await res.json().catch(() => null);
         throw new Error(detail?.error ?? `capture proxy ${res.status}`);
       }
       return res.blob();
+    },
+    [scannerAddress],
+  );
+
+  const captureShot = useCallback(async (zone: ViewType): Promise<Shot> => {
+    if (cameraMode === 'esp32' && scannerAddress) {
+      // 기기 셔터와 같은 결과가 되도록 웹 버튼도 두 광원을 연달아 찍는다
+      const white = await snap(zone, 'white');
+      const uv = await snap(zone, 'uv');
+      return { white, uv };
     }
     const video = videoRef.current;
     const canvas = document.createElement('canvas');
     canvas.width = video?.videoWidth || 640;
     canvas.height = video?.videoHeight || 480;
     if (video) canvas.getContext('2d')?.drawImage(video, 0, 0);
-    return new Promise<Blob>((resolve) =>
+    const white = await new Promise<Blob>((resolve) =>
       canvas.toBlob((b) => resolve(b ?? new Blob()), 'image/jpeg', 0.9),
     );
-  }, [cameraMode, scannerAddress, videoRef, light]);
+    return { white, uv: null };
+  }, [cameraMode, scannerAddress, videoRef, snap]);
 
   // 기기가 풀해상도로 한 컷 잡는 동안 스트림이 끊겨서, 촬영 뒤에는 다시 붙여줘야 함
   const restartStream = useCallback(() => {
@@ -973,9 +987,11 @@ export default function ScanPage() {
   }, [cameraMode, scannerAddress]);
 
   const acceptShot = useCallback(
-    async (blob: Blob) => {
+    async (shot: Shot) => {
       if (!currentZone) return;
       const zone = currentZone;
+      // 판정이랑 미리보기는 눈으로 보는 백색 컷 기준
+      const blob = shot.white;
       const local = await evaluateCaptureBlob(blob);
       const previewUrl = URL.createObjectURL(blob);
 
@@ -983,7 +999,7 @@ export default function ScanPage() {
       const ask = sessionId !== null && sessionId !== DEV_SESSION_ID;
       setPending({
         zone,
-        blob,
+        shot,
         previewUrl,
         quality: { ...local, checking: ask, verified: local.ok && !ask ? false : undefined },
       });
@@ -999,7 +1015,7 @@ export default function ScanPage() {
         console.log('form', {
           file: `${file.name} ${file.type} ${(file.size / 1024).toFixed(1)}KB`,
           viewType: zone,
-          lightType: light,
+          lightType: 'WHITE_LIGHT',
         });
         console.log('로컬 판정', { brightness: local.brightness, sharpness: local.sharpness });
         console.groupEnd();
@@ -1009,7 +1025,7 @@ export default function ScanPage() {
         const res = await scanApi.checkCaptureQuality(sessionId, {
           file,
           viewType: zone,
-          lightType: light,
+          lightType: 'WHITE_LIGHT',
         });
         if (isDev) {
           console.groupCollapsed(`[화질판정] 응답 ${zone} · ${res.status}`);
@@ -1026,15 +1042,15 @@ export default function ScanPage() {
         settle({ ...local, checking: false, verified: false });
       }
     },
-    [currentZone, sessionId, light],
+    [currentZone, sessionId],
   );
 
   // 기기 셔터 버튼으로 찍은 컷도 웹 버튼과 같은 확인 화면으로 넘긴다
   useHardwareShutter({
     host: cameraMode === 'esp32' && scannerAddress ? controlHost(scannerAddress) : null,
     enabled: step === 2 && !pending,
-    onCapture: (blob) => {
-      void acceptShot(blob);
+    onCapture: (shot) => {
+      void acceptShot(shot);
       restartStream();
     },
   });
@@ -1044,8 +1060,7 @@ export default function ScanPage() {
     setIsCapturing(true);
     setCaptureError(null);
     try {
-      const blob = await captureBlob(currentZone);
-      await acceptShot(blob);
+      await acceptShot(await captureShot(currentZone));
       restartStream();
     } catch (e) {
       const detail = e instanceof Error ? e.message : '';
@@ -1057,7 +1072,7 @@ export default function ScanPage() {
     } finally {
       setIsCapturing(false);
     }
-  }, [isCapturing, isReady, currentZone, pending, captureBlob, acceptShot, restartStream]);
+  }, [isCapturing, isReady, currentZone, pending, captureShot, acceptShot, restartStream]);
 
   // 촬영 시점에 이미 스트림을 다시 붙였고, 확인 화면은 그 위를 덮기만 함.
   // 여기서 또 붙이면 붙는 중인 연결을 끊어서 화면이 멈춘다
@@ -1087,15 +1102,18 @@ export default function ScanPage() {
     if (!pending || !sessionId) return;
     setIsUploading(true);
     setCaptureError(null);
-    const { zone, blob, previewUrl } = pending;
+    const { zone, shot, previewUrl } = pending;
     try {
       if (sessionId !== DEV_SESSION_ID) {
-        const file = new File([blob], `scan_${zone}.jpg`, { type: 'image/jpeg' });
-        const res = await scanApi.uploadImageToSession(sessionId, {
-          file,
-          viewType: zone,
-          lightType: light,
-        });
+        const upload = (blob: Blob, lightType: LightType) =>
+          scanApi.uploadImageToSession(sessionId, {
+            file: new File([blob], `scan_${zone}_${lightType}.jpg`, { type: 'image/jpeg' }),
+            viewType: zone,
+            lightType,
+          });
+
+        const res = await upload(shot.white, 'WHITE_LIGHT');
+        if (shot.uv) await upload(shot.uv, 'UV_LIGHT');
         uploadedImageIds.current.set(zone, res.data.result.imageId);
       }
 
@@ -1113,7 +1131,7 @@ export default function ScanPage() {
     } finally {
       setIsUploading(false);
     }
-  }, [pending, sessionId, nextUncapturedZone, capturedZones, light]);
+  }, [pending, sessionId, nextUncapturedZone, capturedZones]);
 
   const handleSetZones = useCallback((zones: ViewType[]) => {
     setSelectedZones(sortZones([...new Set(zones)]));
