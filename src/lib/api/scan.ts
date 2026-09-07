@@ -1,66 +1,89 @@
 import { apiClient } from './client';
 import type { ApiResponse } from '@/types/api';
 
-export type ScanImageType = 'WHITE_LIGHT' | 'UV_LIGHT';
-export type ScanRegion = 'UPPER' | 'LOWER' | 'FRONT' | 'LEFT' | 'RIGHT' | 'FULL';
+import type { LesionType, LightType, RiskLevel } from './common';
+
+export type { LesionType, LightType, RiskLevel } from './common';
+
 export type ViewType =
-  | 'UPPER_LEFT' | 'UPPER_CENTER' | 'UPPER_RIGHT'
-  | 'LOWER_LEFT' | 'LOWER_CENTER' | 'LOWER_RIGHT'
+  | 'UPPER_RIGHT_MOLAR' | 'UPPER_RIGHT_PREMOLAR' | 'UPPER_FRONT'
+  | 'UPPER_LEFT_PREMOLAR' | 'UPPER_LEFT_MOLAR'
+  | 'LOWER_RIGHT_MOLAR' | 'LOWER_RIGHT_PREMOLAR' | 'LOWER_FRONT'
+  | 'LOWER_LEFT_PREMOLAR' | 'LOWER_LEFT_MOLAR'
   | 'OUTER_LEFT' | 'OUTER_CENTER' | 'OUTER_RIGHT';
 
-export interface ScanUploadResult {
-  sessionId: number;
-  imageId: number;
-  imageType: ScanImageType;
-  region: ScanRegion;
-  imageUrl: string;
+export interface ToothStatus {
+  toothNumber: number;
+  templateRegionId: string | null;
+  lesionType: LesionType | null;
+  areaRatio: number | null;
+  riskLevel: RiskLevel;
 }
 
-export interface ScanSessionCreateRequest {
-  userId: number;
-  deviceId: number;
-}
-
-export interface ScanSessionResponse {
-  sessionId: number;
-  userId: number;
-  deviceId: number;
+export interface ZoneAnalysisResult {
+  analysisResultId: number;
+  scanImageId: number;
+  viewType: ViewType;
   status: string;
-  createdAt: string;
+  zoneScore: number | null;
+  zoneValid: boolean;
+  detectedToothCount: number;
+  scoreVersion: string;
+  totalCalculusRatio: number;
+  totalPlaqueRatio: number;
+  toothStatuses: ToothStatus[];
 }
 
-export interface AnalysisResultSummary {
+export interface SessionAnalyzeResult {
   sessionId: number;
-  analysisResultSummaries: Array<{
-    analysisResultId: number;
-    score: number;
+  sessionScore: number | null;
+  validZoneCount: number;
+  totalZoneCount: number;
+  invalidZones: ViewType[];
+  failedCount: number;
+  analysisResults: ZoneAnalysisResult[];
+}
+
+export interface ScanCaptureStatus {
+  sessionId: number;
+  uploadedImageCount: number;
+  capturedZoneCount: number;
+  totalZoneCount: number;
+  canAnalyze: boolean;
+  capturedZones: Array<{
+    scanImageId: number;
     viewType: ViewType;
+    lightType: LightType;
   }>;
-  averageScore: number;
+}
+
+export type RetakeReason = 'BLURRY' | 'TOOTH_NOT_DETECTED' | 'LOW_CONFIDENCE';
+
+export interface CaptureQualityResult {
+  needsRetake: boolean;
+  reason: RetakeReason | null;
+  message: string | null;
+  detail: {
+    blurScore?: number;
+    blurThreshold?: number;
+    lightType?: string;
+    detectedCount?: number;
+    expectedCount?: number;
+    meanConfidence?: number;
+    minConfidence?: number;
+    coverageRatio?: number;
+    borderTouchingCount?: number;
+  } | null;
 }
 
 export const scanApi = {
-  // 개발용 API (기존)
-  uploadImage: (params: {
-    userId: number;
-    deviceId: number;
-    imageType: ScanImageType;
-    region: ScanRegion;
-    file: File;
-  }) => {
-    const formData = new FormData();
-    formData.append('file', params.file);
-    return apiClient.post<ApiResponse<ScanUploadResult>>(
-      `/api/scan/upload?userId=${params.userId}&deviceId=${params.deviceId}&imageType=${params.imageType}&region=${params.region}`,
-      formData,
-    );
-  },
+  createSession: (deviceId: number) =>
+    apiClient.post<ApiResponse<number>>('/api/scan-sessions', null, { params: { deviceId } }),
 
-  // 세션 기반 API
-  createSession: (params: ScanSessionCreateRequest) =>
-    apiClient.post<ApiResponse<number>>('/api/scan-sessions', params),
-
-  uploadImageToSession: (sessionId: number, params: { file: File; viewType: ViewType; lightType: 'WHITE_LIGHT' | 'UV_LIGHT' }) => {
+  uploadImageToSession: (
+    sessionId: number,
+    params: { file: File; viewType: ViewType; lightType: LightType },
+  ) => {
     const formData = new FormData();
     formData.append('file', params.file);
     const metadataJson = JSON.stringify({
@@ -75,9 +98,28 @@ export const scanApi = {
     );
   },
 
-  analyzeSession: (sessionId: number) =>
-    apiClient.post<ApiResponse<AnalysisResultSummary>>(`/api/scan-sessions/${sessionId}/analyze`, {}),
+  // 업로드 전에 한 컷씩 판정만 받는다. 저장은 안 함
+  checkCaptureQuality: (
+    sessionId: number,
+    params: { file: File; viewType: ViewType; lightType?: LightType },
+  ) => {
+    const formData = new FormData();
+    formData.append('file', params.file);
+    formData.append('viewType', params.viewType);
+    if (params.lightType) formData.append('lightType', params.lightType);
+    return apiClient.post<ApiResponse<CaptureQualityResult>>(
+      `/api/scan-sessions/${sessionId}/images/quality-check`,
+      formData,
+    );
+  },
 
-  getReport: (sessionId: number) =>
-    apiClient.get<ApiResponse<import('./analysis').SessionReportResponse>>(`/api/scan-sessions/${sessionId}/report`),
+  getCaptureStatus: (sessionId: number) =>
+    apiClient.get<ApiResponse<ScanCaptureStatus>>(`/api/scan-sessions/${sessionId}/capture-status`),
+
+  analyzeSession: (sessionId: number, target?: LesionType) =>
+    apiClient.post<ApiResponse<SessionAnalyzeResult>>(
+      `/api/scan-sessions/${sessionId}/analyze`,
+      null,
+      target ? { params: { target } } : undefined,
+    ),
 };

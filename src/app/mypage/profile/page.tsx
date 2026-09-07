@@ -1,9 +1,12 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, Camera, User } from 'lucide-react';
+import { ChevronLeft, Camera, User, CalendarDays } from 'lucide-react';
 import Input from '@/components/atoms/Input';
+import { asIsoDate, formatBirthDate, todayIso } from '@/lib/birthDate';
+import { userApi } from '@/lib/api/user';
+import { apiErrorMessage } from '@/lib/apiError';
 
 const KakaoIcon = () => (
   <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
@@ -19,9 +22,6 @@ const GoogleIcon = () => (
     <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
   </svg>
 );
-
-const GENDERS = ['남성', '여성', '선택 안 함'] as const;
-type Gender = typeof GENDERS[number];
 
 function ReadOnlyField({ label, value }: { label: string; value: string }) {
   return (
@@ -47,14 +47,32 @@ function SocialButton({ linked, onToggle }: { linked: boolean; onToggle: () => v
 export default function ProfileEditPage() {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
+  const dateRef = useRef<HTMLInputElement>(null);
+  const visitRef = useRef<HTMLInputElement>(null);
 
-  const [name, setName] = useState('홍길동');
-  const [phone, setPhone] = useState('010-1234-5678');
-  const [gender, setGender] = useState<Gender>('남성');
+  const [email, setEmail] = useState('');
+  const [name, setName] = useState('');
+  const [birthDate, setBirthDate] = useState('');
+  const [lastVisit, setLastVisit] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [kakaoLinked, setKakaoLinked] = useState(true);
+  const [kakaoLinked, setKakaoLinked] = useState(false);
   const [googleLinked, setGoogleLinked] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    userApi
+      .getProfile()
+      .then((res) => {
+        const p = res.data.result;
+        setEmail(p.email);
+        setName(p.name ?? '');
+        setBirthDate(p.birthDate ?? '');
+        setLastVisit(p.lastDentalVisitAt ?? '');
+      })
+      .catch((e) => setLoadError(apiErrorMessage(e, '프로필을 불러오지 못했어요.')));
+  }, []);
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -62,9 +80,21 @@ export default function ProfileEditPage() {
     setAvatarUrl(URL.createObjectURL(file));
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setIsSaving(true);
-    setTimeout(() => { setIsSaving(false); router.back(); }, 800);
+    setSaveError(null);
+    try {
+      await userApi.updateProfile({
+        name: name.trim(),
+        birthDate: birthDate || undefined,
+        lastDentalVisitAt: lastVisit || undefined,
+      });
+      router.back();
+    } catch (e) {
+      setSaveError(apiErrorMessage(e, '저장에 실패했어요. 잠시 후 다시 시도해 주세요.'));
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const canSave = name.trim().length > 0;
@@ -102,25 +132,87 @@ export default function ProfileEditPage() {
         </button>
       </div>
 
+      {loadError && (
+        <p className="m-0 mb-3 px-1 text-[13px] text-danger relative z-10">{loadError}</p>
+      )}
+
       <div className="bg-white/90 backdrop-blur-sm rounded-[20px] shadow-card p-5 flex flex-col gap-4 relative z-10 mb-4">
-        <ReadOnlyField label="이메일" value="habitooth@example.com" />
+        <ReadOnlyField label="이메일" value={email} />
         <Input label="이름" type="text" placeholder="이름을 입력해주세요" value={name} onChange={setName} />
-        <Input label="전화번호" type="text" placeholder="010-0000-0000" value={phone} onChange={setPhone} />
-        <div className="flex flex-col gap-1.5">
-          <p className="m-0 text-[12px] font-semibold text-muted">성별</p>
-          <div className="flex gap-2">
-            {GENDERS.map((g) => (
-              <button key={g} type="button" onClick={() => setGender(g)}
-                className={`flex-1 h-10 rounded-[10px] text-[13px] font-semibold border transition-colors cursor-pointer ${
-                  gender === g
-                    ? 'bg-primary text-white border-primary'
-                    : 'bg-transparent text-muted border-hairline hover:border-primary/40'
-                }`}>
-                {g}
+        <Input
+          label="생년월일"
+          type="text"
+          inputMode="numeric"
+          placeholder="1995-03-15"
+          value={birthDate}
+          onChange={(v) => setBirthDate(formatBirthDate(v))}
+          rightIcon={
+            <span className="relative flex items-center">
+              <button
+                type="button"
+                aria-label="달력에서 고르기"
+                onClick={() => {
+                  const el = dateRef.current;
+                  if (!el) return;
+                  // showPicker를 막는 브라우저에서는 포커스만 줘서 기본 UI가 뜨게 한다
+                  if (typeof el.showPicker === 'function') el.showPicker();
+                  else el.focus();
+                }}
+                className="p-1 -m-1 text-muted hover:text-primary transition-colors"
+              >
+                <CalendarDays size={18} />
               </button>
-            ))}
-          </div>
-        </div>
+              <input
+                ref={dateRef}
+                type="date"
+                tabIndex={-1}
+                aria-hidden
+                max={todayIso()}
+                value={asIsoDate(birthDate)}
+                onChange={(e) => setBirthDate(e.target.value)}
+                className="absolute inset-0 w-full h-full opacity-0 pointer-events-none"
+              />
+            </span>
+          }
+        />
+        <Input
+          label="마지막 치과 방문일"
+          type="text"
+          inputMode="numeric"
+          placeholder="2026-03-01"
+          value={lastVisit}
+          onChange={(v) => setLastVisit(formatBirthDate(v))}
+          rightIcon={
+            <span className="relative flex items-center">
+              <button
+                type="button"
+                aria-label="달력에서 고르기"
+                onClick={() => {
+                  const el = visitRef.current;
+                  if (!el) return;
+                  if (typeof el.showPicker === 'function') el.showPicker();
+                  else el.focus();
+                }}
+                className="p-1 -m-1 text-muted hover:text-primary transition-colors"
+              >
+                <CalendarDays size={18} />
+              </button>
+              <input
+                ref={visitRef}
+                type="date"
+                tabIndex={-1}
+                aria-hidden
+                max={todayIso()}
+                value={asIsoDate(lastVisit)}
+                onChange={(e) => setLastVisit(e.target.value)}
+                className="absolute inset-0 w-full h-full opacity-0 pointer-events-none"
+              />
+            </span>
+          }
+        />
+        <p className="m-0 -mt-1 px-1 text-[10.5px] text-muted leading-relaxed">
+          6개월이 지나면 정기 검진 알림을 보내요.
+        </p>
       </div>
 
       <div className="bg-white/90 backdrop-blur-sm rounded-[20px] shadow-card px-5 py-4 relative z-10 mb-4">
@@ -140,6 +232,10 @@ export default function ProfileEditPage() {
       </div>
 
       <div className="flex-1" />
+
+      {saveError && (
+        <p className="m-0 mt-4 text-[13px] text-danger text-center relative z-10">{saveError}</p>
+      )}
 
       <button type="button" onClick={handleSave} disabled={!canSave || isSaving}
         className="w-full h-14 rounded-[14px] text-white text-[16px] font-semibold disabled:opacity-40 disabled:cursor-not-allowed transition-opacity relative z-10 mt-6"

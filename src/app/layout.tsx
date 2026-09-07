@@ -1,10 +1,18 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import Providers from './providers';
 
 export const metadata: Metadata = {
   title: 'HabiTooth',
   description: 'AI-powered oral health monitoring',
+};
+
+// viewport-fit=cover가 없으면 env(safe-area-inset-*)이 전부 0으로 나와서 하단 탭이 잘림
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+  themeColor: '#4A86D9',
 };
 
 export default function RootLayout({

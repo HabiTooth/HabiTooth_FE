@@ -1,8 +1,9 @@
 'use client';
 
+import { useEffect } from 'react';
 import Link from 'next/link';
 import { Bell, User } from 'lucide-react';
-import type { HeaderProps } from './Header.types';
+import { useNotificationStore } from '@/stores/notificationStore';
 
 const OUTLINE_D = 'M 194 79 C 171 59 138 58 116 76 C 95 94 91 122 100 151 C 106 171 115 194 126 219 L 147 268 C 152 281 160 286 174 283 L 174 221 C 174 202 185 190 200 190 C 215 190 226 202 226 221 L 226 283 C 240 286 248 281 253 268 L 274 219 C 285 194 294 171 300 151 C 309 122 305 94 284 76 C 267 62 245 58 225 64';
 const STEM_D = 'M 194 79 L 194 143';
@@ -25,7 +26,14 @@ const LogoIcon = () => (
   </svg>
 );
 
-export default function Header({ hasNotification = false }: HeaderProps) {
+export default function Header() {
+  const items = useNotificationStore((s) => s.items);
+  const hydrate = useNotificationStore((s) => s.hydrate);
+
+  useEffect(() => hydrate(), [hydrate]);
+
+  const unread = items.filter((n) => !n.read).length;
+
   return (
     <header className="flex items-center justify-between mb-6">
       <Link href="/dashboard" className="flex items-center gap-2">
@@ -40,14 +48,20 @@ export default function Header({ hasNotification = false }: HeaderProps) {
         </div>
       </Link>
       <div className="flex items-center gap-2">
-        <button className="relative w-9 h-9 bg-white rounded-full flex items-center justify-center">
-          <Bell size={18} className="text-gray-500" />
-          {hasNotification && (
-            <span className="absolute top-1 right-1 w-2 h-2 bg-[#4A86D9] rounded-full" />
+        <Link
+          href="/notifications"
+          aria-label={unread > 0 ? `알림 ${unread}건` : '알림'}
+          className="relative w-9 h-9 bg-white rounded-full flex items-center justify-center shadow-card border border-hairline"
+        >
+          <Bell size={18} className="text-muted" />
+          {unread > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 bg-danger text-white text-[10px] font-bold rounded-full flex items-center justify-center border-[1.5px] border-white">
+              {unread > 9 ? '9+' : unread}
+            </span>
           )}
-        </button>
-        <Link href="/mypage" className="w-9 h-9 bg-white rounded-full flex items-center justify-center">
-          <User size={18} className="text-gray-500" />
+        </Link>
+        <Link href="/mypage" className="w-9 h-9 bg-white rounded-full flex items-center justify-center shadow-card border border-hairline">
+          <User size={18} className="text-muted" />
         </Link>
       </div>
     </header>

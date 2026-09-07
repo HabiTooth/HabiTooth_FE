@@ -1,10 +1,11 @@
-export interface RiskItem {
-  label: string;
-  percentage: number;
-  color: 'warning' | 'danger' | 'good';
-}
+import type { ToothAnalysisResult } from '@/components/organisms/OralViewer3D/ThreeScene';
+import type { ViewType } from '@/lib/api/scan';
 
 export interface RiskAnalysisSectionProps {
-  plaque: number;    // 치태 %
-  calculus: number;  // 치석 %
+  plaque: number;
+  calculus: number;
+  analysisResults?: ToothAnalysisResult[];
+  scannedTeeth?: number[];
+  capturedZones?: ViewType[];
+  calibrationMode?: boolean;
 }

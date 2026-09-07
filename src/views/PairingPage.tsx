@@ -10,11 +10,13 @@ import {
   Loader2,
   Wifi,
 } from 'lucide-react';
+import PageShell from '@/components/organisms/PageShell';
 import SignalBars from '@/components/atoms/SignalBars';
 import ListItem from '@/components/molecules/ListItem';
 import type { SignalLevel } from '@/components/atoms/SignalBars';
 import { useAuthStore } from '@/stores/authStore';
 import { deviceApi, DEVICE_MODEL } from '@/lib/api/device';
+import { withStreamPort } from '@/lib/deviceAddress';
 
 interface FoundDevice {
   ip: string;
@@ -25,7 +27,11 @@ interface FoundDevice {
 const latencyToSignal = (ms: number): SignalLevel =>
   ms < 150 ? 'strong' : ms < 400 ? 'medium' : 'weak';
 
-const deviceNameFor = (ip: string) => `${DEVICE_MODEL} (${ip.split('.')[3] ?? ''})`;
+// habitooth.local 같은 mDNS 이름도 오기 때문에 IP일 때만 끝자리를 붙임
+const deviceNameFor = (host: string) => {
+  const last = /^\d+\.\d+\.\d+\.(\d+)$/.exec(host)?.[1];
+  return last ? `${DEVICE_MODEL} (${last})` : DEVICE_MODEL;
+};
 
 const ToothThumb = () => (
   <svg width="28" height="28" viewBox="75 45 255 258" fill="none">
@@ -53,7 +59,14 @@ const ToothThumb = () => (
   </svg>
 );
 
-const DEMO_DEVICE_IP = process.env.NEXT_PUBLIC_ESP32_HOST ?? '10.49.238.25:81';
+const DEMO_DEVICE_IP = withStreamPort(process.env.NEXT_PUBLIC_ESP32_HOST ?? '10.49.238.25');
+
+const HELP_STEPS = [
+  '기기 전원 스위치가 켜져 있고 표시등이 들어와 있는지 확인해요.',
+  '휴대폰과 기기가 같은 WiFi에 붙어 있어야 해요. 5GHz 말고 2.4GHz로 연결해 주세요.',
+  '기기를 껐다 켠 뒤 30초쯤 기다렸다가 다시 검색해요.',
+  '그래도 안 잡히면 공유기를 재시작하거나 다른 WiFi에서 시도해 보세요.',
+];
 
 export default function PairingPage() {
   const router = useRouter();
@@ -61,6 +74,7 @@ export default function PairingPage() {
   const [scanState, setScanState] = useState<'scanning' | 'done'>('scanning');
   const [foundDevices, setFoundDevices] = useState<FoundDevice[]>([]);
   const [connectingIp, setConnectingIp] = useState<string | null>(null);
+  const [showHelp, setShowHelp] = useState(false);
 
   const runDiscovery = useCallback(async () => {
     setScanState('scanning');
@@ -100,11 +114,8 @@ export default function PairingPage() {
   const [recommended, ...others] = foundDevices;
 
   return (
-    <div className="max-w-[430px] min-h-svh mx-auto bg-background px-5 pt-[56px] pb-10 flex flex-col relative z-10">
-      <div className="aurora-blob-1" />
-      <div className="aurora-blob-2" />
-      <div className="aurora-blob-3" />
-
+    <PageShell className="overflow-x-hidden">
+      <div className="px-5 pt-[56px]">
       <div className="flex items-center mb-4 relative z-10">
         <button
           type="button"
@@ -215,19 +226,19 @@ export default function PairingPage() {
                 </span>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="text-[12px] text-muted">
-                  응답 {recommended.latencyMs}ms
+                <span className="text-[12px] text-muted truncate">
+                  {recommended.ip} · {recommended.latencyMs}ms
                 </span>
                 <SignalBars level={latencyToSignal(recommended.latencyMs)} />
               </div>
             </div>
             <button
               type="button"
-              onClick={() => handleWiFiConnect(`${recommended.ip}:81`)}
+              onClick={() => handleWiFiConnect(withStreamPort(recommended.ip))}
               disabled={!!connectingIp}
               className="px-3.5 h-9 bg-primary text-white text-[13px] font-semibold rounded-[10px] flex-shrink-0 cursor-pointer disabled:opacity-60 whitespace-nowrap"
             >
-              {connectingIp === `${recommended.ip}:81` ? '연결 중...' : '연결하기'}
+              {connectingIp === withStreamPort(recommended.ip) ? '연결 중...' : '연결하기'}
             </button>
           </div>
         )}
@@ -248,8 +259,8 @@ export default function PairingPage() {
                 title={deviceNameFor(device.ip)}
                 subtitle={
                   <>
-                    <span className="text-[12px] text-muted">
-                      응답 {device.latencyMs}ms
+                    <span className="text-[12px] text-muted truncate">
+                      {device.ip} · {device.latencyMs}ms
                     </span>
                     <SignalBars level={latencyToSignal(device.latencyMs)} />
                   </>
@@ -257,11 +268,11 @@ export default function PairingPage() {
                 right={
                   <button
                     type="button"
-                    onClick={() => handleWiFiConnect(`${device.ip}:81`)}
+                    onClick={() => handleWiFiConnect(withStreamPort(device.ip))}
                     disabled={!!connectingIp}
                     className="px-3 h-8 border border-hairline text-content text-[12px] font-medium rounded-[8px] cursor-pointer bg-transparent disabled:opacity-60 whitespace-nowrap"
                   >
-                    {connectingIp === `${device.ip}:81` ? '연결 중...' : '연결'}
+                    {connectingIp === withStreamPort(device.ip) ? '연결 중...' : '연결'}
                   </button>
                 }
               />
@@ -292,29 +303,41 @@ export default function PairingPage() {
               className="w-full h-[48px] rounded-[12px] border border-primary/40 bg-primary/5 text-primary text-[13px] font-medium flex items-center justify-center gap-2 disabled:opacity-60 hover:bg-primary/10 transition-colors"
             >
               <Wifi size={16} />
-              고정 IP로 연결 (데모)
+              {DEMO_DEVICE_IP}(으)로 연결 (데모)
             </button>
           </div>
         )}
       </div>
 
-      <div className="relative z-10 bg-[#D6E6F8] rounded-[14px] px-4 py-3.5 flex items-center gap-3 mt-auto">
-        <div className="w-9 h-9 rounded-full bg-white/50 flex items-center justify-center flex-shrink-0">
-          <Headphones size={17} color="#4A86D9" />
+      <div className="relative z-10 bg-[#D6E6F8] rounded-[14px] px-4 py-3.5">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-full bg-white/50 flex items-center justify-center flex-shrink-0">
+            <Headphones size={17} color="#4A86D9" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="m-0 text-[13px] font-semibold text-content">연결에 문제가 있으신가요?</p>
+            <p className="m-0 text-[12px] text-muted mt-0.5">아래 순서대로 확인해 보세요.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowHelp((v) => !v)}
+            className="px-3 h-8 border border-primary/30 rounded-[8px] text-[12px] font-medium text-primary flex-shrink-0 cursor-pointer bg-white/70 whitespace-nowrap"
+          >
+            {showHelp ? '접기' : '도움말 보기'}
+          </button>
         </div>
-        <div className="flex-1 min-w-0">
-          <p className="m-0 text-[13px] font-semibold text-content">연결에 문제가 있으신가요?</p>
-          <p className="m-0 text-[12px] text-muted mt-0.5">
-            연결 가이드를 확인하거나 고객센터에 문의하세요.
-          </p>
-        </div>
-        <button
-          type="button"
-          className="px-3 h-8 border border-primary/30 rounded-[8px] text-[12px] font-medium text-primary flex-shrink-0 cursor-pointer bg-white/70 whitespace-nowrap"
-        >
-          도움말 보기
-        </button>
+
+        {showHelp && (
+          <ol className="m-0 mt-3 pt-3 border-t border-white/70 pl-4 flex flex-col gap-1.5">
+            {HELP_STEPS.map((step) => (
+              <li key={step} className="text-[12px] text-content leading-[1.5]">
+                {step}
+              </li>
+            ))}
+          </ol>
+        )}
       </div>
-    </div>
+      </div>
+    </PageShell>
   );
 }

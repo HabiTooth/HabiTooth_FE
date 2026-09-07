@@ -29,7 +29,7 @@ export default function TermsPage() {
         <section>
           <h3 className="text-[15px] font-semibold mb-2">제1조 (목적)</h3>
           <p className="text-muted">
-            이 약관은 HabiTooth(이하 "회사")가 제공하는 구강 건강 관리 서비스(이하 "서비스")의 이용과 관련하여
+            이 약관은 HabiTooth(이하 &quot;회사&quot;)가 제공하는 구강 건강 관리 서비스(이하 &quot;서비스&quot;)의 이용과 관련하여
             회사와 이용자 간의 권리·의무 및 책임 사항, 기타 필요한 사항을 규정함을 목적으로 합니다.
           </p>
         </section>
@@ -37,8 +37,8 @@ export default function TermsPage() {
         <section>
           <h3 className="text-[15px] font-semibold mb-2">제2조 (정의)</h3>
           <p className="text-muted">
-            "서비스"란 회사가 제공하는 AI 기반 구강 분석, 구강 건강 리포트, 관리 가이드 등 일체의 서비스를 의미합니다.
-            "이용자"란 이 약관에 따라 회사와 서비스 이용계약을 체결하고 회사가 제공하는 서비스를 이용하는 회원을 말합니다.
+            &quot;서비스&quot;란 회사가 제공하는 AI 기반 구강 분석, 구강 건강 리포트, 관리 가이드 등 일체의 서비스를 의미합니다.
+            &quot;이용자&quot;란 이 약관에 따라 회사와 서비스 이용계약을 체결하고 회사가 제공하는 서비스를 이용하는 회원을 말합니다.
           </p>
         </section>
 
