@@ -65,7 +65,7 @@ const MANAGEMENT_ICONS: Record<string, () => React.ReactNode> = {
   '집중 부위 칫솔질':           () => renderLucide(Target),
   '올바른 칫솔질 방법':         () => renderPng('/icons/management/toothbrush.png', '칫솔'),
   '치실 사용':                  () => renderPng('/icons/management/dental-floss.png', '치실'),
-  '치간칫솔 사용': () => renderPng('/icons/management/interdental-brush.png', '치간칫솔', 34),
+  '치간칫솔 사용': () => renderPng('/icons/management/interdental-brush.png', '치간칫솔', 28),
   '구강세정제 사용':            () => renderLucide(PillBottle),
   '혀 세정':                    () => renderPng('/icons/management/tongue-scraper.png', '혀 세정'),
   '취침 전 칫솔질':             () => renderLucide(Moon),
