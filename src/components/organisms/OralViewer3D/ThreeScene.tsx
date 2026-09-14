@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { RISK_FILL } from '@/lib/riskColors';
+import { RISK_FILL, RISK_LABEL_MAP } from '@/lib/riskColors';
 import { LESION_LABEL } from '@/lib/lesionRisk';
 import { toothName } from '@/lib/dentition';
 import type { LesionType } from '@/lib/api/common';
@@ -61,14 +61,6 @@ const labelOf = (fdi: string) => {
 
 const lesionLabel = (lesionType: string) =>
   LESION_LABEL[lesionType as LesionType] ?? lesionType;
-
-const RISK_LABEL_MAP: Record<RiskLevel, string> = {
-  VERY_LOW: '깨끗',
-  LOW: '양호',
-  MEDIUM: '보통',
-  HIGH: '주의',
-  CRITICAL: '진단 필요',
-};
 
 // GLB mesh 이름에서 FDI 번호 추출 (Tooth_11, Tooth-11, Tooth_11_Material_0 등 대응)
 const FDI_NAME_PATTERN = /tooth[_\-\s]?(\d{2})/i;

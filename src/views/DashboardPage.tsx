@@ -13,7 +13,7 @@ import {
   type DashboardRisk,
   type DashboardScore,
 } from '@/lib/api/dashboard';
-import { formatDateTime, scoreStatus, toSummaryRisk } from '@/lib/score';
+import { formatDateTime, scoreStatus } from '@/lib/score';
 
 export default function DashboardPage() {
   const [score, setScore] = useState<DashboardScore | null>(null);
@@ -60,8 +60,8 @@ export default function DashboardPage() {
             reportId={String(report!.sessionId)}
             plaqueScore={plaque?.affectedRatio}
             calculusScore={calculus?.affectedRatio}
-            plaqueRisk={plaque && toSummaryRisk(plaque.riskLevel)}
-            calculusRisk={calculus && toSummaryRisk(calculus.riskLevel)}
+            plaqueRisk={plaque?.riskLevel}
+            calculusRisk={calculus?.riskLevel}
           />
         )}
       </main>

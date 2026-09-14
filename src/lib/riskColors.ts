@@ -1,5 +1,4 @@
 import type { LesionType, RiskLevel } from '@/lib/api/common';
-import type { RiskLevel as SummaryRiskLevel } from '@/components/molecules/ToothStatusItem/ToothStatusItem.types';
 
 /** 3D 모형·막대처럼 넓게 칠하는 곳 */
 export const RISK_FILL: Record<RiskLevel, string> = {
@@ -19,21 +18,21 @@ export const RISK_INK: Record<RiskLevel, string> = {
   CRITICAL: '#C25C6C',
 };
 
-const TO_SUMMARY: Record<SummaryRiskLevel, RiskLevel> = {
-  low: 'LOW',
-  normal: 'MEDIUM',
-  high: 'HIGH',
-  'very-high': 'CRITICAL',
+/** 리포트·3D 뷰어·홈 위험도 요약이 공유하는 5단계 라벨 */
+export const RISK_LABEL_MAP: Record<RiskLevel, string> = {
+  VERY_LOW: '깨끗',
+  LOW: '양호',
+  MEDIUM: '보통',
+  HIGH: '주의',
+  CRITICAL: '진단 필요',
 };
 
-export const summaryFill = (level: SummaryRiskLevel) => RISK_FILL[TO_SUMMARY[level]];
-export const summaryInk = (level: SummaryRiskLevel) => RISK_INK[TO_SUMMARY[level]];
-
 export const RISK_LEGEND: Array<{ label: string; color: string }> = [
-  { label: '낮음', color: RISK_FILL.LOW },
-  { label: '보통', color: RISK_FILL.MEDIUM },
-  { label: '높음', color: RISK_FILL.HIGH },
-  { label: '매우 높음', color: RISK_FILL.CRITICAL },
+  { label: RISK_LABEL_MAP.VERY_LOW, color: RISK_FILL.VERY_LOW },
+  { label: RISK_LABEL_MAP.LOW, color: RISK_FILL.LOW },
+  { label: RISK_LABEL_MAP.MEDIUM, color: RISK_FILL.MEDIUM },
+  { label: RISK_LABEL_MAP.HIGH, color: RISK_FILL.HIGH },
+  { label: RISK_LABEL_MAP.CRITICAL, color: RISK_FILL.CRITICAL },
 ];
 
 export const LESION_FILL: Record<LesionType, string> = {

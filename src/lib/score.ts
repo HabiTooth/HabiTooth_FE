@@ -1,15 +1,4 @@
 import type { RiskLevel } from '@/lib/api/common';
-import type { RiskLevel as SummaryRiskLevel } from '@/components/molecules/ToothStatusItem/ToothStatusItem.types';
-
-const SUMMARY_RISK: Record<RiskLevel, SummaryRiskLevel> = {
-  VERY_LOW: 'low',
-  LOW: 'low',
-  MEDIUM: 'normal',
-  HIGH: 'high',
-  CRITICAL: 'very-high',
-};
-
-export const toSummaryRisk = (level: RiskLevel): SummaryRiskLevel => SUMMARY_RISK[level];
 
 export const RISK_LABEL: Record<RiskLevel, string> = {
   VERY_LOW: '매우 좋음',

@@ -9,7 +9,6 @@ import {
   scoreDiffText,
   scoreGrade,
   scoreStatus,
-  toSummaryRisk,
 } from './score';
 
 const ALL_RISK: RiskLevel[] = ['VERY_LOW', 'LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
@@ -72,20 +71,11 @@ describe('점수 증감 문구', () => {
   });
 });
 
-describe('위험도 변환', () => {
+describe('위험도 라벨', () => {
   it('BE 5단계를 전부 처리한다', () => {
     for (const level of ALL_RISK) {
-      expect(toSummaryRisk(level)).toBeDefined();
       expect(RISK_LABEL[level]).toBeTruthy();
     }
-  });
-
-  it('위험할수록 높은 등급으로 간다', () => {
-    expect(toSummaryRisk('VERY_LOW')).toBe('low');
-    expect(toSummaryRisk('LOW')).toBe('low');
-    expect(toSummaryRisk('MEDIUM')).toBe('normal');
-    expect(toSummaryRisk('HIGH')).toBe('high');
-    expect(toSummaryRisk('CRITICAL')).toBe('very-high');
   });
 });
 

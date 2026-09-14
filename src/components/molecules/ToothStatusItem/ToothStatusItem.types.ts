@@ -1,4 +1,6 @@
-export type RiskLevel = 'low' | 'normal' | 'high' | 'very-high';
+import type { RiskLevel } from '@/lib/api/common';
+
+export type { RiskLevel };
 
 export interface ToothStatusItemProps {
   label: string;

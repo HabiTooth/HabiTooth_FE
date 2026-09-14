@@ -7,7 +7,13 @@ import { RISK_FILL, RISK_LEGEND } from '@/lib/riskColors';
 import { scoreDiffText, scoreGrade } from '@/lib/score';
 import type { ReportSummaryProps, RiskLevel } from './ReportSummary.types';
 
-const RISK_RANK: Record<RiskLevel, number> = { low: 0, normal: 1, high: 2, 'very-high': 3 };
+const RISK_RANK: Record<RiskLevel, number> = {
+  VERY_LOW: 0,
+  LOW: 1,
+  MEDIUM: 2,
+  HIGH: 3,
+  CRITICAL: 4,
+};
 
 const GRADE_STYLE: Record<string, string> = {
   A: 'bg-success/15 text-success',
@@ -20,7 +26,7 @@ const GRADE_STYLE: Record<string, string> = {
 function focusText(plaque?: RiskLevel, calculus?: RiskLevel): string | null {
   if (!plaque || !calculus) return null;
   const worst = Math.max(RISK_RANK[plaque], RISK_RANK[calculus]);
-  if (worst <= RISK_RANK.low) return '치태와 치석 모두 잘 관리되고 있어요';
+  if (worst <= RISK_RANK.LOW) return '치태와 치석 모두 잘 관리되고 있어요';
   if (RISK_RANK[plaque] === RISK_RANK[calculus]) return '치태와 치석을 함께 살펴보면 좋아요';
   return RISK_RANK[plaque] > RISK_RANK[calculus]
     ? '치태가 상대적으로 더 신경 쓰여요'
@@ -133,7 +139,7 @@ export default function ReportSummary({
             <ToothStatusItem label="치태" score={plaqueScore} riskLevel={plaqueRisk!} />
             <ToothStatusItem label="치석" score={calculusScore!} riskLevel={calculusRisk!} />
           </div>
-          <div className="flex items-center justify-center gap-4 mt-3">
+          <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 mt-3">
             {RISK_LEGEND.map(({ label, color }) => (
               <div key={label} className="flex items-center gap-1">
                 <span

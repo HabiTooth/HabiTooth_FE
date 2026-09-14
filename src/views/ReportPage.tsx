@@ -22,7 +22,7 @@ import type { ToothAnalysisResult } from '@/components/organisms/OralViewer3D/Th
 import type { GuideItem } from '@/components/organisms/LLMGuideSection/LLMGuideSection.types';
 import { reportApi, type LlmReport, type SessionReport } from '@/lib/api/report';
 import { historyApi, type HistoryScoreTrendItem } from '@/lib/api/history';
-import { formatDate, formatShortDate, scoreStatus, toSummaryRisk } from '@/lib/score';
+import { formatDate, formatShortDate, scoreStatus } from '@/lib/score';
 import { ALL_TEETH } from '@/lib/dentition';
 import { useDentitionStore } from '@/stores/dentitionStore';
 import { compareTeeth } from '@/lib/compare';
@@ -222,8 +222,8 @@ export default function ReportPage() {
           date={formatDate(currentRef?.scannedAt)}
           teeth={toothRisks}
           totalTeeth={ALL_TEETH.length - missing.length}
-          plaqueRisk={toSummaryRisk(riskCategories[0].riskLevel)}
-          calculusRisk={toSummaryRisk(riskCategories[1].riskLevel)}
+          plaqueRisk={riskCategories[0].riskLevel}
+          calculusRisk={riskCategories[1].riskLevel}
         />
       )}
 
