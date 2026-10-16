@@ -80,7 +80,7 @@ export default function StreakPage() {
 
       <div className="px-5 pt-4 flex flex-col gap-4">
         <div className="relative overflow-hidden bg-gradient-to-br from-[#4A86D9] to-[#73B0F1] rounded-[24px] p-6 text-white min-h-[172px] flex items-center">
-          <Image src="/images/dashboard/streak-flame.png" alt="" fill sizes="(max-width: 480px) 100vw, 440px" className="object-cover" priority />
+          <Image src="/images/dashboard/streak-flame.webp" alt="" fill sizes="(max-width: 480px) 100vw, 440px" className="object-cover" priority />
           <div className="absolute inset-0 bg-gradient-to-r from-[#285EA8]/35 via-transparent to-transparent" />
           <div className="relative z-10 flex-1 min-w-0 pr-24">
             <p className="m-0 text-sm font-semibold opacity-90">연속 스캔 기록</p>

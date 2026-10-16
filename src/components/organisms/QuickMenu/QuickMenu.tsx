@@ -4,11 +4,11 @@ import Link from 'next/link';
 import Image from 'next/image';
 
 const MENU = [
-  { href: '/mypage/teeth', label: '치아 정보', image: '/images/dashboard/tooth-background.png' },
-  { href: '/compare', label: '스캔 비교', image: '/images/dashboard/compare.png?v=clay-2' },
-  { href: '/clinics', label: '근처 치과', image: '/images/dashboard/clinics.png?v=clay-2' },
-  { href: '/products', label: '관리 용품', image: '/images/dashboard/products.png?v=clay-2' },
-  { href: '/articles', label: '건강 정보', image: '/images/dashboard/articles.png?v=clay-2' },
+  { href: '/mypage/teeth', label: '치아 정보', image: '/images/dashboard/tooth-background.webp' },
+  { href: '/compare', label: '스캔 비교', image: '/images/dashboard/compare.webp' },
+  { href: '/clinics', label: '근처 치과', image: '/images/dashboard/clinics.webp' },
+  { href: '/products', label: '관리 용품', image: '/images/dashboard/products.webp' },
+  { href: '/articles', label: '건강 정보', image: '/images/dashboard/articles.webp' },
 ];
 
 export default function QuickMenu() {
