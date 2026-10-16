@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Image from 'next/image';
 import { Check, ChevronLeft, ChevronRight } from 'lucide-react';
 import NavBar from '@/components/organisms/NavBar';
 import PageShell from '@/components/organisms/PageShell';
@@ -11,9 +12,21 @@ import { reportApi } from '@/lib/api/report';
 import { LESION_LABEL, worstByLesion, type LesionRisk } from '@/lib/lesionRisk';
 import { remapTeeth } from '@/lib/toothMapping';
 import { useDentitionStore } from '@/stores/dentitionStore';
-import { isRisky, recommendProducts, shopUrl } from '@/constants/products';
+import { isRisky, recommendProducts, shopUrl, type ProductArt } from '@/constants/products';
 
 import { RISK_LABEL } from '@/lib/score';
+
+const PRODUCT_REASON: Record<ProductArt, string> = {
+  brush: '매일 쓰는 기본 용품으로, 부드럽고 작은 헤드를 골랐어요.',
+  paste: '매일 칫솔질에 함께 쓸 기본 관리 용품이에요.',
+  electric: '닦는 시간과 압력을 확인하고 싶을 때 살펴보세요.',
+  floss: '칫솔이 닿기 어려운 치아 사이를 관리할 때 써요.',
+  interdental: '치아 사이 관리에 쓸 수 있는 작은 솔이에요.',
+  tartar: '치석 관리 항목을 고려해 고른 치약 종류예요.',
+  waterjet: '치아 사이 관리를 보조할 용품으로 골랐어요.',
+  mouthwash: '칫솔질 후 함께 쓸 보조 용품으로 골랐어요.',
+  tongue: '치아와 함께 혀도 관리하고 싶을 때 살펴보세요.',
+};
 
 export default function ProductsPage() {
   const router = useRouter();
@@ -48,7 +61,7 @@ export default function ProductsPage() {
   const matched = (helpsWith: string[]) => risky.some((c) => helpsWith.includes(c.lesionType));
 
   return (
-    <PageShell withNav>
+    <PageShell withNav decorative={false} className="!bg-[#F8F6F0]">
       <div className="flex items-center px-4 py-3 bg-white/90 backdrop-blur-sm border-b border-hairline">
         <button
           type="button"
@@ -63,18 +76,41 @@ export default function ProductsPage() {
         <div className="w-9" />
       </div>
 
-      <div className="px-5 pt-4 flex flex-col gap-3">
-        <div className="bg-white/90 backdrop-blur-sm rounded-[20px] shadow-card p-5">
+      <div className="px-5 pt-4 flex flex-col gap-4">
+        <section className="relative isolate overflow-hidden -mx-5 -mt-4 bg-[#FFF3CF] px-5 py-6 min-h-[184px]">
+          <Image
+            src="/images/products/clay/care-shelf-pastel.webp"
+            alt=""
+            fill
+            sizes="(max-width: 430px) 100vw, 430px"
+            className="object-cover"
+            priority
+          />
+          <div className="relative z-10 max-w-[55%]">
+            <p className="m-0 text-[11px] font-semibold text-[#7C7162]">매일의 구강 관리</p>
+            <h1 className="m-0 mt-2 text-[23px] font-bold leading-[1.3] text-[#49443E] break-keep">
+              내 치아에 맞는
+              <br />
+              관리 용품
+            </h1>
+            <p className="m-0 mt-3 text-[12px] font-semibold text-[#746A5D] leading-relaxed">
+              고를 때 살펴볼 기준까지
+              <br />
+              함께 알려드려요
+            </p>
+          </div>
+        </section>
+        <div className="bg-white rounded-[22px] border border-white shadow-[0_4px_20px_rgba(71,105,154,0.04)] p-5">
           <div className="flex items-baseline justify-between mb-2">
-            <h2 className="m-0 text-sm font-semibold text-content">추천 기준</h2>
-            <span className="text-[11px] text-muted">
+            <h2 className="m-0 text-sm font-bold text-content">추천 기준</h2>
+            <span className="text-[11px] font-medium text-[#687B94]">
               {fromReport ? '이 리포트 기준' : '가장 최근 스캔 기준'}
             </span>
           </div>
           {!loaded ? (
             <p className="m-0 text-[12px] text-muted">불러오는 중이에요.</p>
           ) : risky.length === 0 ? (
-            <p className="m-0 text-[12px] text-muted leading-relaxed">
+            <p className="m-0 text-[12px] font-medium text-[#687B94] leading-relaxed">
               지금은 특별히 신경 쓸 항목이 없어요. 지금 쓰는 것들을 그대로 유지해도 괜찮아요.
             </p>
           ) : (
@@ -94,55 +130,84 @@ export default function ProductsPage() {
           )}
         </div>
 
+        <div className="flex items-center justify-between px-1">
+          <h2 className="m-0 text-[16px] font-bold text-content">
+            추천 용품 <span className="text-[#4A86D9] ml-1">{products.length}</span>
+          </h2>
+          <span className="text-[10px] font-medium text-[#687B94]">
+            용품 종류를 표현한 그림이에요
+          </span>
+        </div>
+
         {products.map((product) => {
           const highlighted = matched(product.helpsWith);
           return (
-            <div key={product.id} className="bg-white rounded-[20px] shadow-card overflow-hidden">
-              <div className="flex gap-3 p-4">
-                <ProductThumb art={product.art} tint={product.tint} />
+            <article
+              key={product.id}
+              className="bg-white rounded-[24px] border border-white shadow-[0_6px_24px_rgba(71,105,154,0.05)] overflow-hidden"
+            >
+              <div className="p-4 pb-3">
+                <div className="flex items-center gap-3">
+                  <ProductThumb art={product.art} tint={product.tint} size={72} clay />
 
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] font-semibold text-muted">{product.category}</span>
-                    {highlighted && (
-                      <span className="px-1.5 py-0.5 rounded-full bg-danger/10 text-[9px] font-bold text-danger">
-                        내 결과와 관련
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="text-[11px] font-semibold text-[#687B94]">
+                        {product.category}
                       </span>
-                    )}
+                      {highlighted && (
+                        <span className="px-2 py-1 rounded-full bg-[#E4F0FF] text-[10px] font-bold text-[#4A86D9]">
+                          내 결과와 관련
+                        </span>
+                      )}
+                    </div>
+
+                    <h3 className="m-0 mt-1 text-[16px] leading-snug font-bold text-content break-keep">
+                      {product.name}
+                    </h3>
+                    <p className="m-0 mt-1 text-[11.5px] font-medium leading-relaxed text-[#687B94]">
+                      {PRODUCT_REASON[product.art]}
+                    </p>
                   </div>
-
-                  <p className="m-0 mt-0.5 text-[15px] font-bold text-content">{product.name}</p>
-
-                  <ul className="m-0 mt-1.5 p-0 list-none flex flex-col gap-0.5">
+                </div>
+                <details className="mt-3 group">
+                  <summary className="cursor-pointer text-[11px] font-semibold text-[#4A86D9]">
+                    고를 때 확인할 기준
+                  </summary>
+                  <ul className="m-0 mt-2 p-0 list-none flex flex-col gap-1.5">
                     {product.lookFor.map((item) => (
                       <li key={item} className="flex items-start gap-1.5">
-                        <Check size={11} className="text-primary flex-shrink-0 mt-[3px]" />
-                        <span className="text-[11.5px] text-muted leading-relaxed">{item}</span>
+                        <Check
+                          size={14}
+                          className="text-primary flex-shrink-0 mt-[2px]"
+                          strokeWidth={2.5}
+                        />
+                        <span className="text-[12px] font-medium text-[#687B94] leading-relaxed">
+                          {item}
+                        </span>
                       </li>
                     ))}
                   </ul>
-                </div>
+                </details>
               </div>
 
               {product.items.length > 0 && (
-                <div className="border-t border-hairline divide-y divide-hairline">
+                <div className="mx-4 mb-4 rounded-[14px] bg-[#F5F8FC] divide-y divide-[#E7EEF8]">
                   {product.items.map((item) => (
                     <a
                       key={item.keyword}
                       href={shopUrl(item.keyword)}
                       target="_blank"
                       rel="noreferrer"
-                      className="flex items-center gap-2 px-4 py-3 no-underline transition-colors active:bg-hairline/40"
+                      className="flex items-center gap-2 px-3 py-2.5 no-underline transition-colors active:bg-hairline/40"
                     >
                       <span className="flex-1 min-w-0">
                         {item.brand && (
-                          <span className="block text-[10px] font-bold text-muted">
+                          <span className="text-[10px] font-semibold text-muted mr-1.5">
                             {item.brand}
                           </span>
                         )}
-                        <span className="block text-[12.5px] font-medium text-content truncate">
-                          {item.name}
-                        </span>
+                        <span className="text-[12px] font-semibold text-content">{item.name}</span>
                       </span>
                       <span className="flex items-center gap-0.5 flex-shrink-0 text-[11px] font-bold text-[#7BA828]">
                         올리브영
@@ -152,7 +217,7 @@ export default function ProductsPage() {
                   ))}
                 </div>
               )}
-            </div>
+            </article>
           );
         })}
 
