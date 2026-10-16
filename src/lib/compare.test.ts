@@ -27,6 +27,13 @@ describe('치아별 변화 비교', () => {
     expect(r.unchanged).toBe(1);
   });
 
+  it('같은 치아의 치태·치석 행은 가장 높은 위험도 하나로 합쳐 한 번만 비교한다', () => {
+    const r = compareTeeth([t(16, 'LOW'), t(16, 'MEDIUM')], [t(16, 'HIGH'), t(16, 'VERY_LOW')]);
+    expect(r.worsened).toHaveLength(1);
+    expect(r.worsened[0]).toMatchObject({ toothNumber: 16, before: 'MEDIUM', after: 'HIGH' });
+    expect(r.improved).toHaveLength(0);
+  });
+
   it('이전 스캔에 없던 치아는 변화가 아니라 따로 센다', () => {
     const r = compareTeeth([t(11, 'LOW')], [t(11, 'LOW'), t(48, 'HIGH')]);
     expect(r.onlyInAfter).toEqual([48]);
@@ -41,10 +48,7 @@ describe('치아별 변화 비교', () => {
   });
 
   it('변화 폭이 큰 치아를 앞에 둔다', () => {
-    const r = compareTeeth(
-      [t(11, 'LOW'), t(12, 'LOW')],
-      [t(11, 'MEDIUM'), t(12, 'CRITICAL')],
-    );
+    const r = compareTeeth([t(11, 'LOW'), t(12, 'LOW')], [t(11, 'MEDIUM'), t(12, 'CRITICAL')]);
     expect(r.worsened.map((c) => c.toothNumber)).toEqual([12, 11]);
   });
 

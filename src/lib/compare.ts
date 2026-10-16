@@ -27,15 +27,30 @@ export interface CompareResult {
   onlyInAfter: number[];
 }
 
+// 한 치아에 치태·치석 행이 따로 오니까 치아당 가장 높은 위험도 하나로 합친다
+function worstPerTooth(rows: ToothRisk[]): Map<number, RiskLevel> {
+  const worst = new Map<number, RiskLevel>();
+  for (const row of rows) {
+    const kept = worst.get(row.toothNumber);
+    if (kept === undefined || RANK[row.riskLevel] > RANK[kept])
+      worst.set(row.toothNumber, row.riskLevel);
+  }
+  return worst;
+}
+
 export function compareTeeth(before: ToothRisk[], after: ToothRisk[]): CompareResult {
-  const beforeMap = new Map(before.map((t) => [t.toothNumber, t.riskLevel]));
+  const beforeMap = worstPerTooth(before);
+  const afterRows = [...worstPerTooth(after)].map(([toothNumber, riskLevel]) => ({
+    toothNumber,
+    riskLevel,
+  }));
 
   const improved: ToothChange[] = [];
   const worsened: ToothChange[] = [];
   const onlyInAfter: number[] = [];
   let unchanged = 0;
 
-  for (const tooth of after) {
+  for (const tooth of afterRows) {
     const prev = beforeMap.get(tooth.toothNumber);
     if (prev === undefined) {
       onlyInAfter.push(tooth.toothNumber);
