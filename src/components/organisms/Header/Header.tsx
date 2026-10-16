@@ -26,7 +26,7 @@ const LogoIcon = () => (
   </svg>
 );
 
-export default function Header() {
+export default function Header({ inverse = false }: { inverse?: boolean }) {
   const items = useNotificationStore((s) => s.items);
   const hydrate = useNotificationStore((s) => s.hydrate);
 
@@ -41,10 +41,10 @@ export default function Header() {
           <LogoIcon />
         </div>
         <div>
-          <h1 className="text-base font-bold text-content">
-            <span className="text-primary">Habi</span>Tooth
+          <h1 className={`text-base font-bold ${inverse ? 'text-white' : 'text-content'}`}>
+            <span className={inverse ? 'text-white' : 'text-primary'}>Habi</span>Tooth
           </h1>
-          <p className="text-[10px] text-muted">AI 구강 모니터링 디바이스</p>
+          <p className={`text-[10px] ${inverse ? 'text-white/80' : 'text-muted'}`}>AI 구강 모니터링 디바이스</p>
         </div>
       </Link>
       <div className="flex items-center gap-2">

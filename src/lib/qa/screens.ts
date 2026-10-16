@@ -201,7 +201,7 @@ export const SCREEN_CHECKS: ScreenCheck[] = [
     expectText: [
       '위험 부위 분석',
       '촬영한 구역',
-      'AI 분석 리포트',
+      'AI 가이드',
       '이 결과로 할 수 있는 것',
       '점수 변화 추이',
     ],
@@ -266,7 +266,7 @@ export const SCREEN_CHECKS: ScreenCheck[] = [
     path: '/habits',
     expectText: [
       '오늘 할 일',
-      '최근 7일',
+      '최근 일주일 관리 습관',
     ],
     points: ['체크가 저장되고 새로고침해도 남는지', '주간 달성률이 맞게 계산되는지'],
   },

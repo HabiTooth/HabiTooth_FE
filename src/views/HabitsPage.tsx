@@ -16,8 +16,8 @@ import {
   recentKeys,
 } from '@/lib/habits';
 import { toKey } from '@/lib/streak';
+import HabitWeek from '@/components/molecules/HabitWeek';
 
-const WEEK_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
 
 export default function HabitsPage() {
   const router = useRouter();
@@ -56,12 +56,20 @@ export default function HabitsPage() {
       </div>
 
       <div className="px-5 pt-4 flex flex-col gap-4">
+        <section className="rounded-[22px] bg-gradient-to-br from-[#548BDA] to-[#86BAF1] p-5 text-white flex items-center justify-between gap-4" aria-label="오늘 관리 현황">
+          <div>
+            <p className="m-0 text-[11px] text-white/75">오늘 할 일</p>
+            <p className="m-0 mt-1 flex items-baseline gap-1.5 tabular-nums"><strong className="text-[42px] font-semibold leading-none tracking-[-1.5px]">{done.length}</strong><span className="text-lg text-white/65">/ {HABITS.length}</span></p>
+            <p className="m-0 mt-3 text-[12px] font-medium">{done.length === HABITS.length ? '오늘 관리도 모두 마쳤어요' : done.length === 0 ? '하나씩 체크해 보세요' : `남은 ${HABITS.length - done.length}개도 천천히 해봐요`}</p>
+          </div>
+          <svg viewBox="0 0 80 80" className="w-[80px] h-[80px] shrink-0 -rotate-90" role="progressbar" aria-label="오늘 습관 완료" aria-valuemin={0} aria-valuemax={HABITS.length} aria-valuenow={done.length}>
+            <circle cx="40" cy="40" r="32" fill="none" stroke="white" strokeOpacity=".2" strokeWidth="6" />
+            <circle cx="40" cy="40" r="32" fill="none" stroke="white" strokeOpacity=".9" strokeWidth="6" strokeLinecap="round" strokeDasharray={`${done.length / HABITS.length * 201.06} 201.06`} />
+          </svg>
+        </section>
         <div className="bg-white/90 backdrop-blur-sm rounded-[20px] shadow-card p-5">
           <div className="flex items-baseline justify-between mb-4">
-            <h2 className="m-0 text-sm font-semibold text-content">오늘 할 일</h2>
-            <span className="text-xs text-muted tabular-nums">
-              {done.length} / {HABITS.length}
-            </span>
+            <h2 className="m-0 text-sm font-semibold text-content">체크리스트</h2>
           </div>
 
           <div className="flex flex-col gap-2">
@@ -100,29 +108,13 @@ export default function HabitsPage() {
 
         <div className="bg-white/90 backdrop-blur-sm rounded-[20px] shadow-card p-5">
           <div className="flex items-baseline justify-between mb-3">
-            <h2 className="m-0 text-sm font-semibold text-content">최근 7일</h2>
+            <h2 className="m-0 text-sm font-semibold text-content">최근 일주일 관리 습관</h2>
             <span className="text-xs text-muted tabular-nums">
               달성률 {Math.round(weekRate * 100)}%
             </span>
           </div>
 
-          <div className="grid grid-cols-7 gap-1.5">
-            {week.map((key) => {
-              const rate = doneOn(log, key).length / HABITS.length;
-              const day = new Date(key).getDay();
-              return (
-                <div key={key} className="flex flex-col items-center gap-1">
-                  <div className="w-full aspect-square rounded-lg bg-hairline/60 overflow-hidden flex items-end">
-                    <div
-                      className="w-full bg-primary-gradient transition-[height] duration-300"
-                      style={{ height: `${rate * 100}%` }}
-                    />
-                  </div>
-                  <span className="text-[10px] text-muted">{WEEK_LABELS[day]}</span>
-                </div>
-              );
-            })}
-          </div>
+          <HabitWeek week={week} log={log} />
 
           {streak > 0 && (
             <p className="m-0 mt-3 text-xs text-muted">
