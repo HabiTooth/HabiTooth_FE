@@ -201,7 +201,32 @@ export async function mockApi(page: Page) {
     }
 
     if (/\/3d$/.test(path)) {
-      return route.fulfill({ json: ok({ sessionId: 42, meshData: [] }) });
+      return route.fulfill({
+        json: ok({
+          sessionId: 42,
+          lesions: [
+            {
+              toothNumber: 16,
+              surfaceType: 'OUTER',
+              lesionType: 'CALCULUS',
+              polygon: [{ u: 0.2, v: 0.1 }, { u: 0.8, v: 0.1 }, { u: 0.8, v: 0.5 }, { u: 0.2, v: 0.5 }],
+            },
+            {
+              // 16번은 바깥쪽 치석 + 안쪽 치태. 확대 카드의 보기 토글이 뜨는 경우
+              toothNumber: 16,
+              surfaceType: 'INNER',
+              lesionType: 'PLAQUE',
+              polygon: [{ u: 0.3, v: 0.2 }, { u: 0.7, v: 0.2 }, { u: 0.7, v: 0.6 }, { u: 0.3, v: 0.6 }],
+            },
+            {
+              toothNumber: 31,
+              surfaceType: 'OUTER',
+              lesionType: 'PLAQUE',
+              polygon: [{ u: 0.3, v: 0.6 }, { u: 0.7, v: 0.6 }, { u: 0.7, v: 0.95 }, { u: 0.3, v: 0.95 }],
+            },
+          ],
+        }),
+      });
     }
 
     if (/\/api\/habits/.test(path)) {

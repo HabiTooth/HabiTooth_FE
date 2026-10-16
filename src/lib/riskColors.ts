@@ -36,6 +36,21 @@ export const RISK_LEGEND: Array<{ label: string; color: string }> = [
   { label: '매우 높음', color: RISK_FILL.CRITICAL },
 ];
 
+/** 3D 모형의 치아 색. 분홍 잇몸 위에서 구분되도록 카드용 파스텔보다 진하다 */
+export const RISK_MODEL_FILL: Record<RiskLevel, string> = {
+  VERY_LOW: '#7EC8F7',
+  LOW: '#4FCB94',
+  MEDIUM: '#F7B21B',
+  HIGH: '#F26A24',
+  CRITICAL: '#E42F49',
+};
+
+// 3D 모형 위 병변 마커. 팔레트가 바뀌어도 고정
+export const MARKER_FILL: Record<LesionType, string> = {
+  PLAQUE: '#F5B63A',
+  CALCULUS: '#E8575A',
+};
+
 export const LESION_FILL: Record<LesionType, string> = {
   PLAQUE: '#F0CE8C',
   CALCULUS: '#E29C8B',

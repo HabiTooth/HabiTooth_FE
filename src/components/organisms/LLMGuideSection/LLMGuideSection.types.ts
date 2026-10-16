@@ -1,9 +1,13 @@
+import type { FocusChip } from '@/lib/toothDetail';
+
 export type GuideType = 'good' | 'warning' | 'danger';
 
 export interface GuideItem {
   type: GuideType;
   title: string;
   description: string;
+  // 제목이 특정 치아를 짚었을 때
+  tooth?: number;
 }
 
 export interface LLMGuideSectionProps {
@@ -13,4 +17,7 @@ export interface LLMGuideSectionProps {
   generating?: boolean;
   failed?: boolean;
   onRetry?: () => void;
+  onToothClick?: (tooth: number) => void;
+  // 위험한 순서의 신경 쓸 치아. 누르면 상단 모형에서 그 치아로
+  focusTeeth?: FocusChip[];
 }

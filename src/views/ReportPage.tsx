@@ -1,17 +1,27 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import {
-  Hospital, Target, Brush, PillBottle, Moon, Apple, ShieldCheck,
-  Droplet, RefreshCw, CalendarCheck, SprayCan, ChevronLeft,
+  Hospital,
+  Target,
+  Brush,
+  PillBottle,
+  Moon,
+  Apple,
+  ShieldCheck,
+  Droplet,
+  RefreshCw,
+  CalendarCheck,
+  SprayCan,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import NavBar from '@/components/organisms/NavBar';
 import PageShell from '@/components/organisms/PageShell';
-import ReportSummary from '@/components/organisms/ReportSummary';
+import ReportHero from '@/components/organisms/ReportHero';
+import { focusText } from '@/components/organisms/ReportSummary/ReportSummary';
 import LLMGuideSection from '@/components/organisms/LLMGuideSection';
 import RiskAnalysisSection from '@/components/organisms/RiskAnalysisSection';
 import CareGuideSection from '@/components/organisms/CareGuideSection';
@@ -21,13 +31,17 @@ import NextStepsSection from '@/components/organisms/NextStepsSection';
 import HabitSummarySection from '@/components/organisms/HabitSummarySection';
 import type { ToothAnalysisResult } from '@/components/organisms/OralViewer3D/ThreeScene';
 import type { GuideItem } from '@/components/organisms/LLMGuideSection/LLMGuideSection.types';
-import { reportApi, type LlmReport, type SessionReport } from '@/lib/api/report';
+import { reportApi, type LlmReport, type SessionReport, type ToothLesion } from '@/lib/api/report';
 import { historyApi, type HistoryScoreTrendItem } from '@/lib/api/history';
-import { formatDate, formatShortDate, scoreStatus, toSummaryRisk } from '@/lib/score';
+import { formatDate, formatShortDate, toSummaryRisk } from '@/lib/score';
 import { ALL_TEETH } from '@/lib/dentition';
 import { useDentitionStore } from '@/stores/dentitionStore';
 import { remapTeeth } from '@/lib/toothMapping';
-import { RISK_ORDER, worstByLesion } from '@/lib/lesionRisk';
+import { LESION_LABEL, RISK_ORDER, worstByLesion } from '@/lib/lesionRisk';
+import { countToothStates } from '@/lib/lesionState';
+import { buildToothDetail, focusOrder } from '@/lib/toothDetail';
+import { RISK_MODEL_FILL } from '@/lib/riskColors';
+import type { FocusChip } from '@/lib/toothDetail';
 import { teethInZones } from '@/lib/scanCoverage';
 import { scanApi, type ViewType } from '@/lib/api/scan';
 import { compareTeeth } from '@/lib/compare';
@@ -42,15 +56,23 @@ const GUIDE_TYPE: Record<RiskLevel, GuideItem['type']> = {
   CRITICAL: 'danger',
 };
 
-const NOT_STORED = Symbol('llm-not-stored');
+// 게이트웨이가 백엔드에 못 닿았거나(502·503) 기다리다 끊은(504) 응답
+const isGatewayHiccup = (status: number | undefined) =>
+  status === 502 || status === 503 || status === 504;
 
-// 아이콘 렌더링 헬퍼 (lucide + PNG 통일)
+// 콘솔에 AxiosError 덩어리 대신 어느 요청이 어떻게 실패했는지 한 줄로
+function describeAxiosError(e: unknown): string {
+  if (!axios.isAxiosError(e)) return e instanceof Error ? e.message : String(e);
+  const method = e.config?.method?.toUpperCase() ?? '';
+  const url = e.config?.url ?? '';
+  const status = e.response?.status;
+  return `${method} ${url} → ${status ?? e.code ?? '응답 없음'}`;
+}
+
 const ICON_SIZE = 20;
 const ICON_CLASS = 'text-[#4A86D9]';
 const renderLucide = (Icon: LucideIcon) => <Icon size={ICON_SIZE} className={ICON_CLASS} />;
 
-// PNG는 원본 비율이 제각각이라 Tailwind preflight(img { height: auto })에 밀려
-// 세로로 길어지는 경우가 있음. style로 박스를 고정하고 object-contain으로 맞춤.
 const renderPng = (src: string, alt: string, size: number = ICON_SIZE) => (
   <Image
     src={src}
@@ -62,24 +84,21 @@ const renderPng = (src: string, alt: string, size: number = ICON_SIZE) => (
   />
 );
 
-// 백엔드 MANAGEMENT_CATALOG의 title → 아이콘 매핑
-// title은 파이썬 상수라 매칭이 안전함
-// 칫솔 / 치실 / 치간칫솔 / 혀 세정은 Flaticon PNG 사용, 나머지는 lucide
 const MANAGEMENT_ICONS: Record<string, () => React.ReactNode> = {
-  '치과 스케일링':              () => renderLucide(Hospital),
-  '집중 부위 칫솔질':           () => renderLucide(Target),
-  '올바른 칫솔질 방법':         () => renderPng('/icons/management/toothbrush.png', '칫솔'),
-  '치실 사용':                  () => renderPng('/icons/management/dental-floss.png', '치실'),
+  '치과 스케일링': () => renderLucide(Hospital),
+  '집중 부위 칫솔질': () => renderLucide(Target),
+  '올바른 칫솔질 방법': () => renderPng('/icons/management/toothbrush.png', '칫솔'),
+  '치실 사용': () => renderPng('/icons/management/dental-floss.png', '치실'),
   '치간칫솔 사용': () => renderPng('/icons/management/interdental-brush.png', '치간칫솔', 34),
-  '구강세정제 사용':            () => renderLucide(PillBottle),
-  '혀 세정':                    () => renderPng('/icons/management/tongue-scraper.png', '혀 세정'),
-  '취침 전 칫솔질':             () => renderLucide(Moon),
+  '구강세정제 사용': () => renderLucide(PillBottle),
+  '혀 세정': () => renderPng('/icons/management/tongue-scraper.png', '혀 세정'),
+  '취침 전 칫솔질': () => renderLucide(Moon),
   '균형 잡힌 식단과 간식 조절': () => renderLucide(Apple),
-  '구강 면역력 관리':           () => renderLucide(ShieldCheck),
+  '구강 면역력 관리': () => renderLucide(ShieldCheck),
   '수분 섭취와 구강 건조 관리': () => renderLucide(Droplet),
-  '칫솔 관리와 교체':           () => renderLucide(RefreshCw),
-  '정기 검진':                  () => renderLucide(CalendarCheck),
-  '구강세정기 사용':            () => renderLucide(SprayCan),
+  '칫솔 관리와 교체': () => renderLucide(RefreshCw),
+  '정기 검진': () => renderLucide(CalendarCheck),
+  '구강세정기 사용': () => renderLucide(SprayCan),
 };
 
 export default function ReportPage() {
@@ -98,54 +117,145 @@ export default function ReportPage() {
   const { missing, hydrate: hydrateDentition } = useDentitionStore();
   const [trend, setTrend] = useState<HistoryScoreTrendItem[]>([]);
   const [capturedZones, setCapturedZones] = useState<ViewType[]>([]);
+  const [lesions, setLesions] = useState<ToothLesion[]>([]);
+  // 3D에서 고른 치아. 히어로가 상세 카드로 바뀐다
+  const [selected, setSelected] = useState<string | null>(null);
+  // 확대 상태를 history에 한 칸 넣어서 뒤로 가기가 페이지가 아니라 확대를 닫게 한다
+  const focusPushed = useRef(false);
+  const selectTooth = useCallback((fdi: string | null) => {
+    if (typeof window !== 'undefined') {
+      if (fdi && !focusPushed.current) {
+        // Next 라우터 상태를 유지해야 popstate에서 새로고침하지 않는다
+        window.history.pushState(
+          { ...window.history.state, toothFocus: true },
+          '',
+          window.location.href,
+        );
+        focusPushed.current = true;
+      } else if (!fdi && focusPushed.current) {
+        focusPushed.current = false;
+        window.history.back();
+      }
+    }
+    setSelected(fdi);
+  }, []);
+  useEffect(() => {
+    const onPop = () => {
+      if (!focusPushed.current) return;
+      focusPushed.current = false;
+      setSelected(null);
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
 
   useEffect(() => hydrateDentition(), [hydrateDentition]);
 
   useEffect(() => {
     if (!Number.isFinite(sessionId)) return;
 
-    reportApi.getSessionReport(sessionId).then((res) => setReport(res.data.result)).catch(() => {});
+    reportApi
+      .getSessionReport(sessionId)
+      .then((res) => setReport(res.data.result))
+      .catch(() => {});
 
-    // 저장된 게 있으면 바로 쓰고, 없을 때만 생성을 부른다. 생성은 수 분 걸림
+    // 3D 마커용 폴리곤. 없어도 리포트는 뜨고 비율 기반 띠로 대신 그린다
+    reportApi
+      .getMeshCoordinates(sessionId)
+      .then((res) => setLesions(res.data.result?.lesions ?? []))
+      .catch(() => setLesions([]));
+
     setLlmLoading(true);
     setLlmFailed(false);
     setLlmGenerating(false);
-    reportApi
-      .getLlmReport(sessionId)
-      .then((res) => {
-        // 프록시가 끼면 200에 엉뚱한 본문이 실려 와서 상태 코드만으로는 못 가림
-        if (!res.data?.result) return Promise.reject(NOT_STORED);
-        setLlm(res.data.result);
-      })
-      .catch((e) => {
-        // 404만 "아직 없음". 나머지 오류로 수 분짜리 생성을 돌리면 안 됨
-        const status = axios.isAxiosError(e) ? e.response?.status : undefined;
-        if (e !== NOT_STORED && status !== 404) {
-          console.error(`LLM 리포트 조회 실패 (status ${status ?? '응답 없음'})`, e);
-          setLlmFailed(true);
+    let cancelled = false;
+    const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+    // 저장된 리포트 조회. 게이트웨이가 잠깐 죽은 502·503·504는 몇 번 더 두드린다
+    const fetchStored = async (): Promise<LlmReport | null> => {
+      for (let attempt = 0; ; attempt++) {
+        try {
+          const res = await reportApi.getLlmReport(sessionId);
+          return res.data?.result ?? null;
+        } catch (e) {
+          const status = axios.isAxiosError(e) ? e.response?.status : undefined;
+          if (status === 404) return null;
+          if (isGatewayHiccup(status) && attempt < 2) {
+            await wait(3000 * (attempt + 1));
+            continue;
+          }
+          throw e;
+        }
+      }
+    };
+
+    // 생성 요청이 게이트웨이에서 끊겨도(502·504·타임아웃) 서버는 계속 만들고 있으니 저장본을 기다려 본다
+    const waitForGenerated = async (): Promise<LlmReport | null> => {
+      const deadline = Date.now() + 4 * 60_000;
+      while (Date.now() < deadline && !cancelled) {
+        await wait(15_000);
+        try {
+          const res = await reportApi.getLlmReport(sessionId);
+          if (res.data?.result) return res.data.result;
+        } catch (e) {
+          const status = axios.isAxiosError(e) ? e.response?.status : undefined;
+          if (status !== 404 && !isGatewayHiccup(status)) throw e;
+        }
+      }
+      return null;
+    };
+
+    (async () => {
+      try {
+        const stored = await fetchStored();
+        if (cancelled) return;
+        if (stored) {
+          setLlm(stored);
           return;
         }
         setLlmGenerating(true);
-        return reportApi
-          .generateLlmReport(sessionId)
-          .then((res) => setLlm(res.data.result))
-          .catch((err) => {
-            console.error('LLM 리포트 생성 실패', err);
-            setLlmFailed(true);
-          });
-      })
-      .finally(() => {
-        setLlmLoading(false);
-        setLlmGenerating(false);
-      });
+        try {
+          const res = await reportApi.generateLlmReport(sessionId);
+          if (!cancelled) setLlm(res.data.result);
+        } catch (e) {
+          const status = axios.isAxiosError(e) ? e.response?.status : undefined;
+          const timedOut = axios.isAxiosError(e) && e.code === 'ECONNABORTED';
+          if (!isGatewayHiccup(status) && !timedOut) throw e;
+          console.warn(`AI 가이드 생성 응답이 끊겨서 저장본을 기다려요 (${describeAxiosError(e)})`);
+          const generated = await waitForGenerated();
+          if (cancelled) return;
+          if (!generated) throw e;
+          setLlm(generated);
+        }
+      } catch (e) {
+        if (cancelled) return;
+        console.warn(`AI 가이드를 못 받아왔어요 (${describeAxiosError(e)})`);
+        setLlmFailed(true);
+      } finally {
+        if (!cancelled) {
+          setLlmLoading(false);
+          setLlmGenerating(false);
+        }
+      }
+    })();
 
-    historyApi.getScoreTrend().then((res) => setTrend(res.data.result)).catch(() => {});
+    historyApi
+      .getScoreTrend()
+      .then((res) => setTrend(res.data.result))
+      .catch(() => {});
 
-    // BE는 병변 있는 치아만 보내서, 어느 구역을 찍었는지 알아야 "깨끗"과 "미촬영"을 가른다
     scanApi
       .getCaptureStatus(sessionId)
-      .then((res) => setCapturedZones((res.data.result?.capturedZones ?? []).map((z) => z.viewType)))
+      .then((res) =>
+        setCapturedZones([
+          ...new Set((res.data.result?.capturedZones ?? []).map((z) => z.viewType)),
+        ]),
+      )
       .catch(() => setCapturedZones([]));
+
+    return () => {
+      cancelled = true;
+    };
   }, [sessionId, llmKey]);
 
   const currentRef = sessions.find((x) => x.sessionId === sessionId) ?? null;
@@ -162,11 +272,7 @@ export default function ReportPage() {
 
   const scannedTeeth = useMemo(() => teethInZones(capturedZones), [capturedZones]);
 
-  // AI가 발치를 모르고 번호를 앞으로 당겨 보내서, 결번을 건너뛰며 실제 FDI로 되돌린다
-  const teeth = useMemo(
-    () => remapTeeth(report?.toothStatuses ?? [], missing),
-    [report, missing],
-  );
+  const teeth = useMemo(() => remapTeeth(report?.toothStatuses ?? [], missing), [report, missing]);
   const prevTeeth = useMemo(
     () => remapTeeth(previous?.toothStatuses ?? [], missing),
     [previous, missing],
@@ -181,21 +287,77 @@ export default function ReportPage() {
     [prevTeeth, teeth],
   );
 
-  // 한 치아에 치태·치석 행이 따로 오기 때문에 치아별로 제일 나쁜 등급만 남김
-  const toothRisks = useMemo(() => {
-    const worst = new Map<number, number>();
-    for (const t of teeth) {
-      const rank = RISK_ORDER.indexOf(t.riskLevel);
-      worst.set(t.toothNumber, Math.max(worst.get(t.toothNumber) ?? 0, rank));
-    }
-    // 찍었는데 결과가 없는 치아는 병변이 없다는 뜻
-    for (const tooth of scannedTeeth) {
-      if (!worst.has(tooth) && !missing.includes(tooth)) worst.set(tooth, 0);
-    }
-    return [...worst.values()].map((rank) => RISK_ORDER[rank]);
-  }, [teeth, scannedTeeth, missing]);
+  const toothCounts = useMemo(
+    () =>
+      countToothStates({
+        teeth: ALL_TEETH,
+        missing,
+        scanned: scannedTeeth,
+        results: teeth.map((t) => ({
+          toothNumber: t.toothNumber,
+          lesionType: t.lesionType ?? '',
+          areaRatio: t.areaRatio,
+          riskLevel: t.riskLevel,
+        })),
+        lesions,
+      }),
+    [teeth, lesions, missing, scannedTeeth],
+  );
 
   const riskCategories = useMemo(() => worstByLesion(teeth), [teeth]);
+
+  const focusTeeth = useMemo<FocusChip[]>(
+    () =>
+      focusOrder(teeth).map((fdi) => {
+        const rows = teeth.filter((t) => String(t.toothNumber) === fdi && t.lesionType);
+        const top = rows.reduce((kept, row) =>
+          RISK_ORDER.indexOf(row.riskLevel) > RISK_ORDER.indexOf(kept.riskLevel) ? row : kept,
+        );
+        const lesion = rows.some((r) => r.lesionType === 'CALCULUS') ? '치석' : '치태';
+        return { fdi, label: `${fdi}번 ${lesion}`, color: RISK_MODEL_FILL[top.riskLevel] };
+      }),
+    [teeth],
+  );
+
+  const toothDetail = useMemo(
+    () =>
+      selected
+        ? buildToothDetail({
+            fdi: selected,
+            rows: teeth,
+            previousRows: prevTeeth,
+            scanned: scannedTeeth.includes(Number(selected)),
+          })
+        : null,
+    [selected, teeth, prevTeeth, scannedTeeth],
+  );
+
+  // 확대 카드에 넣을 AI 가이드. 치아 번호를 짚은 항목이 있으면 그것, 없으면 같은 병변 항목, 그것도 없으면 첫 항목
+  const aiNote = useMemo(() => {
+    if (!selected || !llm || !toothDetail) return null;
+    const items = llm.riskDetail;
+    const lesion = toothDetail.primary ? LESION_LABEL[toothDetail.primary.lesionType] : null;
+    const direct = items.find((r) => r.title.includes(`${selected}번`));
+    const hit =
+      direct ??
+      (lesion ? items.find((r) => `${r.title} ${r.detail}`.includes(lesion)) : undefined) ??
+      items[0];
+    if (!hit) return null;
+    // 항목 제목("치태 · 치아 3개")은 전체 요약용이라 치아 하나를 보는 자리엔 안 맞는다
+    const title = direct ? '이 치아 맞춤 가이드' : lesion ? `${lesion} 관리 포인트` : '관리 포인트';
+    return { title, description: hit.detail };
+  }, [selected, llm, toothDetail]);
+
+  // 아래 섹션에서 치아를 고르면 히어로가 보이게 올린다
+  const focusTooth = useCallback(
+    (tooth: number | string | null) => {
+      selectTooth(tooth === null ? null : String(tooth));
+      if (tooth !== null && typeof window !== 'undefined') {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    },
+    [selectTooth],
+  );
 
   const analysisResults: ToothAnalysisResult[] = useMemo(
     () =>
@@ -208,11 +370,16 @@ export default function ReportPage() {
     [teeth],
   );
 
-  const guideItems: GuideItem[] = (llm?.riskDetail ?? []).map((r) => ({
-    type: GUIDE_TYPE[r.riskLevel],
-    title: r.title,
-    description: r.detail,
-  }));
+  const guideItems: GuideItem[] = (llm?.riskDetail ?? []).map((r) => {
+    const tooth = Number(r.title.match(/(\d{2})번/)?.[1]);
+    const known = teeth.some((t) => t.toothNumber === tooth);
+    return {
+      type: GUIDE_TYPE[r.riskLevel],
+      title: r.title,
+      description: r.detail,
+      tooth: known ? tooth : undefined,
+    };
+  });
 
   const careGuideItems = (llm?.management ?? []).map((m) => {
     const renderIcon = MANAGEMENT_ICONS[m.title] ?? (() => renderLucide(Brush));
@@ -228,80 +395,80 @@ export default function ReportPage() {
 
   const prevScore = trend.length > 1 ? trend[trend.length - 2].score : undefined;
 
+  // 모형 아래 말풍선. 치태·치석 중 뭘 더 볼지 한 줄
+  const heroMessage = report
+    ? focusText(
+        toSummaryRisk(riskCategories[0].riskLevel),
+        toSummaryRisk(riskCategories[1].riskLevel),
+      )
+    : null;
+
   return (
     <PageShell withNav>
-      <div className="flex items-center px-4 py-3 bg-white/90 backdrop-blur-sm border-b border-hairline">
-        <button
-          type="button"
-          onClick={() => router.back()}
-          className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-hairline transition-colors"
-        >
-          <ChevronLeft size={20} className="text-content" />
-        </button>
-        <span className="flex-1 text-center text-[15px] font-semibold text-content">
-          분석 리포트
-        </span>
-        <div className="w-9" />
-      </div>
-
-      <main className="px-5 pt-4">
-      {report && (
-        <ReportSummary
-          score={report.totalScore}
-          prevScore={prevScore}
-          status={scoreStatus(report.totalScore)}
-          date={formatDate(currentRef?.scannedAt)}
-          teeth={toothRisks}
-          totalTeeth={ALL_TEETH.length - missing.length}
-          plaqueRisk={toSummaryRisk(riskCategories[0].riskLevel)}
-          calculusRisk={toSummaryRisk(riskCategories[1].riskLevel)}
-        />
-      )}
-
-      <RiskAnalysisSection
-        plaque={report?.summary.totalPlaqueRatio ?? 0}
-        calculus={report?.summary.totalCalculusRatio ?? 0}
+      <ReportHero
+        date={formatDate(currentRef?.scannedAt)}
+        score={report?.totalScore ?? null}
+        prevScore={prevScore}
+        message={heroMessage}
+        counts={toothCounts}
         analysisResults={analysisResults}
+        lesions={lesions}
         scannedTeeth={scannedTeeth}
-        capturedZones={capturedZones}
+        focusTeeth={focusTeeth}
+        selected={selected}
+        detail={toothDetail}
+        aiNote={aiNote}
+        onSelect={selectTooth}
+        onBack={() => router.back()}
       />
 
-      <LLMGuideSection
-        items={guideItems}
-        isLoading={llmLoading}
-        generating={llmGenerating}
-        failed={llmFailed}
-        onRetry={() => setLlmKey((k) => k + 1)}
-      />
-
-      {careGuideItems.length > 0 && <CareGuideSection items={careGuideItems} />}
-
-      <NextStepsSection categories={riskCategories} sessionId={sessionId} />
-
-      {llm?.disclaimer && (
-        <p className="m-0 mt-3 px-1 text-[11px] leading-relaxed text-gray-400">{llm.disclaimer}</p>
-      )}
-
-      <div className="flex items-center gap-3 mt-8 mb-1">
-        <div className="flex-1 h-px bg-hairline" />
-        <span className="text-[11px] font-bold text-muted">시간에 따른 변화</span>
-        <div className="flex-1 h-px bg-hairline" />
-      </div>
-
-      <TrendChartSection
-        data={trend.map((t) => ({ date: formatShortDate(t.date), score: t.score }))}
-      />
-
-      {previous !== null && report !== null && (
-        <ChangeSummary
-          result={diff}
-          scoreDelta={report.totalScore - previous.totalScore}
-          previousDate={formatDate(previousRef?.scannedAt)}
+      <main className="px-5">
+        <RiskAnalysisSection
+          plaque={report?.summary.totalPlaqueRatio ?? 0}
+          calculus={report?.summary.totalCalculusRatio ?? 0}
+          capturedZones={capturedZones}
         />
-      )}
 
-      <HabitSummarySection />
+        <LLMGuideSection
+          items={guideItems}
+          isLoading={llmLoading}
+          generating={llmGenerating}
+          failed={llmFailed}
+          onRetry={() => setLlmKey((k) => k + 1)}
+          onToothClick={focusTooth}
+          focusTeeth={focusTeeth}
+        />
 
+        {careGuideItems.length > 0 && <CareGuideSection items={careGuideItems} />}
+
+        <NextStepsSection categories={riskCategories} sessionId={sessionId} />
+
+        {llm?.disclaimer && (
+          <p className="m-0 mt-3 px-1 text-[11px] leading-relaxed text-gray-400">
+            {llm.disclaimer}
+          </p>
+        )}
+
+        <div className="flex items-center gap-3 mt-8 mb-1">
+          <div className="flex-1 h-px bg-hairline" />
+          <span className="text-[11px] font-bold text-muted">시간에 따른 변화</span>
+          <div className="flex-1 h-px bg-hairline" />
+        </div>
+
+        <TrendChartSection
+          data={trend.map((t) => ({ date: formatShortDate(t.date), score: t.score }))}
+        />
+
+        {previous !== null && report !== null && (
+          <ChangeSummary
+            result={diff}
+            scoreDelta={report.totalScore - previous.totalScore}
+            previousDate={formatDate(previousRef?.scannedAt)}
+            onToothClick={focusTooth}
+          />
+        )}
+
+        <HabitSummarySection />
       </main>
       <NavBar activeTab="history" />
     </PageShell>

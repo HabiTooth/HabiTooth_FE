@@ -24,15 +24,25 @@ export interface SessionReport {
   }>;
 }
 
+// 치아 bbox 기준 0~1. u=1 이 환자 오른쪽, v=0 이 사진 위쪽
+export interface LesionPolygonPoint {
+  u: number;
+  v: number;
+}
+
+// 병변이 치아의 어느 면에 있는지. OUTER는 입술·볼 쪽, INNER는 혀·입천장 쪽
+export type SurfaceType = 'OUTER' | 'INNER';
+
+export interface ToothLesion {
+  toothNumber: number;
+  surfaceType: SurfaceType;
+  lesionType: LesionType;
+  polygon: LesionPolygonPoint[];
+}
+
 export interface MeshCoordinates {
   sessionId: number;
-  meshData: Array<{
-    viewType: string;
-    issues: Array<{
-      lesionType: LesionType;
-      polygon: PolygonPoint[];
-    }>;
-  }>;
+  lesions: ToothLesion[];
 }
 
 export interface SingleImageReport {
