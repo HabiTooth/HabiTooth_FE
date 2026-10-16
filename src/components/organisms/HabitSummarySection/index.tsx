@@ -4,9 +4,9 @@ import { useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import MoreLink from '@/components/atoms/MoreLink';
 import { useHabitStore } from '@/stores/habitStore';
-import { HABITS, completionRate, doneOn, recentKeys } from '@/lib/habits';
+import { completionRate, doneOn, recentKeys } from '@/lib/habits';
 
-const WEEK_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
+import HabitWeek from '@/components/molecules/HabitWeek';
 
 export default function HabitSummarySection() {
   const { log, hydrate } = useHabitStore();
@@ -37,22 +37,7 @@ export default function HabitSummarySection() {
         </p>
       )}
 
-      <div className="grid grid-cols-7 gap-1.5">
-        {week.map((key) => {
-          const done = doneOn(log, key).length / HABITS.length;
-          return (
-            <div key={key} className="flex flex-col items-center gap-1">
-              <div className="w-full aspect-square rounded-lg bg-hairline/60 overflow-hidden flex items-end">
-                <div
-                  className="w-full bg-primary-gradient transition-[height] duration-300"
-                  style={{ height: `${done * 100}%` }}
-                />
-              </div>
-              <span className="text-[10px] text-muted">{WEEK_LABELS[new Date(key).getDay()]}</span>
-            </div>
-          );
-        })}
-      </div>
+      <HabitWeek week={week} log={log} />
     </Link>
   );
 }

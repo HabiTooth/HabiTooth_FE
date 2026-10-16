@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, ChevronRight, Flame } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import Image from 'next/image';
 import NavBar from '@/components/organisms/NavBar';
 import PageShell from '@/components/organisms/PageShell';
 import { historyApi, type HistoryRecordItem } from '@/lib/api/history';
@@ -78,12 +79,11 @@ export default function StreakPage() {
       </div>
 
       <div className="px-5 pt-4 flex flex-col gap-4">
-        <div className="bg-gradient-to-br from-[#4A86D9] to-[#7EB8F7] rounded-[20px] shadow-card p-6 text-white flex items-center gap-4">
-          <div className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
-            <Flame size={28} />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="m-0 text-sm opacity-90">연속 스캔</p>
+        <div className="relative overflow-hidden bg-gradient-to-br from-[#4A86D9] to-[#73B0F1] rounded-[24px] p-6 text-white min-h-[172px] flex items-center">
+          <Image src="/images/dashboard/streak-flame.png" alt="" fill sizes="(max-width: 480px) 100vw, 440px" className="object-cover" priority />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#285EA8]/35 via-transparent to-transparent" />
+          <div className="relative z-10 flex-1 min-w-0 pr-24">
+            <p className="m-0 text-sm font-semibold opacity-90">연속 스캔 기록</p>
             <p className="m-0 text-4xl font-bold leading-tight tabular-nums">
               {current}
               <span className="text-lg font-semibold opacity-80 ml-1">일</span>
@@ -126,6 +126,7 @@ export default function StreakPage() {
           <div className="flex items-center justify-between mb-4">
             <button
               type="button"
+              aria-label="이전 달"
               onClick={() => shiftMonth(-1)}
               className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-hairline transition-colors"
             >
@@ -136,6 +137,7 @@ export default function StreakPage() {
             </span>
             <button
               type="button"
+              aria-label="다음 달"
               onClick={() => shiftMonth(1)}
               disabled={isThisMonth}
               className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-hairline transition-colors disabled:opacity-30"
@@ -157,28 +159,28 @@ export default function StreakPage() {
               if (cell.day === null) return <div key={`pad-${i}`} className="aspect-square" />;
 
               const dot = [
-                'w-8 h-8 rounded-full flex items-center justify-center text-[13.5px] tabular-nums transition-colors',
-                cell.scanned
-                  ? 'bg-primary text-white font-semibold'
-                  : cell.isFuture
-                    ? 'text-muted/35'
-                    : 'text-muted',
-                cell.isToday && !cell.scanned ? 'ring-[1.5px] ring-primary text-primary font-semibold' : '',
+                'relative w-10 h-10 flex items-center justify-center text-[12px] tabular-nums transition-transform',
+                cell.scanned ? 'text-[#4A86D9] font-semibold' : cell.isFuture ? 'text-muted/35' : 'text-muted',
+                cell.isToday && !cell.scanned ? 'rounded-full ring-1 ring-primary/40 text-primary font-semibold' : '',
               ].join(' ');
+              const stamp = <>
+                {cell.scanned && <svg viewBox="0 0 32 32" className="absolute inset-0 w-10 h-10 -rotate-6" aria-hidden="true"><path d="M16 5C11 2 2 2 2 10C2 15 4 18 5 23C6 28 8 30 11 28C13 26 13 21 16 21C19 21 19 26 21 28C24 30 26 28 27 23C28 18 30 15 30 10C30 2 21 2 16 5Z" fill="#D7EBFF" stroke="#A6CBF6" strokeWidth=".6" /></svg>}
+                <span className="relative z-10">{cell.day}</span>
+              </>;
 
               const sessionId = cell.scanned ? idByDate(cell.key) : null;
 
               return (
                 <div key={cell.key} className="aspect-square flex items-center justify-center">
                   {sessionId === null ? (
-                    <span className={dot}>{cell.day}</span>
+                    <span className={dot} aria-label={`${cell.day}일${cell.scanned ? ' 스캔 완료' : ''}`}>{stamp}</span>
                   ) : (
                     <Link
                       href={`/report/${sessionId}`}
-                      aria-label={`${cell.day}일 리포트 보기`}
+                      aria-label={`${cell.day}일 스캔 완료, 리포트 보기`}
                       className={`${dot} no-underline active:scale-90`}
                     >
-                      {cell.day}
+                      {stamp}
                     </Link>
                   )}
                 </div>
@@ -187,7 +189,7 @@ export default function StreakPage() {
           </div>
 
           <p className="m-0 mt-3 text-[11px] text-muted">
-            파란 날짜를 누르면 그날 리포트로 넘어가요.
+            스캔을 마친 날에는 치아 스탬프가 찍혀요. 스탬프를 누르면 그날 리포트를 볼 수 있어요.
           </p>
         </div>
 
