@@ -583,7 +583,7 @@ export const QA_CHECKS: QaCheck[] = [
     endpoint: 'GET /api/reports/scan-sessions/{id}/3d',
     needs: ['sessionId'],
     run: (ctx) => reportApi.getMeshCoordinates(ctx.sessionId!).then(unwrap),
-    expectKeys: ['sessionId', 'meshData'],
+    expectKeys: ['sessionId', 'lesions'],
   },
   {
     id: 'report.singleImage',

@@ -9,6 +9,15 @@ export const LESION_LABEL: Record<LesionType, string> = {
   CALCULUS: '치석',
 };
 
+// 3D 모형 툴팁과 치아 상세 카드에서 쓰는 짧은 위험도 말
+export const RISK_TAG: Record<RiskLevel, string> = {
+  VERY_LOW: '깨끗',
+  LOW: '양호',
+  MEDIUM: '보통',
+  HIGH: '주의',
+  CRITICAL: '진단 필요',
+};
+
 export interface LesionRisk {
   lesionType: LesionType;
   riskLevel: RiskLevel;
