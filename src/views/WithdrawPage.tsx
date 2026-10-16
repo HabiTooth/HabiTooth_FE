@@ -82,7 +82,7 @@ export default function WithdrawPage() {
           type="button"
           onClick={erase}
           disabled={!agreed || busy}
-          className="w-full py-4 rounded-[14px] bg-white/90 backdrop-blur-sm shadow-card border border-hairline flex items-center justify-center gap-2 text-[14px] font-semibold text-danger disabled:opacity-40"
+          className="w-full h-14 rounded-[14px] bg-white border-2 border-danger flex items-center justify-center gap-2 text-[15px] font-semibold text-danger transition-colors active:bg-danger/10 disabled:border-danger/35 disabled:text-danger/50 disabled:bg-white/70"
         >
           {busy && <Loader2 size={15} className="animate-spin" />}
           기록 전부 지우고 로그아웃

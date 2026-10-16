@@ -25,10 +25,6 @@ export default function RootLayout({
       <head>
         <link
           rel="stylesheet"
-          href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/variable/pretendardvariable.css"
-        />
-        <link
-          rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600&display=swap"
         />
       </head>
