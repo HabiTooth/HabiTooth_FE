@@ -37,7 +37,7 @@ export default function PasswordChangePage() {
   );
 
   return (
-    <div className="max-w-[430px] min-h-svh mx-auto bg-background px-5 pt-[56px] pb-10 flex flex-col relative">
+    <div className="app-frame max-w-[430px] min-h-svh mx-auto bg-background px-5 pt-[56px] pb-10 flex flex-col relative">
       <div className="aurora-blob-1" />
       <div className="aurora-blob-2" />
       <div className="aurora-blob-3" />
@@ -90,8 +90,7 @@ export default function PasswordChangePage() {
         type="button"
         onClick={handleSave}
         disabled={!canSave || isSaving}
-        className="w-full h-14 rounded-[14px] text-white text-[16px] font-semibold disabled:opacity-40 disabled:cursor-not-allowed transition-opacity relative z-10 mt-6"
-        style={{ background: 'linear-gradient(135deg, #4B7BF5 0%, #6B9BFF 100%)', boxShadow: '0 4px 16px rgba(75,123,245,0.35)' }}
+        className="w-full h-14 rounded-[14px] text-white text-[16px] font-semibold bg-primary-gradient shadow-button disabled:opacity-50 disabled:cursor-not-allowed transition-opacity relative z-10 mt-6"
       >
         {isSaving ? '변경 중...' : '변경하기'}
       </button>

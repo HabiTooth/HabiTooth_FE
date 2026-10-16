@@ -32,7 +32,7 @@ export default function ForgotEmailPage() {
   };
 
   return (
-    <div className="max-w-[430px] min-h-svh mx-auto bg-background px-5 pt-[56px] pb-10 flex flex-col relative">
+    <div className="app-frame max-w-[430px] min-h-svh mx-auto bg-background px-5 pt-[56px] pb-10 flex flex-col relative">
       <div className="aurora-blob-1" />
       <div className="aurora-blob-2" />
       <div className="aurora-blob-3" />
@@ -60,8 +60,7 @@ export default function ForgotEmailPage() {
           <div className="flex-1" />
 
           <button type="button" onClick={handleFind} disabled={!canSubmit || isLoading}
-            className="w-full h-14 rounded-[14px] text-white text-[16px] font-semibold disabled:opacity-40 disabled:cursor-not-allowed transition-opacity relative z-10 mt-6"
-            style={{ background: 'linear-gradient(135deg, #4B7BF5 0%, #6B9BFF 100%)', boxShadow: '0 4px 16px rgba(75,123,245,0.35)' }}>
+            className="w-full h-14 rounded-[14px] text-white text-[16px] font-semibold bg-primary-gradient shadow-button disabled:opacity-50 disabled:cursor-not-allowed transition-opacity relative z-10 mt-6">
             {isLoading ? '확인 중...' : '이메일 찾기'}
           </button>
         </>
@@ -80,8 +79,7 @@ export default function ForgotEmailPage() {
           <div className="w-full flex flex-col gap-3">
             <button type="button"
               onClick={() => router.push('/forgot-password')}
-              className="w-full h-14 rounded-[14px] text-white text-[16px] font-semibold"
-              style={{ background: 'linear-gradient(135deg, #4B7BF5 0%, #6B9BFF 100%)', boxShadow: '0 4px 16px rgba(75,123,245,0.35)' }}>
+              className="w-full h-14 rounded-[14px] text-white text-[16px] font-semibold bg-primary-gradient shadow-button">
               비밀번호 찾기
             </button>
             <button type="button" onClick={() => router.push('/login')}

@@ -44,7 +44,7 @@ export default function ForgotPasswordPage() {
   );
 
   return (
-    <div className="max-w-[430px] min-h-svh mx-auto bg-background px-5 pt-[56px] pb-10 flex flex-col relative">
+    <div className="app-frame max-w-[430px] min-h-svh mx-auto bg-background px-5 pt-[56px] pb-10 flex flex-col relative">
       <div className="aurora-blob-1" />
       <div className="aurora-blob-2" />
       <div className="aurora-blob-3" />
@@ -70,8 +70,7 @@ export default function ForgotPasswordPage() {
           <div className="flex-1" />
           <button type="button" onClick={handleVerify}
             disabled={!email || !!emailFormatError || isLoading}
-            className="w-full h-14 rounded-[14px] text-white text-[16px] font-semibold disabled:opacity-40 disabled:cursor-not-allowed transition-opacity relative z-10 mt-6"
-            style={{ background: 'linear-gradient(135deg, #4B7BF5 0%, #6B9BFF 100%)', boxShadow: '0 4px 16px rgba(75,123,245,0.35)' }}>
+            className="w-full h-14 rounded-[14px] text-white text-[16px] font-semibold bg-primary-gradient shadow-button disabled:opacity-50 disabled:cursor-not-allowed transition-opacity relative z-10 mt-6">
             {isLoading ? '확인 중...' : '다음'}
           </button>
         </>
@@ -93,8 +92,7 @@ export default function ForgotPasswordPage() {
           <div className="flex-1" />
           <button type="button" onClick={handleReset}
             disabled={!newPw || newPw.length < 8 || !!pwMatchError || !confirmPw || isLoading}
-            className="w-full h-14 rounded-[14px] text-white text-[16px] font-semibold disabled:opacity-40 disabled:cursor-not-allowed transition-opacity relative z-10 mt-6"
-            style={{ background: 'linear-gradient(135deg, #4B7BF5 0%, #6B9BFF 100%)', boxShadow: '0 4px 16px rgba(75,123,245,0.35)' }}>
+            className="w-full h-14 rounded-[14px] text-white text-[16px] font-semibold bg-primary-gradient shadow-button disabled:opacity-50 disabled:cursor-not-allowed transition-opacity relative z-10 mt-6">
             {isLoading ? '변경 중...' : '비밀번호 변경'}
           </button>
         </>
@@ -108,8 +106,7 @@ export default function ForgotPasswordPage() {
           <p className="m-0 text-[16px] font-bold text-content mb-2">비밀번호가 변경됐어요!</p>
           <p className="m-0 text-[14px] text-muted mb-10">새 비밀번호로 로그인해주세요.</p>
           <button type="button" onClick={() => router.push('/login')}
-            className="w-full h-14 rounded-[14px] text-white text-[16px] font-semibold"
-            style={{ background: 'linear-gradient(135deg, #4B7BF5 0%, #6B9BFF 100%)', boxShadow: '0 4px 16px rgba(75,123,245,0.35)' }}>
+            className="w-full h-14 rounded-[14px] text-white text-[16px] font-semibold bg-primary-gradient shadow-button">
             로그인으로 이동
           </button>
         </div>
