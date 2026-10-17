@@ -115,7 +115,7 @@ export default function CameraView({
               src={guide.outline}
               alt=""
               aria-hidden
-              className="absolute left-1/2 top-1/2 w-[72%] -translate-x-1/2 -translate-y-1/2 opacity-60 pointer-events-none"
+              className="absolute inset-0 w-full h-full object-contain opacity-60 pointer-events-none"
             />
           )}
 
