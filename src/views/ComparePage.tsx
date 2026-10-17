@@ -20,14 +20,14 @@ import type { RiskLevel } from '@/lib/api/common';
 import { useSessionIndex } from '@/hooks/useSessionIndex';
 import { compareSummary, compareTeeth, type ToothChange } from '@/lib/compare';
 import { useDentitionStore } from '@/stores/dentitionStore';
-import { remapTeeth } from '@/lib/toothMapping';
+import { excludeMissingTeeth } from '@/lib/toothMapping';
 import { RISK_LABEL, formatDateTime, formatShortDate } from '@/lib/score';
 import { toothName } from '@/lib/dentition';
 import { RISK_MODEL_FILL } from '@/lib/riskColors';
 import { RISK_TAG } from '@/lib/lesionRisk';
 
 const toViewerResults = (report: SessionReport | null, missing: number[]): ToothAnalysisResult[] =>
-  remapTeeth(report?.toothStatuses ?? [], missing).map((t) => ({
+  excludeMissingTeeth(report?.toothStatuses ?? [], missing).map((t) => ({
     toothNumber: String(t.toothNumber),
     lesionType: t.lesionType ?? '',
     areaRatio: t.areaRatio,
@@ -200,7 +200,7 @@ export default function ComparePage() {
   );
   const nearAfter = blend >= 0.5;
   const viewerResults = nearAfter ? afterResults : beforeResults;
-  const viewerLesions = nearAfter ? afterLesions : beforeLesions;
+  const viewerLesions = excludeMissingTeeth(nearAfter ? afterLesions : beforeLesions, missing);
 
   const label = (id: number | null) => {
     const found = sessions.find((s) => s.sessionId === id);

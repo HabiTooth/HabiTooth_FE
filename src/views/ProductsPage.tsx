@@ -10,7 +10,7 @@ import ProductThumb from '@/components/atoms/ProductThumb';
 import { dashboardApi } from '@/lib/api/dashboard';
 import { reportApi } from '@/lib/api/report';
 import { LESION_LABEL, worstByLesion, type LesionRisk } from '@/lib/lesionRisk';
-import { remapTeeth } from '@/lib/toothMapping';
+import { excludeMissingTeeth } from '@/lib/toothMapping';
 import { useDentitionStore } from '@/stores/dentitionStore';
 import { isRisky, recommendProducts, shopUrl, type ProductArt } from '@/constants/products';
 
@@ -46,7 +46,7 @@ export default function ProductsPage() {
     const load = fromReport
       ? reportApi
           .getSessionReport(sessionId)
-          .then((res) => worstByLesion(remapTeeth(res.data.result?.toothStatuses ?? [], missing)))
+          .then((res) => worstByLesion(excludeMissingTeeth(res.data.result?.toothStatuses ?? [], missing)))
       : dashboardApi.getRisk().then((res) => res.data.result?.categories ?? []);
 
     load
