@@ -3,7 +3,7 @@
 import axios from 'axios';
 import { useState, useEffect, useRef, useCallback, useMemo, type RefObject } from 'react';
 import { useRouter } from 'next/navigation';
-import { X, HelpCircle, Check, CheckCircle2, Lock, Loader2, AlertTriangle, Sun, Camera, Bell, User, Smile, ChevronRight, ChevronDown } from 'lucide-react';
+import { X, HelpCircle, Check, Loader2, AlertTriangle, Sun, Camera, Bell, User, Smile, ChevronRight, ChevronDown, Info } from 'lucide-react';
 import type { ScanStatusType } from '@/components/molecules/ScanStatusBanner';
 import { useCameraStream, type CameraMode, type LedMode } from '@/hooks/useCameraStream';
 import { useScanDetection } from '@/hooks/useScanDetection';
@@ -253,9 +253,10 @@ function Step1({
 }) {
   const count = selectedZones.length;
   const allOn = count === ALL_VIEW_TYPES.length;
+  const [selectionSurface, setSelectionSurface] = useState<Surface>('LINGUAL');
 
   return (
-    <div className="max-w-[430px] min-h-svh mx-auto flex flex-col bg-background relative">
+    <div className="app-frame max-w-[430px] min-h-svh mx-auto flex flex-col bg-background relative">
       <div className="aurora-blob-1" />
       <div className="aurora-blob-2" />
       <div className="aurora-blob-3" />
@@ -288,24 +289,12 @@ function Step1({
       </div>
 
       <div
-        className="relative flex-shrink-0 h-[164px] overflow-hidden"
-        style={{ background: 'linear-gradient(145deg, #3D58E8 0%, #5B7CF5 55%, #8AA4FF 100%)' }}
+        className="relative flex-shrink-0 h-[190px] overflow-hidden"
+        style={{ background: 'linear-gradient(145deg, #427FD3 0%, #5B96E2 55%, #80B5F1 100%)' }}
       >
-        <div
-          className="absolute -right-16 -top-16 w-56 h-56 rounded-full pointer-events-none"
-          style={{ background: 'rgba(255,255,255,0.06)' }}
-        />
-        <div
-          className="absolute -left-12 -bottom-14 w-44 h-44 rounded-full pointer-events-none"
-          style={{ background: 'rgba(103,232,249,0.07)' }}
-        />
-
-        <svg style={{ position: 'absolute', top: 16, left: 26, animation: 'sparkle-twinkle 2.1s ease-in-out infinite' }} width="10" height="10" viewBox="0 0 12 12">
-          <path d="M6 0L7.2 4.8L12 6L7.2 7.2L6 12L4.8 7.2L0 6L4.8 4.8Z" fill="white" opacity="0.7" />
-        </svg>
-        <svg style={{ position: 'absolute', bottom: 30, left: 44, animation: 'sparkle-twinkle 1.7s ease-in-out 0.5s infinite' }} width="7" height="7" viewBox="0 0 12 12">
-          <path d="M6 0L7.2 4.8L12 6L7.2 7.2L6 12L4.8 7.2L0 6L4.8 4.8Z" fill="white" opacity="0.45" />
-        </svg>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/images/dashboard/scan-clay-studio.webp" alt="" className="absolute inset-0 w-full h-full object-cover" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#2C65AD]/25 via-transparent to-transparent" />
 
         <div className="px-5 pt-5 pr-[38%] flex flex-col gap-1.5 relative z-10">
           <h1 className="m-0 text-white font-bold leading-tight" style={{ fontSize: '25px' }}>
@@ -318,64 +307,9 @@ function Step1({
           </p>
         </div>
 
-        <div style={{ position: 'absolute', top: 0, right: 2, width: 152, height: 152 }}>
-          <div
-            className="glow-orb"
-            style={{
-              position: 'absolute',
-              inset: 0,
-              borderRadius: '50%',
-              background:
-                'radial-gradient(circle, rgba(103,232,249,0.5) 0%, rgba(75,123,245,0.35) 45%, transparent 72%)',
-            }}
-          />
-          <div
-            className="orbit-ring"
-            style={{
-              position: 'absolute',
-              width: '116%',
-              height: '116%',
-              top: '-8%',
-              left: '-8%',
-              border: '1.5px solid rgba(255,255,255,0.22)',
-              borderRadius: '50%',
-            }}
-          >
-            <div
-              style={{
-                position: 'absolute',
-                width: 8,
-                height: 8,
-                background: 'rgba(103,232,249,0.95)',
-                borderRadius: '50%',
-                top: '8%',
-                left: '72%',
-                boxShadow: '0 0 10px rgba(103,232,249,0.9)',
-              }}
-            />
-          </div>
-          <svg style={{ position: 'absolute', top: '4%', right: '0%', animation: 'sparkle-twinkle 1.6s ease-in-out infinite' }} width="12" height="12" viewBox="0 0 12 12">
-            <path d="M6 0L7.2 4.8L12 6L7.2 7.2L6 12L4.8 7.2L0 6L4.8 4.8Z" fill="white" opacity="0.95" />
-          </svg>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/images/tooth-3.png"
-            alt=""
-            style={{
-              width: 134,
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              filter:
-                'drop-shadow(0 8px 28px rgba(75,123,245,0.55)) drop-shadow(0 0 20px rgba(103,232,249,0.4))',
-            }}
-          />
-        </div>
       </div>
-
-      <div className="bg-white/90 backdrop-blur-sm rounded-t-[28px] -mt-6 relative z-10 flex flex-col flex-1">
-        <div className="px-5 pt-5 pb-4 flex flex-col gap-4">
+      <div className="bg-white rounded-t-[28px] -mt-4 relative z-10 flex flex-col flex-1">
+        <div className="px-5 pt-5 flex flex-col gap-4">
           <TeethNotice />
 
           <div className="flex flex-col gap-3">
@@ -400,11 +334,19 @@ function Step1({
               </div>
             </div>
 
+            <div className="rounded-[20px] bg-[#F6F9FD] border border-[#E5EDF7] px-3 py-3">
+              <ToothArchSelector surface={selectionSurface} onSurfaceChange={setSelectionSurface} selected={selectedZones} captured={[]} onZoneClick={onToggleZone} />
+            </div>
+            <details>
+              <summary className="text-[12px] font-semibold text-[#687B94] cursor-pointer">구역 이름으로 선택하기</summary>
+              <div className="mt-3">
             <ZoneChips
               selectedZones={selectedZones}
               onToggleZone={onToggleZone}
               onSetZones={onSetZones}
             />
+              </div>
+            </details>
 
             {count === 0 && (
               <p className="m-0 text-[12px] text-danger font-medium text-center">
@@ -413,7 +355,8 @@ function Step1({
             )}
           </div>
 
-          <div className="flex flex-col gap-4 border-t border-hairline pt-4">
+          <section aria-labelledby="scan-guide-heading" className="-mx-5 mt-1 flex flex-col gap-4 border-t border-hairline bg-[#F3F6FB] px-5 py-5">
+            <h2 id="scan-guide-heading" className="m-0 text-[15px] font-bold text-content">촬영 안내</h2>
             <GuideItem
               icon={<Camera size={18} className="text-primary" />}
               text="카메라를 치아 가까이 가져가 주세요"
@@ -429,15 +372,6 @@ function Step1({
               text="빛이 반사되지 않게 각도를 맞춰 주세요"
               sub="반사가 심하면 분석이 어려워요."
             />
-          </div>
-          <div className="border-t border-hairline pt-4">
-            <Checkbox
-              checked={checked}
-              onChange={onCheck}
-              label="위 안내를 모두 확인했어요"
-            />
-          </div>
-
           {webcam && (
             <div className="border-t border-dashed border-hairline pt-4">
               <Checkbox
@@ -450,6 +384,14 @@ function Step1({
               </p>
             </div>
           )}
+          <div className="border-t border-hairline pt-4">
+            <Checkbox
+              checked={checked}
+              onChange={onCheck}
+              label="위 안내를 모두 확인했어요"
+            />
+          </div>
+          </section>
         </div>
         <div className="sticky bottom-0 px-5 pt-3 pb-4 bg-white/95 backdrop-blur-sm border-t border-hairline">
           {startError && (
@@ -476,12 +418,15 @@ function Step2({
   imgRef,
   isReady,
   cameraError,
+  captureError,
+  shutterNotice,
   cameraMode,
   status,
   ledMode,
   selectedZones,
   capturedZones,
   currentZone,
+  missingTeeth,
   surface,
   onSurfaceChange,
   onZoneClick,
@@ -498,12 +443,15 @@ function Step2({
   imgRef: RefObject<HTMLImageElement | null>;
   isReady: boolean;
   cameraError: string | null;
+  captureError: string | null;
+  shutterNotice: string | null;
   cameraMode: CameraMode;
   status: ScanStatusType;
   ledMode: LedMode;
   selectedZones: ViewType[];
   capturedZones: ViewType[];
   currentZone: ViewType | null;
+  missingTeeth: number[];
   surface: Surface;
   onSurfaceChange: (s: Surface) => void;
   onZoneClick: (z: ViewType) => void;
@@ -523,13 +471,14 @@ function Step2({
   const allDone = done >= total;
 
   return (
-    <div className="max-w-[430px] mx-auto h-svh flex flex-col">
+    <div className="app-frame max-w-[430px] mx-auto h-svh flex flex-col">
       <PageHeader title="실시간 구강 스캔" onExit={onExit} onHelp={onHelp} />
 
       <div className="bg-white px-3 pt-2 pb-2 flex-shrink-0 border-b border-hairline">
         {!archFolded && (
           <ToothArchSelector
             compact
+            mode="capture"
             lockUnselected
             surface={surface}
             onSurfaceChange={onSurfaceChange}
@@ -539,8 +488,8 @@ function Step2({
             onZoneClick={onZoneClick}
           />
         )}
-        <div className="flex items-center justify-between px-1 mt-0.5">
-          <span className="text-[13px] font-bold text-content truncate">
+        <div className="flex items-center justify-between gap-2 rounded-xl bg-[#F1F6FF] px-3 py-2 mt-2">
+          <span className="text-[13px] font-bold text-[#315D96] truncate">
             {info ? info.fullLabel : '구역을 선택해 주세요'}
           </span>
           <div className="flex items-center gap-2 flex-shrink-0">
@@ -572,6 +521,8 @@ function Step2({
         </div>
       </div>
 
+      {captureError && <p role="alert" className="m-0 bg-[#FFF4DE] px-4 py-2 text-[12px] font-semibold leading-relaxed text-[#926022]">{captureError}</p>}
+      {shutterNotice && !captureError && <p role="status" className="m-0 flex items-center gap-2 bg-[#F1F6FF] px-4 py-2 text-[12px] font-medium leading-relaxed text-[#536D8E]"><Info size={14} className="shrink-0 text-primary" />{shutterNotice}</p>}
       <CameraView
         videoRef={videoRef}
         imgRef={imgRef}
@@ -591,6 +542,25 @@ function Step2({
   );
 }
 
+function ScanStateHeading({ label, title, description, tone, role }: {
+  label: string;
+  title: string;
+  description: string;
+  tone: 'blue' | 'mint' | 'orange';
+  role?: 'alert' | 'status';
+}) {
+  const colors = {
+    blue: ['text-[#4A86D9]', 'text-content', 'text-[#607C92]'],
+    mint: ['text-[#328F7C]', 'text-[#254E43]', 'text-[#56786B]'],
+    orange: ['text-[#D9743D]', 'text-[#563B2D]', 'text-[#8C6D58]'],
+  }[tone];
+  return <div className="w-full text-center" role={role} aria-live={role === 'status' ? 'polite' : undefined}>
+    <p className={`m-0 text-[13px] leading-5 font-bold ${colors[0]}`}>{label}</p>
+    <h2 className={`m-0 mt-2 text-[28px] leading-9 font-bold break-keep ${colors[1]}`}>{title}</h2>
+    <p className={`m-0 mt-3 min-h-[48px] text-[15px] leading-6 font-medium whitespace-pre-line break-keep ${colors[2]}`}>{description}</p>
+  </div>;
+}
+
 function Step3({
   analyzeStep,
   analyzeProgress,
@@ -608,22 +578,18 @@ function Step3({
 }) {
   if (analyzeError) {
     return (
-      <div className="max-w-[430px] min-h-svh mx-auto bg-background flex flex-col items-center justify-center px-6 gap-5 relative z-10">
-        <div className="aurora-blob-1" />
-        <div className="aurora-blob-2" />
-        <div className="aurora-blob-3" />
-        <div className="relative z-10">
-          <AlertTriangle size={64} className="text-warning" />
+      <div className="app-frame relative isolate overflow-hidden max-w-[430px] min-h-svh mx-auto bg-[#F1F7FB] flex flex-col">
+        <div className="absolute inset-0 -z-10 pointer-events-none">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/images/dashboard/scan-error-clay-portrait.webp" alt="" className="w-full h-svh object-cover object-top" />
         </div>
-        <div className="text-center relative z-10">
-          <h2 className="m-0 text-[22px] font-bold text-content">분석 실패</h2>
-          <p className="m-0 mt-2 text-[13px] text-muted leading-relaxed whitespace-pre-line">{analyzeError}</p>
-        </div>
-        <div className="w-full relative z-10 flex flex-col gap-3">
+        <div className="flex-1 px-6 pt-[40svh] pb-6 flex flex-col gap-5">
+        <ScanStateHeading tone="blue" role="alert" label="분석이 잠시 멈췄어요" title="다시 시도해 볼까요?" description={analyzeError} />
+        <div className="w-full mt-auto pt-4 flex flex-col gap-2 pb-[env(safe-area-inset-bottom)]">
           <button
             type="button"
             onClick={onRetry}
-            className="w-full h-14 rounded-[14px] bg-primary-gradient text-white text-[15px] font-semibold shadow-button"
+            className="w-full h-14 rounded-[16px] bg-primary-gradient text-white text-[16px] font-bold shadow-button"
           >
             분석 다시 시도
           </button>
@@ -638,200 +604,99 @@ function Step3({
             <button
               type="button"
               onClick={onUseMock}
-              className="w-full h-11 rounded-[12px] border border-primary/40 bg-primary/5 text-primary text-[13px] font-medium"
+              className="w-full h-10 rounded-[12px] border border-[#E3EAF4] bg-white/70 text-[#8293AA] text-[11px] font-semibold"
             >
               테스트 데이터로 계속 (개발용)
             </button>
           )}
         </div>
+        </div>
       </div>
     );
   }
 
+  const currentLabel = ANALYZE_STEPS[Math.min(Math.max(analyzeStep - 1, 0), ANALYZE_STEPS.length - 1)];
   return (
-    <div className="max-w-[430px] min-h-svh mx-auto bg-background flex flex-col items-center justify-center px-6 gap-5 relative z-10">
-      <div className="aurora-blob-1" />
-      <div className="aurora-blob-2" />
-      <div className="aurora-blob-3" />
-      <div className="animate-pulse-tooth relative z-10">
-        <ToothIcon size={80} className="text-primary" />
+    <div className="app-frame relative isolate overflow-hidden max-w-[430px] min-h-svh mx-auto bg-[#F0F8F5] flex flex-col">
+      <div className="absolute inset-0 -z-10 pointer-events-none">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/images/dashboard/scan-analyzing-mint-portrait.webp" alt="" className="w-full h-svh object-cover object-top" />
       </div>
-      <div className="text-center relative z-10">
-        <h2 className="m-0 text-[22px] font-bold text-content">분석 중이에요</h2>
-        <p className="m-0 mt-1 text-[13px] text-muted">AI가 구강 상태를 정밀하게 분석하고 있어요</p>
-      </div>
-
-      <div className="w-full bg-white/90 backdrop-blur-sm rounded-[20px] shadow-card px-4 py-3 flex flex-col gap-3 relative z-10">
-        {ANALYZE_STEPS.map((label, i) => {
-          const n = i + 1;
-          const done = n < analyzeStep;
-          const active = n === analyzeStep;
-          return (
-            <div key={i} className="flex items-center gap-3">
-              <div
-                className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0
-                ${done ? 'bg-primary' : active ? 'bg-primary-light' : 'bg-hairline'}`}
-              >
-                {done ? (
-                  <Check size={13} className="text-white" strokeWidth={3} />
-                ) : active ? (
-                  <Loader2 size={13} className="text-primary animate-spin" />
-                ) : (
-                  <span className="text-[11px] font-bold text-muted">{n}</span>
-                )}
-              </div>
-              <span
-                className={`text-[13px] font-medium flex-1 ${done || active ? 'text-content' : 'text-muted'}`}
-              >
-                {label}
+      <div className="flex-1 px-6 pt-[40svh] pb-8 flex flex-col gap-5">
+        <ScanStateHeading tone="mint" role="status" label="AI 구강 분석" title="치아를 살펴보고 있어요" description="촬영한 사진으로 리포트를 준비하고 있어요" />
+        <div className="rounded-[22px] bg-[#F9FFFC]/85 border border-[#CDE8DC] px-5 py-4 shadow-[0_4px_20px_rgba(61,119,95,0.05)]">
+          <div className="flex items-center gap-2 mb-3">
+            <Loader2 size={18} className="text-[#328F7C] animate-spin" />
+            <span className="flex-1 text-[15px] font-bold text-[#254E43]">{currentLabel}</span>
+            <span className="text-[23px] font-bold text-[#328F7C] tabular-nums">{analyzeProgress}%</span>
+          </div>
+          <div role="progressbar" aria-label="분석 진행률" aria-valuemin={0} aria-valuemax={100} aria-valuenow={analyzeProgress} className="h-2.5 bg-[#DFEEE5] rounded-full overflow-hidden">
+            <div className="h-full bg-gradient-to-r from-[#35977F] to-[#85CBB0] rounded-full transition-[width] duration-500" style={{ width: `${analyzeProgress}%` }} />
+          </div>
+        </div>
+        <ol className="m-0 p-0 list-none flex flex-col gap-3 px-1">
+          {ANALYZE_STEPS.map((label, i) => {
+            const done = i + 1 < analyzeStep;
+            const active = i + 1 === analyzeStep;
+            return <li key={label} className="flex items-center gap-3">
+              <span className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${done ? 'bg-[#328F7C] text-white' : active ? 'bg-[#D5EDE0] text-[#287D68]' : 'bg-[#E8F1EA] text-[#728E80]'}`}>
+                {done ? <Check size={14} strokeWidth={3} /> : <span className="text-[12px] font-bold">{i + 1}</span>}
               </span>
-              {done && <CheckCircle2 size={14} className="text-primary" />}
-              {active && <Loader2 size={14} className="text-primary animate-spin" />}
-            </div>
-          );
-        })}
-      </div>
-
-      <div className="w-full relative z-10">
-        <div className="flex justify-between mb-2 text-[12px] text-muted font-medium">
-          <span>전체 진행률</span>
-          <span className="text-primary font-bold">{analyzeProgress}%</span>
-        </div>
-        <div className="h-2 bg-hairline rounded-full overflow-hidden">
-          <div
-            className="h-full bg-primary-gradient rounded-full transition-all duration-500"
-            style={{ width: `${analyzeProgress}%` }}
-          />
-        </div>
-      </div>
-
-      <p className="text-[12px] text-muted text-center m-0 relative z-10">
-        분석이 완료되면 자동으로 결과 화면으로 이동합니다.
-      </p>
-      <div className="flex items-center gap-2 bg-white/90 backdrop-blur-sm rounded-[20px] shadow-card px-4 py-2.5 w-full relative z-10">
-        <Lock size={14} className="text-primary flex-shrink-0" />
-        <span className="text-[12px] text-primary font-medium">
-          안전하게 분석 중이에요 — 모든 데이터는 암호화되어 보호됩니다.
-        </span>
+              <span className={`text-[14px] ${active ? 'font-bold text-[#287D68]' : done ? 'font-semibold text-[#254E43]' : 'font-medium text-[#728E80]'}`}>{label}</span>
+            </li>;
+          })}
+        </ol>
+        <p className="m-0 mt-auto pt-2 text-[13px] font-medium leading-relaxed text-[#648575] text-center">완료되면 자동으로 다음 화면으로 이동해요</p>
       </div>
     </div>
   );
 }
-
-function Step4({
-  onNext,
-  onReset,
-  analysisResult,
-  capturedZones,
-}: {
+function Step4({ onNext, onReset, analysisResult, capturedZones }: {
   onNext: () => void;
   onReset: () => void;
   analysisResult: SessionAnalyzeResult | null;
   capturedZones: ViewType[];
 }) {
-  const [showCheck, setShowCheck] = useState(false);
-  const [surface, setSurface] = useState<Surface>('LINGUAL');
-
-  useEffect(() => {
-    const t = setTimeout(() => setShowCheck(true), 900);
-    return () => clearTimeout(t);
-  }, []);
-
   return (
-    <div className="max-w-[430px] min-h-svh mx-auto bg-background flex flex-col relative overflow-hidden">
-      <div className="aurora-blob-1" />
-      <div className="aurora-blob-2" />
-      <div className="aurora-blob-3" />
-
-      <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-6 pt-16 pb-6 gap-6">
-        <div className="relative w-[160px] h-[160px]">
-          <SandRevealImage src="/images/tooth-3.png" alt="tooth" className="w-full h-full" />
-          {showCheck && (
-            <div className="absolute -bottom-1 -right-1 w-10 h-10 bg-success rounded-full flex items-center justify-center shadow-card animate-bounce-in">
-              <Check size={18} className="text-white" strokeWidth={3} />
-            </div>
-          )}
-        </div>
-
-        <div className="text-center">
-          <h2 className="m-0 text-[26px] font-bold text-content">스캔 완료!</h2>
-          <p className="m-0 mt-2 text-[13px] text-muted leading-relaxed">
-            {capturedZones.length}개 구역 스캔이 모두 완료됐어요.
-            <br />
-            AI 분석이 완료되었어요.
-          </p>
-          {analysisResult && (
-            <div className="mt-4 text-center">
-              <div className="text-[14px] font-semibold text-content mb-1">건강도 점수</div>
-              {analysisResult.sessionScore === null ? (
-                <p className="m-0 text-[13px] text-muted">점수를 낼 수 있는 컷이 없었어요.</p>
-              ) : (
-                <>
-                  <div className="text-[28px] font-bold text-primary">
-                    {analysisResult.sessionScore}
-                  </div>
-                  <p className="m-0 text-[11px] text-muted">
-                    {analysisResult.validZoneCount}개 구역 기준
-                  </p>
-                </>
-              )}
-            </div>
-          )}
-
-          {analysisResult && analysisResult.invalidZones.length > 0 && (
-            <p className="m-0 mt-3 text-[12px] text-warning break-keep">
-              {analysisResult.invalidZones.map((z) => zoneInfo(z)?.label ?? z).join(', ')} 구역은
-              다시 찍는 걸 추천해요.
-            </p>
-          )}
-        </div>
-
-        <div className="w-full bg-white/90 backdrop-blur-sm rounded-[20px] shadow-card px-4 pt-3.5 pb-3">
-          <p className="m-0 text-[11px] font-bold text-muted uppercase tracking-widest mb-1">
-            스캔 완료 구역
-          </p>
-          <ToothArchSelector
-            surface={surface}
-            onSurfaceChange={setSurface}
-            selected={capturedZones}
-            captured={capturedZones}
-            onZoneClick={() => {}}
-          />
-        </div>
-
-        <div className="w-full bg-white/90 backdrop-blur-sm rounded-[20px] shadow-card px-4 py-3 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-[12px] bg-success/15 flex items-center justify-center flex-shrink-0">
-            <Lock size={18} className="text-success" />
-          </div>
-          <div>
-            <p className="m-0 text-[13px] font-semibold text-content">데이터 처리 완료</p>
-            <p className="m-0 text-[12px] text-muted mt-0.5">이미지 품질 확인 · 암호화 완료</p>
-          </div>
-          <CheckCircle2 size={16} className="text-success ml-auto flex-shrink-0" />
-        </div>
+    <div className="app-frame relative isolate overflow-hidden max-w-[430px] min-h-svh mx-auto bg-[#FFFAEF] flex flex-col">
+      <div className="absolute inset-0 -z-10 pointer-events-none">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/images/dashboard/scan-complete-apricot-portrait.webp" alt="" className="w-full h-svh object-cover object-top" />
       </div>
-
-      <div className="relative z-10 px-6 pb-10 pt-2 flex flex-col gap-3">
-        <button
-          type="button"
-          onClick={onNext}
-          className="w-full h-14 rounded-[14px] bg-primary-gradient text-white text-[16px] font-semibold shadow-button"
-        >
-          분석 결과 보기
-        </button>
-        <button
-          type="button"
-          onClick={onReset}
-          className="w-full h-11 text-[14px] font-semibold text-primary bg-transparent border-none cursor-pointer"
-        >
-          다시 스캔하기
-        </button>
+      <div className="px-6 pt-[40svh] flex flex-col items-center gap-5">
+        <ScanStateHeading tone="orange" label="리포트 준비 완료" title="분석이 완료됐어요" description="내 치아의 관리 포인트를 확인해 보세요" />
+        {analysisResult && (
+          <div className="w-full text-center py-1">
+            <p className="m-0 text-[13px] font-semibold text-[#8C6D58]">이번 스캔 종합 점수</p>
+            {analysisResult.sessionScore === null ? <p className="m-0 mt-3 text-[14px] font-medium text-[#8C6D58]">점수를 낼 수 있는 컷이 없었어요.</p> : (
+              <div className="mt-3 flex items-baseline justify-center gap-1.5">
+                <span className="text-[64px] font-bold leading-none tracking-[-2px] text-[#D9743D] tabular-nums">{analysisResult.sessionScore}</span>
+                <span className="text-[14px] font-semibold text-[#A38670]">/ 100</span>
+              </div>
+            )}
+            <p className="m-0 mt-2 text-[12px] font-medium text-[#9A7E67]">{analysisResult.validZoneCount}개 구역 분석 기준</p>
+          </div>
+        )}
+        {analysisResult && analysisResult.invalidZones.length > 0 && (
+          <div className="w-full rounded-[16px] bg-[#FFF5E4] px-4 py-3">
+            <p className="m-0 text-[12px] font-bold text-[#9A6C28]">다시 촬영하면 좋아요</p>
+            <p className="m-0 mt-1 text-[12px] font-medium text-[#8A744F] break-keep">{analysisResult.invalidZones.map((z) => zoneInfo(z)?.label ?? z).join(', ')} 구역</p>
+          </div>
+        )}
+        <details className="w-full text-center group">
+          <summary className="mx-auto w-fit flex items-center gap-1.5 cursor-pointer list-none rounded-full px-3 py-2 text-[13px] font-semibold text-[#8C6D58] hover:bg-white/50 [&::-webkit-details-marker]:hidden">촬영한 구역 {capturedZones.length}개<ChevronDown size={14} className="transition-transform group-open:rotate-180" /></summary>
+          <div className="flex flex-wrap justify-center gap-1.5 mt-3">
+            {capturedZones.map((zone) => <span key={zone} className="rounded-full bg-[#F6E7D7] px-2.5 py-1.5 text-[12px] font-semibold text-[#956A4D]">{zoneInfo(zone)?.fullLabel ?? zone}</span>)}
+          </div>
+        </details>
+      </div>
+      <div className="px-6 pb-[max(24px,env(safe-area-inset-bottom))] flex flex-col gap-2 mt-7">
+        <button type="button" onClick={onNext} className="group w-full h-14 rounded-[18px] bg-gradient-to-r from-[#D87943] to-[#E5945E] border border-[#D87943]/20 text-white text-[16px] font-bold flex items-center justify-center gap-2 shadow-[0_4px_12px_rgba(169,96,50,0.12)] transition-[filter,transform] hover:brightness-105 active:scale-[0.99] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B96636]">분석 결과 보기<ChevronRight size={18} strokeWidth={2.5} className="transition-transform group-hover:translate-x-0.5" /></button>
+        <button type="button" onClick={onReset} className="mx-auto px-4 h-11 text-[13px] font-semibold text-[#8C6D58] rounded-full hover:bg-white/40 transition-colors">다시 스캔하기</button>
       </div>
     </div>
   );
 }
-
-// 기기는 한 번 누르면 백색·UV 두 컷을 찍는다. 웹캠은 UV가 없어 백색만 나온다
 interface Shot {
   white: Blob;
   uv: Blob | null;
@@ -852,6 +717,7 @@ export default function ScanPage() {
   const {
     answered: toothProfileSet,
     profileLoaded,
+    missing,
     hydrate: hydrateDentition,
   } = useDentitionStore();
   const [capturedZones, setCapturedZones] = useState<ViewType[]>([]);
@@ -861,6 +727,7 @@ export default function ScanPage() {
   const [isCapturing, setIsCapturing] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [captureError, setCaptureError] = useState<string | null>(null);
+  const [shutterNotice, setShutterNotice] = useState<string | null>(null);
   const [checked, setChecked] = useState(false);
   const [showExitModal, setShowExitModal] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
@@ -1045,13 +912,18 @@ export default function ScanPage() {
     [currentZone, sessionId],
   );
 
-  // 기기 셔터 버튼으로 찍은 컷도 웹 버튼과 같은 확인 화면으로 넘긴다
+  // 기기 셔터 컷도 같은 확인 화면
   useHardwareShutter({
     host: cameraMode === 'esp32' && scannerAddress ? controlHost(scannerAddress) : null,
-    enabled: step === 2 && !pending,
-    onCapture: (shot) => {
-      void acceptShot(shot);
-      restartStream();
+    enabled: step === 2 && !pending && !isCapturing,
+    onError: setShutterNotice,
+    onCapture: async (shot) => {
+      setCaptureError(null);
+      try {
+        await acceptShot(shot);
+      } finally {
+        restartStream();
+      }
     },
   });
 
@@ -1218,6 +1090,7 @@ export default function ScanPage() {
     return (
       <CaptureReview
         previewUrl={pending.previewUrl}
+        mirrored={cameraMode === 'device'}
         quality={pending.quality}
         zoneLabel={zoneInfo(pending.zone)?.fullLabel ?? ''}
         isUploading={isUploading}
@@ -1227,7 +1100,7 @@ export default function ScanPage() {
         onConfirm={handleConfirmShot}
       />
     );
-  }, [pending, selectedZones, capturedZones, isUploading, captureError, handleRetake, handleConfirmShot]);
+  }, [pending, selectedZones, capturedZones, isUploading, captureError, handleRetake, handleConfirmShot, cameraMode]);
 
   return (
     <div>
@@ -1294,12 +1167,15 @@ export default function ScanPage() {
           imgRef={imgRef}
           isReady={isReady}
           cameraError={cameraError}
+          captureError={captureError}
+          shutterNotice={shutterNotice}
           cameraMode={cameraMode}
           status={detectedStatus}
           ledMode={ledMode}
           selectedZones={selectedZones}
           capturedZones={capturedZones}
           currentZone={currentZone}
+          missingTeeth={missing}
           surface={surface}
           onSurfaceChange={setSurface}
           onZoneClick={handleNavigateZone}
