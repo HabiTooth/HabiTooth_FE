@@ -60,7 +60,7 @@ const sortZones = (picked: ViewType[]): ViewType[] => {
   return SCAN_ZONES.filter((z) => set.has(z.viewType)).map((z) => z.viewType);
 };
 
-// BE AI 분석 구현 전까지 쓰는 테스트용 데이터
+// 테스트용 분석 데이터
 const mockScore = (v: ViewType) => 68 + ((v.length * 7 + v.charCodeAt(0)) % 25);
 const mockAnalysisResult = (zones: ViewType[]): SessionAnalyzeResult => {
   const scores = zones.map(mockScore);
@@ -840,7 +840,7 @@ export default function ScanPage() {
 
   const captureShot = useCallback(async (zone: ViewType): Promise<Shot> => {
     if (cameraMode === 'esp32' && scannerAddress) {
-      // 기기 셔터와 같은 결과가 되도록 웹 버튼도 두 광원을 연달아 찍는다
+      // 웹 버튼도 두 광원 연속 촬영
       const white = await snap(zone, 'white');
       const uv = await snap(zone, 'uv');
       return { white, uv };
@@ -856,7 +856,7 @@ export default function ScanPage() {
     return { white, uv: null };
   }, [cameraMode, scannerAddress, videoRef, snap]);
 
-  // 기기가 풀해상도로 한 컷 잡는 동안 스트림이 끊겨서, 촬영 뒤에는 다시 붙여줘야 함
+  // 촬영 중 스트림 끊김. 촬영 후 재연결
   const restartStream = useCallback(() => {
     if (cameraMode === 'esp32' && scannerAddress) {
       startCameraRef.current('esp32', streamUrl(scannerAddress));
@@ -867,12 +867,12 @@ export default function ScanPage() {
     async (shot: Shot) => {
       if (!currentZone) return;
       const zone = currentZone;
-      // 판정이랑 미리보기는 눈으로 보는 백색 컷 기준
+      // 판정·미리보기는 백색 컷 기준
       const blob = shot.white;
       const local = await evaluateCaptureBlob(blob);
       const previewUrl = URL.createObjectURL(blob);
 
-      // 로컬은 힌트일 뿐이라 걸렸어도 서버에 물어본다. 세션이 없을 때만 로컬 판정으로 끝냄
+      // 로컬 판정은 힌트. 서버 판정 우선. 세션 없을 때만 로컬로 종료
       const ask = sessionId !== null && sessionId !== DEV_SESSION_ID;
       setPending({
         zone,
@@ -912,7 +912,7 @@ export default function ScanPage() {
         }
         settle(applyServerVerdict(local, res.data.result ?? null));
       } catch (e) {
-        // 막지는 않되, 확인 못 했다는 건 화면에 밝힌다
+        // 확인 못 한 건 화면에 표시
         const status = axios.isAxiosError(e) ? e.response?.status : undefined;
         const body = axios.isAxiosError(e) ? e.response?.data : undefined;
         console.error(`[화질판정] 실패 ${zone} · status ${status ?? '응답 없음'}`, body ?? e);
@@ -956,8 +956,7 @@ export default function ScanPage() {
     }
   }, [isCapturing, isReady, currentZone, pending, captureShot, acceptShot, restartStream]);
 
-  // 촬영 시점에 이미 스트림을 다시 붙였고, 확인 화면은 그 위를 덮기만 함.
-  // 여기서 또 붙이면 붙는 중인 연결을 끊어서 화면이 멈춘다
+  // 스트림은 촬영 시점에 재연결됨. 여기서 또 붙이면 화면 멈춤
   const handleRetake = useCallback(() => {
     setPending((prev) => {
       if (prev) URL.revokeObjectURL(prev.previewUrl);
@@ -1049,7 +1048,7 @@ export default function ScanPage() {
       .analyzeSession(sessionId)
       .then((res: { data: { result: SessionAnalyzeResult } }) => {
         setAnalysisResult(res.data.result);
-        // 서버가 분석 커밋 직후 알림을 만들어 두므로 그걸 받아와 띄운다
+        // 분석 직후 생성된 알림 표시
         void refreshNotifications({ popNew: true });
         clearInterval(t);
         setAnalyzeStep(ANALYZE_STEPS.length + 1);
@@ -1140,7 +1139,7 @@ export default function ScanPage() {
               setStep(2);
             };
             try {
-              // 이 브라우저에 deviceId가 없으면 서버에 등록된 기기를 찾아서 씀
+              // deviceId 없으면 서버 등록 기기 사용
               let id = deviceId;
               if (id === null) {
                 const status = await deviceApi.getStatus().catch(() => null);
@@ -1154,7 +1153,7 @@ export default function ScanPage() {
               enterScan(res.data.result);
             } catch (e) {
               console.error('세션 생성 실패:', e);
-              // 결손치를 모르면 AI 번호 매핑이 틀어져서 BE가 세션 생성부터 막는다
+              // 결손치 미등록 시 BE 세션 생성 실패
               const code = axios.isAxiosError(e)
                 ? (e.response?.data as { code?: string } | undefined)?.code
                 : undefined;
