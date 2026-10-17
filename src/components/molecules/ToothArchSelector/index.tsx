@@ -1,185 +1,11 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { Check } from 'lucide-react';
+import { useId, useState } from 'react';
+import { Check, Hand, Info } from 'lucide-react';
 import type { ViewType } from '@/lib/api/scan';
-import { toothToZone } from '@/constants/scanZones';
+import { toothToZone, SCAN_ZONES } from '@/constants/scanZones';
 
 export type Surface = 'LINGUAL' | 'BUCCAL';
-
-type Arch = 'upper' | 'lower';
-type ToothState = 'locked' | 'current' | 'captured' | 'selected' | 'idle';
-
-const C = {
-  gum: '#E7A3AF',
-  gumMuted: '#DFE5EC',
-  tooth: '#FFFFFF',
-  toothLine: '#C6D3E2',
-  locked: '#EDF1F6',
-  lockedLine: '#DDE4EC',
-  selected: '#E1EDF8',
-  primary: '#4A86D9',
-  success: '#4BC8A0',
-};
-
-const UPPER_W = [
-  { n: 1, w: 44, r: 12 }, { n: 2, w: 35, r: 11 }, { n: 3, w: 32, r: 10 }, { n: 4, w: 28, r: 9 },
-  { n: 5, w: 25, r: 9 },  { n: 6, w: 23, r: 8 },  { n: 7, w: 19, r: 7 },  { n: 8, w: 15, r: 6 },
-];
-const LOWER_W = [
-  { n: 1, w: 33, r: 10 }, { n: 2, w: 33, r: 10 }, { n: 3, w: 34, r: 10 }, { n: 4, w: 29, r: 9 },
-  { n: 5, w: 26, r: 9 },  { n: 6, w: 24, r: 8 },  { n: 7, w: 20, r: 7 },  { n: 8, w: 16, r: 6 },
-];
-
-const SHAPE: Record<string, { h: number[]; incisal: (p: number) => number; gum: (p: number) => number }> = {
-  'BUCCAL:upper': {
-    h: [60, 54, 50, 45, 41, 37, 33, 28],
-    incisal: (p) => 208 - 28 * Math.pow(p, 1.7),
-    gum: (p) => 138 + 4 * Math.pow(p, 1.7),
-  },
-  'BUCCAL:lower': {
-    h: [46, 48, 48, 45, 42, 40, 37, 32],
-    incisal: (p) => 232 - 14 * Math.pow(p, 1.7),
-    gum: (p) => 288 - 28 * Math.pow(p, 1.7),
-  },
-  'LINGUAL:upper': {
-    h: [50, 46, 43, 40, 37, 34, 31, 27],
-    incisal: (p) => 188 + 26 * Math.pow(p, 1.7),
-    gum: (p) => 130 + 49 * Math.pow(p, 1.7),
-  },
-  'LINGUAL:lower': {
-    h: [44, 46, 46, 44, 41, 39, 36, 32],
-    incisal: (p) => 214 + 34 * Math.pow(p, 1.7),
-    gum: (p) => 266 + 22 * Math.pow(p, 1.7),
-  },
-};
-
-const CX = 320;
-const GAP = 3.5;
-const GUM_W = 32;
-const VIEWBOX = { x: 52, y: 110, w: 536, h: 200 };
-
-function toothPath(cx: number, yGing: number, w: number, h: number, r: number, gs: number) {
-  const yInc = yGing - gs * h;
-  const wg = w * 0.94;
-  const x0g = cx - wg / 2;
-  const x1g = cx + wg / 2;
-  const x0i = cx - w / 2;
-  const x1i = cx + w / 2;
-  const rg = Math.min(r * 0.55, wg / 2.2);
-  const ri = Math.min(r, w / 2.2);
-  const d = -gs;
-  return [
-    `M ${(x0g + rg).toFixed(1)} ${yGing.toFixed(1)}`,
-    `L ${(x1g - rg).toFixed(1)} ${yGing.toFixed(1)}`,
-    `Q ${x1g.toFixed(1)} ${yGing.toFixed(1)} ${x1g.toFixed(1)} ${(yGing + d * rg).toFixed(1)}`,
-    `L ${x1i.toFixed(1)} ${(yInc - d * ri).toFixed(1)}`,
-    `Q ${x1i.toFixed(1)} ${yInc.toFixed(1)} ${(x1i - ri).toFixed(1)} ${yInc.toFixed(1)}`,
-    `L ${(x0i + ri).toFixed(1)} ${yInc.toFixed(1)}`,
-    `Q ${x0i.toFixed(1)} ${yInc.toFixed(1)} ${x0i.toFixed(1)} ${(yInc - d * ri).toFixed(1)}`,
-    `L ${x0g.toFixed(1)} ${(yGing + d * rg).toFixed(1)}`,
-    `Q ${x0g.toFixed(1)} ${yGing.toFixed(1)} ${(x0g + rg).toFixed(1)} ${yGing.toFixed(1)}`,
-    'Z',
-  ].join(' ');
-}
-
-function smooth(pts: { x: number; y: number }[]) {
-  if (pts.length < 2) return '';
-  let d = `M ${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)}`;
-  for (let i = 0; i < pts.length - 1; i++) {
-    const p0 = pts[i - 1] || pts[i];
-    const p1 = pts[i];
-    const p2 = pts[i + 1];
-    const p3 = pts[i + 2] || p2;
-    const c1 = { x: p1.x + (p2.x - p0.x) / 6, y: p1.y + (p2.y - p0.y) / 6 };
-    const c2 = { x: p2.x - (p3.x - p1.x) / 6, y: p2.y - (p3.y - p1.y) / 6 };
-    d += ` C ${c1.x.toFixed(1)} ${c1.y.toFixed(1)} ${c2.x.toFixed(1)} ${c2.y.toFixed(1)} ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`;
-  }
-  return d;
-}
-
-interface Tooth {
-  fdi: number;
-  n: number;
-  p: number;
-  cx: number;
-  yInc: number;
-  yGing: number;
-  w: number;
-  h: number;
-  gs: number;
-  rot: number;
-  zone: ViewType | null;
-  d: string;
-}
-
-function buildArch(arch: Arch, surface: Surface): Tooth[] {
-  const base = arch === 'upper' ? UPPER_W : LOWER_W;
-  const shape = SHAPE[`${surface}:${arch}`];
-  const gs = arch === 'upper' ? -1 : 1;
-  const tilt = surface === 'BUCCAL' ? 1 : -1;
-  const scale = (n: number) => (surface === 'LINGUAL' ? (n >= 4 ? 1.06 : 0.93) : 1);
-
-  const sized = base.map((t, i) => ({ ...t, w: t.w * scale(t.n), h: shape.h[i] }));
-  const total = sized.reduce((a, t) => a + t.w + GAP, 0);
-
-  const teeth: Tooth[] = [];
-  for (const dir of [-1, 1]) {
-    let edge = 0;
-    for (const t of sized) {
-      const off = edge + t.w / 2;
-      edge += t.w + GAP;
-      const p = off / total;
-      const cx = CX + dir * off;
-      const yInc = shape.incisal(p);
-      const yGing = yInc + gs * t.h;
-      const quadrant = arch === 'upper' ? (dir === -1 ? 2 : 1) : dir === -1 ? 3 : 4;
-      const fdi = quadrant * 10 + t.n;
-      teeth.push({
-        fdi,
-        n: t.n,
-        p,
-        cx,
-        yInc,
-        yGing,
-        w: t.w,
-        h: t.h,
-        gs,
-        rot: dir * 8 * Math.pow(p, 1.4) * (gs === -1 ? 1 : -1) * tilt,
-        zone: toothToZone(fdi, surface),
-        d: toothPath(cx, yGing, t.w, t.h, t.r, gs),
-      });
-    }
-  }
-  return teeth.sort((a, b) => a.cx - b.cx);
-}
-
-const gumPath = (teeth: Tooth[], arch: Arch, surface: Surface) =>
-  smooth(teeth.map((t) => ({ x: t.cx, y: SHAPE[`${surface}:${arch}`].gum(t.p) })));
-
-function LingualDetail({ t, tone }: { t: Tooth; tone: string }) {
-  const d = -t.gs;
-  if (t.n <= 3) {
-    return <ellipse cx={t.cx} cy={t.yGing + d * t.h * 0.38} rx={t.w * 0.2} ry={t.h * 0.11} fill={tone} />;
-  }
-  const count = t.n >= 6 ? 3 : 2;
-  const y = t.yInc - d * 12;
-  return (
-    <g fill={tone}>
-      {Array.from({ length: count }).map((_, i) => (
-        <rect
-          key={i}
-          x={t.cx + (i - (count - 1) / 2) * (t.w / (count + 0.6)) - 0.9}
-          y={Math.min(y, y + 7)}
-          width="1.8"
-          height="7"
-          rx="0.9"
-        />
-      ))}
-    </g>
-  );
-}
-
 export interface ToothArchSelectorProps {
   surface: Surface;
   onSurfaceChange: (s: Surface) => void;
@@ -190,6 +16,46 @@ export interface ToothArchSelectorProps {
   lockUnselected?: boolean;
   className?: string;
   compact?: boolean;
+  mode?: 'selection' | 'capture';
+}
+
+function archTeeth(lower: boolean, surface: Surface) {
+  const positions = [
+    [108, 57, 22, 29, -4],
+    [85, 62, 20, 27, -17],
+    [65, 76, 20, 28, -33],
+    [50, 95, 22, 23, -53],
+    [40, 118, 23, 24, -70],
+    [35, 144, 26, 27, -82],
+    [33, 173, 27, 28, -88],
+    [34, 203, 26, 27, -92],
+  ];
+  return Array.from({ length: 16 }, (_, i) => {
+    const quadrant = lower ? (i < 8 ? 3 : 4) : i < 8 ? 2 : 1;
+    const n = i < 8 ? 8 - i : i - 7;
+    const [x, y, width, height, rotation] = positions[n - 1];
+    const left = i < 8;
+    const upperRotation = left ? rotation : -rotation;
+    const fdi = quadrant * 10 + n;
+    return {
+      fdi,
+      n,
+      lower,
+      width,
+      height,
+      zone: toothToZone(fdi, surface),
+      x: (lower ? 240 : 0) + (left ? x : 240 - x),
+      y: lower ? 260 - y : y,
+      rotation: lower ? 180 - upperRotation : upperRotation,
+    };
+  });
+}
+
+function crownPath(n: number) {
+  if (n <= 2) return 'M-9-13Q0-16 9-13C12-10 8 8 5 12Q0 16-5 12C-8 8-12-10-9-13Z';
+  if (n === 3) return 'M0-15C4-14 10-6 10 0C10 7 5 13 0 14C-5 13-10 7-10 0C-10-6-4-14 0-15Z';
+  if (n <= 5) return 'M-8-10C-3-14 6-13 10-6C14 1 9 10 2 12C-6 14-12 7-12 0Q-12-6-8-10Z';
+  return 'M-10-12C-6-15-3-12 0-12C4-12 7-15 11-11C15-7 13 0 13 6C13 12 8 14 2 14C-5 15-12 13-13 7C-14 0-15-7-10-12Z';
 }
 
 export default function ToothArchSelector({
@@ -202,147 +68,219 @@ export default function ToothArchSelector({
   lockUnselected = false,
   className = '',
   compact = false,
+  mode = 'selection',
 }: ToothArchSelectorProps) {
-  const [hover, setHover] = useState<ViewType | null>(null);
-
-  const upper = useMemo(() => buildArch('upper', surface), [surface]);
-  const lower = useMemo(() => buildArch('lower', surface), [surface]);
-  const selectedSet = useMemo(() => new Set(selected), [selected]);
-  const capturedSet = useMemo(() => new Set(captured), [captured]);
-
-  const stateOf = (zone: ViewType | null): ToothState => {
-    if (!zone) return 'locked';
-    if (lockUnselected && !selectedSet.has(zone)) return 'locked';
-    if (zone === current) return 'current';
-    if (capturedSet.has(zone)) return 'captured';
-    if (selectedSet.has(zone)) return 'selected';
-    return 'idle';
-  };
-
-  const fillOf = (zone: ViewType | null) => {
-    switch (stateOf(zone)) {
-      case 'captured': return C.success;
-      case 'current': return C.primary;
-      case 'selected': return C.selected;
-      case 'locked': return C.locked;
-      default: return zone === hover ? C.selected : C.tooth;
-    }
-  };
-
-  const lineOf = (zone: ViewType | null) => {
-    switch (stateOf(zone)) {
-      case 'captured': return C.success;
-      case 'current':
-      case 'selected': return C.primary;
-      case 'locked': return C.lockedLine;
-      default: return C.toothLine;
-    }
-  };
-
-  const toneOf = (zone: ViewType | null) => {
-    const s = stateOf(zone);
-    return s === 'captured' || s === 'current' ? 'rgba(255,255,255,.5)' : 'rgba(45,49,66,.14)';
-  };
-
-  const spot = useMemo(() => {
-    if (!current) return null;
-    const list = [...upper, ...lower].filter((t) => t.zone === current);
-    if (!list.length) return null;
-    const xs = list.flatMap((t) => [t.cx - t.w / 2, t.cx + t.w / 2]);
-    const ys = list.flatMap((t) => [Math.min(t.yGing, t.yInc), Math.max(t.yGing, t.yInc)]);
-    const pad = 9;
-    return {
-      x: Math.min(...xs) - pad,
-      y: Math.min(...ys) - pad,
-      w: Math.max(...xs) - Math.min(...xs) + pad * 2,
-      h: Math.max(...ys) - Math.min(...ys) + pad * 2,
-    };
-  }, [current, upper, lower]);
-
-  const renderArch = (teeth: Tooth[], arch: Arch) => (
-    <g>
-      <path
-        d={gumPath(teeth, arch, surface)}
-        fill="none"
-        stroke={C.gum}
-        strokeWidth={GUM_W}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      {teeth.map((t) => {
-        const locked = stateOf(t.zone) === 'locked';
-        return (
-          <g
-            key={t.fdi}
-            transform={`rotate(${t.rot.toFixed(2)} ${t.cx.toFixed(1)} ${t.yGing.toFixed(1)})`}
-            onMouseEnter={() => { if (!locked) setHover(t.zone); }}
-            onMouseLeave={() => setHover(null)}
-            onClick={() => { if (!locked && t.zone) onZoneClick(t.zone); }}
-            style={{ cursor: locked ? 'not-allowed' : 'pointer' }}
-          >
-            <path
-              d={t.d}
-              fill={fillOf(t.zone)}
-              stroke={lineOf(t.zone)}
-              strokeWidth={1.2}
-              style={{ transition: 'fill .22s ease, stroke .22s ease' }}
-            />
-            {surface === 'LINGUAL' && <LingualDetail t={t} tone={toneOf(t.zone)} />}
-          </g>
-        );
-      })}
-    </g>
-  );
+  const uid = useId().replace(/:/g, '');
+  const [lastZone, setLastZone] = useState<ViewType | null>(null);
+  const selectedSet = new Set(selected);
+  const capturedSet = new Set(captured);
+  const teeth = [...archTeeth(false, surface), ...archTeeth(true, surface)];
+  const zones = [
+    ...new Set(teeth.map((t) => t.zone).filter((zone): zone is ViewType => zone !== null)),
+  ];
+  const nameOf = (zone: ViewType) => SCAN_ZONES.find((z) => z.viewType === zone)?.fullLabel ?? zone;
 
   return (
     <div className={`flex flex-col items-center ${className}`}>
-      <div className="flex items-center gap-1 p-0.5 rounded-full bg-hairline/70">
-        {([
-          ['BUCCAL', '바깥쪽 (협측)'],
-          ['LINGUAL', '안쪽 (설측)'],
-        ] as const).map(([value, label]) => (
+      <div className="grid grid-cols-2 gap-1 p-1 rounded-full bg-[#EDF3FA] w-full max-w-[300px]">
+        {(
+          [
+            ['LINGUAL', '안쪽'],
+            ['BUCCAL', '바깥쪽'],
+          ] as const
+        ).map(([value, label]) => (
           <button
             key={value}
             type="button"
-            onClick={() => onSurfaceChange(value)}
-            className={`px-3 py-1 rounded-full text-[11px] font-semibold transition-colors ${
-              surface === value ? 'bg-white text-primary shadow-sm' : 'text-muted'
-            }`}
+            aria-pressed={surface === value}
+            onClick={() => {
+              setLastZone(null);
+              onSurfaceChange(value);
+            }}
+            className={`rounded-full py-1.5 text-[12px] font-bold transition-colors ${surface === value ? 'bg-white text-[#397BCB] shadow-sm' : 'text-[#7589A3]'}`}
           >
             {label}
           </button>
         ))}
       </div>
-
+      {surface === 'BUCCAL' && (
+        <div className="mt-3 flex items-center justify-center gap-1.5 text-[12px] font-semibold leading-relaxed text-[#7186A3]" role="note">
+          <Info size={13} className="shrink-0" aria-hidden />
+          <span>위아래 함께 · 총 3구역</span>
+        </div>
+      )}
       <svg
-        viewBox={`${VIEWBOX.x} ${VIEWBOX.y} ${VIEWBOX.w} ${VIEWBOX.h}`}
-        className={`w-full ${compact ? 'max-h-[136px]' : 'max-h-[180px]'}`}
+        viewBox="0 0 480 224"
+        className={`w-full mt-2 ${compact ? 'max-h-[152px]' : 'max-h-[218px]'}`}
         role="group"
-        aria-label="촬영 구역 선택"
+        aria-label={`${surface === 'LINGUAL' ? '안쪽' : '바깥쪽'} 촬영 구역 선택`}
       >
-        {spot && (
-          <rect x={spot.x} y={spot.y} width={spot.w} height={spot.h} rx="16" fill={C.primary} opacity="0.1" />
-        )}
-        {renderArch(upper, 'upper')}
-        {renderArch(lower, 'lower')}
+        <defs>
+          <linearGradient id={`${uid}-ivory`} x1="0" y1="0" x2="0.25" y2="1">
+            <stop stopColor="#FFFFFF" />
+            <stop offset=".5" stopColor="#F5FAFF" />
+            <stop offset="1" stopColor="#DBEBFF" />
+          </linearGradient>
+          <linearGradient id={`${uid}-selected`} x1="0" y1="0" x2="0" y2="1">
+            <stop stopColor="#AFD4FF" />
+            <stop offset="1" stopColor="#609FFF" />
+          </linearGradient>
+          <linearGradient id={`${uid}-done`} x1="0" y1="0" x2="0" y2="1">
+            <stop stopColor="#D4F3EA" />
+            <stop offset="1" stopColor="#9CDCCC" />
+          </linearGradient>
+          <linearGradient id={`${uid}-active`} x1="0" y1="0" x2="0" y2="1">
+            <stop stopColor="#FFDB9A" />
+            <stop offset="1" stopColor="#F2AA4C" />
+          </linearGradient>
+          <radialGradient id={`${uid}-light`} cx="35%" cy="20%" r="80%">
+            <stop stopColor="#FFFFFF" stopOpacity=".5" />
+            <stop offset="1" stopColor="#FFFFFF" stopOpacity="0" />
+          </radialGradient>
+        </defs>
+        <text x="120" y="26" textAnchor="middle" fill="#405571" fontSize="17" fontWeight="700">
+          윗니
+        </text>
+        <text x="360" y="26" textAnchor="middle" fill="#405571" fontSize="17" fontWeight="700">
+          아랫니
+        </text>
+        <text x="120" y="150" textAnchor="middle" fill="#91A3B9" fontSize="12" fontWeight="500">
+          {surface === 'LINGUAL' ? '안쪽 면' : '바깥 면'}
+        </text>
+        <text x="360" y="122" textAnchor="middle" fill="#91A3B9" fontSize="12" fontWeight="500">
+          {surface === 'LINGUAL' ? '안쪽 면' : '바깥 면'}
+        </text>
+        {zones.map((zone) => {
+          const locked = lockUnselected && !selectedSet.has(zone);
+          const active = current === zone;
+          const done = capturedSet.has(zone);
+          const picked = selectedSet.has(zone);
+          const fill = locked
+            ? '#F1F5FA'
+            : `url(#${uid}-${active ? 'active' : done ? 'done' : picked ? 'selected' : 'ivory'})`;
+          const stroke = locked
+            ? '#DCE6F1'
+            : active
+              ? '#D58B2B'
+              : done
+                ? '#82CDB9'
+                : picked
+                  ? '#6AA7F4'
+                  : '#ACCFF7';
+          return (
+            <g
+              key={zone}
+              role="button"
+              tabIndex={locked ? -1 : 0}
+              aria-disabled={locked}
+              aria-pressed={picked}
+              aria-current={active ? 'step' : undefined}
+              aria-label={`${nameOf(zone)}${done ? ', 촬영 완료' : ''}${active ? ', 현재 촬영 중' : ''}`}
+              onClick={() => {
+                if (!locked) {
+                  setLastZone(zone);
+                  onZoneClick(zone);
+                }
+              }}
+              onKeyDown={(e) => {
+                if (!locked && (e.key === 'Enter' || e.key === ' ')) {
+                  e.preventDefault();
+                  setLastZone(zone);
+                  onZoneClick(zone);
+                }
+              }}
+              className="outline-none [&:focus-visible_path]:stroke-[#255BA4] [&:focus-visible_path]:stroke-[3]"
+              style={{ cursor: locked ? 'not-allowed' : 'pointer' }}
+            >
+              <title>{nameOf(zone)}</title>
+              {teeth
+                .filter((t) => t.zone === zone)
+                .map((t) => {
+                  return (
+                    <g
+                      key={t.fdi}
+                      data-tooth={t.fdi}
+                      transform={`translate(${t.x} ${t.y}) rotate(${t.rotation}) scale(${t.width / (t.n <= 3 ? 22 : 28)} ${t.height / 30})`}
+                      opacity={locked ? 0.65 : 1}
+                    >
+                      <path
+                        d={crownPath(t.n)}
+                        fill={fill}
+                        stroke={stroke}
+                        strokeWidth={active ? 2 : 1.1}
+                        strokeDasharray={locked ? '2 2' : undefined}
+                        strokeLinejoin="round"
+                      />
+                      <path d={crownPath(t.n)} fill={`url(#${uid}-light)`} pointerEvents="none" />
+                      {t.n <= 2 && (
+                        <path
+                          d="M-7-11Q0-13 7-11"
+                          fill="none"
+                          stroke="white"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          opacity=".85"
+                          pointerEvents="none"
+                        />
+                      )}
+                      {t.n >= 4 && !active && (
+                        <path
+                          d={t.n >= 6 ? 'M-4 1Q0-1 4 0' : 'M-2 0Q0-1 2 0'}
+                          fill="none"
+                          stroke={picked || active || done ? '#FFFFFF' : '#A5C8EF'}
+                          strokeWidth=".9"
+                          strokeLinecap="round"
+                          opacity=".75"
+                          pointerEvents="none"
+                        />
+                      )}
+                      {active && <g fill="none" stroke="#885111" strokeWidth="1.3" pointerEvents="none"><rect x="-5" y="-3" width="10" height="7" rx="2" /><path d="M-2-3v-1h4v1" /><circle cx="0" cy=".5" r="1.6" /></g>}
+                      {done && !active && (
+                        <path
+                          d="M-3 4l2 2 4-4"
+                          fill="none"
+                          stroke="#378E73"
+                          strokeWidth="1.4"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          pointerEvents="none"
+                        />
+                      )}
+                    </g>
+                  );
+                })}
+            </g>
+          );
+        })}
       </svg>
-
-      <div className={`items-center justify-center gap-3 text-[10px] font-medium text-muted ${compact ? 'hidden' : 'flex'}`}>
-        <span className="flex items-center gap-1">
-          <span className="w-2.5 h-2.5 rounded-[3px] border" style={{ background: C.selected, borderColor: C.primary }} />
-          선택됨
-        </span>
-        <span className="flex items-center gap-1">
-          <span className="w-2.5 h-2.5 rounded-[3px] flex items-center justify-center" style={{ background: C.success }}>
-            <Check size={7} className="text-white" strokeWidth={4} />
+      {mode === 'selection' && (
+        <div className="mt-3 flex w-full items-start gap-2.5 rounded-2xl rounded-tl-md bg-[#EAF3FF] px-3 py-2.5">
+          <Hand size={17} className="mt-0.5 shrink-0 text-[#4D8CE3]" aria-hidden />
+          <div className="min-w-0" role="status" aria-live="polite">
+            <p className="m-0 text-[12px] font-semibold leading-relaxed text-[#3967A1]">
+              {lastZone ? `${nameOf(lastZone)} · ${selectedSet.has(lastZone) ? '선택됨' : '선택 해제'}` : '치아를 눌러 촬영할 구역을 골라주세요'}
+            </p>
+            <p className="m-0 mt-0.5 text-[11px] leading-relaxed text-[#718BAE]">한 번 더 누르면 선택이 해제돼요</p>
+          </div>
+        </div>
+      )}
+      {mode === 'capture' && (
+        <div aria-label="촬영 상태 범례" className="mt-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[11px] font-semibold text-[#7186A3]">
+          <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full border border-dashed border-[#B8C7D9] bg-[#F1F5FA]" />미선택</span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-gradient-to-b from-[#AFD4FF] to-[#609FFF]" />
+            촬영 예정
           </span>
-          촬영 완료
-        </span>
-        <span className="flex items-center gap-1">
-          <span className="w-2.5 h-2.5 rounded-[3px] border" style={{ background: C.locked, borderColor: C.lockedLine }} />
-          {lockUnselected ? '미선택' : '해제됨'}
-        </span>
-      </div>
+          <span className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-full border border-[#D58B2B] bg-gradient-to-b from-[#FFDB9A] to-[#F2AA4C] ring-2 ring-[#FFF1D7]" />
+            촬영 중
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="flex h-3 w-3 items-center justify-center rounded-full bg-[#C4ECDF]"><Check size={10} className="text-[#378E73]" /></span>
+            촬영 완료
+          </span>
+        </div>
+      )}
     </div>
   );
 }
