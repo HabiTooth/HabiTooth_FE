@@ -22,8 +22,9 @@ import {
   estimateMinutes,
   type ScanZone,
 } from '@/constants/scanZones';
-import SandRevealImage from '@/components/atoms/SandRevealImage';
-import ToothIcon from '@/components/atoms/ToothIcon';
+import { GUIDE_OUTLINE, GUIDE_SHOT, guideTip } from '@/constants/scanGuides';
+
+
 import GuideItem from '@/components/molecules/GuideItem';
 import ToothArchSelector, { type Surface } from '@/components/molecules/ToothArchSelector';
 import CameraView from '@/components/organisms/CameraView';
@@ -530,13 +531,22 @@ function Step2({
         cameraError={cameraError}
         cameraMode={cameraMode}
         ledMode={ledMode}
-        archFolded={archFolded}
         status={status}
         onLedToggle={onLedToggle}
         onCapture={onCapture}
         isCapturing={isCapturing}
         onRetry={onRetry}
         reviewOverlay={reviewOverlay}
+        guide={
+          currentZone && info
+            ? {
+                shot: GUIDE_SHOT[currentZone],
+                label: info.fullLabel,
+                tip: guideTip(currentZone, missingTeeth),
+                outline: GUIDE_OUTLINE[currentZone],
+              }
+            : undefined
+        }
       />
     </div>
   );
