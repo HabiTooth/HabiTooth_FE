@@ -515,8 +515,7 @@ export default function ThreeScene({
         LESION_TYPES.forEach((type) => {
           const marker = set[type];
           if (!marker) return;
-          const allowed =
-            (selected ? fdi === selected : idleMarkers) && showRef.current[type];
+          const allowed = (selected ? fdi === selected : idleMarkers) && showRef.current[type];
           marker.visible = Boolean(marker.userData.active) && allowed;
         });
       });
@@ -876,7 +875,7 @@ export default function ThreeScene({
           type="button"
           aria-pressed={inside}
           onClick={() => poseRef.current?.(!inside)}
-          className={`absolute right-3 ${minimal ? 'top-3' : 'top-14'} z-10 rounded-full bg-white/90 px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm`}
+          className={`absolute right-4 ${minimal ? 'top-3 bg-[#173A73]/35 text-white ring-1 ring-white/25 backdrop-blur-md hover:bg-[#173A73]/55' : 'top-14 bg-primary/15 text-primary hover:bg-primary/25'} z-10 rounded-full px-3.5 py-2 text-[13px] font-semibold transition-colors`}
         >
           {inside ? '정면 보기' : '안쪽 보기'}
         </button>

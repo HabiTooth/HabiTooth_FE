@@ -24,15 +24,22 @@ import PageShell from '@/components/organisms/PageShell';
 import ReportHero from '@/components/organisms/ReportHero';
 import { focusText } from '@/components/organisms/ReportSummary/ReportSummary';
 import LLMGuideSection from '@/components/organisms/LLMGuideSection';
-import RiskAnalysisSection from '@/components/organisms/RiskAnalysisSection';
 import CareGuideSection from '@/components/organisms/CareGuideSection';
 import TrendChartSection from '@/components/organisms/TrendChartSection';
 import ChangeSummary from '@/components/organisms/ChangeSummary';
 import NextStepsSection from '@/components/organisms/NextStepsSection';
 import HabitSummarySection from '@/components/organisms/HabitSummarySection';
+import ScoreExplanation from '@/components/organisms/ScoreExplanation';
+import ZoneReportSection from '@/components/organisms/ZoneReportSection';
 import type { ToothAnalysisResult } from '@/components/organisms/OralViewer3D/ThreeScene';
 import type { GuideItem } from '@/components/organisms/LLMGuideSection/LLMGuideSection.types';
-import { reportApi, type LlmReport, type SessionReport, type ToothLesion } from '@/lib/api/report';
+import {
+  reportApi,
+  type LlmReport,
+  type SessionReport,
+  type SessionZoneReport,
+  type ToothLesion,
+} from '@/lib/api/report';
 import { historyApi, type HistoryScoreTrendItem } from '@/lib/api/history';
 import { formatDate, formatShortDate, toSummaryRisk } from '@/lib/score';
 import { ALL_TEETH } from '@/lib/dentition';
@@ -108,6 +115,7 @@ export default function ReportPage() {
   const sessionId = Number(params?.id);
 
   const [report, setReport] = useState<SessionReport | null>(null);
+  const [zoneReport, setZoneReport] = useState<SessionZoneReport | null>(null);
   const [llm, setLlm] = useState<LlmReport | null>(null);
   const [llmLoading, setLlmLoading] = useState(true);
   const [llmFailed, setLlmFailed] = useState(false);
@@ -153,6 +161,16 @@ export default function ReportPage() {
 
   useEffect(() => {
     if (!Number.isFinite(sessionId)) return;
+    let cancelled = false;
+
+    setLlm(null);
+    setZoneReport(null);
+    reportApi
+      .getZoneReport(sessionId)
+      .then((res) => {
+        if (!cancelled) setZoneReport(res.data.result);
+      })
+      .catch(() => {});
 
     reportApi
       .getSessionReport(sessionId)
@@ -168,7 +186,6 @@ export default function ReportPage() {
     setLlmLoading(true);
     setLlmFailed(false);
     setLlmGenerating(false);
-    let cancelled = false;
     const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
     // 저장본 조회. 게이트웨이 오류는 재시도
@@ -342,7 +359,7 @@ export default function ReportPage() {
 
   const aiNote = useMemo(() => {
     if (!selected || !llm || !toothDetail) return null;
-    const items = llm.riskDetail;
+    const items = llm.riskDetail ?? [];
     const lesion = toothDetail.primary ? LESION_LABEL[toothDetail.primary.lesionType] : null;
     const direct = items.find((r) => r.title.includes(`${selected}번`));
     const hit =
@@ -400,6 +417,9 @@ export default function ReportPage() {
   });
 
   const prevScore = trend.length > 1 ? trend[trend.length - 2].score : undefined;
+  const isV2 =
+    llm !== null &&
+    (llm.score != null || llm.interpretation != null || llm.actions != null || llm.notice != null);
 
   const heroMessage = report
     ? focusText(
@@ -412,8 +432,11 @@ export default function ReportPage() {
     <PageShell withNav>
       <ReportHero
         date={formatDate(currentRef?.scannedAt)}
-        score={report?.totalScore ?? null}
-        prevScore={prevScore}
+        score={
+          llm?.score?.total ?? (zoneReport ? zoneReport.sessionScore : (report?.totalScore ?? null))
+        }
+        prevScore={llm?.score ? (llm.score.prevTotal ?? undefined) : prevScore}
+        scoreDelta={llm?.score ? llm.score.delta : undefined}
         message={heroMessage}
         counts={toothCounts}
         analysisResults={analysisResults}
@@ -427,7 +450,7 @@ export default function ReportPage() {
         onBack={() => router.back()}
       />
 
-      <main className="px-5">
+      <main className="px-5 [&_h2]:text-[18px] [&_h2]:font-bold [&_h2]:tracking-[-0.4px]">
         {missingConflicts > 0 && (
           <p className="m-0 mt-4 rounded-xl bg-warning/15 px-4 py-3 text-[12.5px] leading-relaxed text-[#8A5A00]">
             등록한 결손치 자리에서 온 결과 {missingConflicts}개는 제외했어요.{' '}
@@ -437,37 +460,35 @@ export default function ReportPage() {
             에서 결손치 등록이 맞는지 확인해 주세요.
           </p>
         )}
-        <RiskAnalysisSection
-          plaque={report?.summary.totalPlaqueRatio ?? 0}
-          calculus={report?.summary.totalCalculusRatio ?? 0}
-          capturedZones={capturedZones}
-        />
-
-        <LLMGuideSection
-          items={guideItems}
-          isLoading={llmLoading}
-          generating={llmGenerating}
-          failed={llmFailed}
-          onRetry={() => setLlmKey((k) => k + 1)}
-          onToothClick={focusTooth}
-          focusTeeth={focusTeeth}
-        />
-
-        {careGuideItems.length > 0 && <CareGuideSection items={careGuideItems} />}
-
-        <NextStepsSection categories={riskCategories} sessionId={sessionId} />
-
-        {llm?.disclaimer && (
-          <p className="m-0 mt-3 px-1 text-[11px] leading-relaxed text-gray-400">
-            {llm.disclaimer}
-          </p>
+        {zoneReport && (
+          <ZoneReportSection
+            report={zoneReport}
+            selected={selected}
+            onSelect={focusTooth}
+            focusTeeth={focusTeeth}
+            coverage={
+              llm?.score
+                ? { captured: llm.score.capturedZoneCount, total: llm.score.totalZoneCount }
+                : undefined
+            }
+          />
         )}
 
-        <div className="flex items-center gap-3 mt-8 mb-1">
-          <div className="flex-1 h-px bg-hairline" />
-          <span className="text-[11px] font-bold text-muted">시간에 따른 변화</span>
-          <div className="flex-1 h-px bg-hairline" />
-        </div>
+        {isV2 && llm ? (
+          <ScoreExplanation report={llm} section="score" />
+        ) : (
+          <LLMGuideSection
+            items={guideItems}
+            isLoading={llmLoading}
+            generating={llmGenerating}
+            failed={llmFailed}
+            onRetry={() => setLlmKey((k) => k + 1)}
+            onToothClick={focusTooth}
+            focusTeeth={focusTeeth}
+          />
+        )}
+
+        {!isV2 && careGuideItems.length > 0 && <CareGuideSection items={careGuideItems} />}
 
         <TrendChartSection
           data={trend.map((t) => ({ date: formatShortDate(t.date), score: t.score }))}
@@ -476,13 +497,20 @@ export default function ReportPage() {
         {previous !== null && report !== null && (
           <ChangeSummary
             result={diff}
-            scoreDelta={report.totalScore - previous.totalScore}
+            scoreDelta={isV2 ? null : report.totalScore - previous.totalScore}
             previousDate={formatDate(previousRef?.scannedAt)}
             onToothClick={focusTooth}
           />
         )}
 
-        <HabitSummarySection />
+        {isV2 && llm && <ScoreExplanation report={llm} section="actions" />}
+        <NextStepsSection categories={riskCategories} />
+        <HabitSummarySection variant="report" />
+        {llm?.disclaimer && (
+          <p className="mb-0 mt-5 px-1 text-[11px] leading-relaxed text-[#8A94A6]">
+            {llm.disclaimer}
+          </p>
+        )}
       </main>
       <NavBar activeTab="history" />
     </PageShell>
