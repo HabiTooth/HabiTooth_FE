@@ -70,7 +70,7 @@ export default function ProductsPage() {
             src="/images/products/clay/care-shelf-pastel.webp"
             alt=""
             fill
-            sizes="(max-width: 430px) 100vw, 430px"
+            sizes="(max-width: 600px) 100vw, 600px"
             className="object-cover"
             priority
           />

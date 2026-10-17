@@ -20,6 +20,10 @@ module.exports = {
       backgroundImage: {
         'primary-gradient': 'linear-gradient(135deg, #4A86D9 0%, #6BA4E8 100%)',
       },
+      // 앱 프레임 최대 너비. 확대 후 600px
+      maxWidth: {
+        app: '480px',
+      },
       boxShadow: {
         card: '0 4px 20px rgba(74, 134, 217, 0.08)',
         button: '0 4px 16px rgba(74, 134, 217, 0.35)',

@@ -67,7 +67,7 @@ export default function CaptureReview({
         <img
           src={previewUrl}
           alt={`${zoneLabel} 촬영본`}
-          className="block aspect-[4/3] max-h-[28svh] w-full object-contain"
+          className="block aspect-[4/3] max-h-[calc(28svh/var(--app-zoom))] w-full object-contain"
           style={{ transform: mirrored ? 'scaleX(-1)' : undefined }}
         />
 

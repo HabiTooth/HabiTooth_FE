@@ -79,7 +79,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="app-frame max-w-[430px] min-h-svh mx-auto bg-background px-5 pt-[60px] pb-10 flex flex-col relative z-10">
+    <div className="app-frame max-w-app min-h-[calc(100svh/var(--app-zoom))] mx-auto bg-background px-5 pt-[60px] pb-10 flex flex-col relative z-10">
       <div className="aurora-blob-1" />
       <div className="aurora-blob-2" />
       <div className="aurora-blob-3" />

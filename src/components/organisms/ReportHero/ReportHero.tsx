@@ -230,7 +230,7 @@ export default function ReportHero({
       )}
 
       <div
-        className={`relative ${detail ? '' : 'h-[380px]'}`}
+        className={`relative ${detail ? '' : 'h-[380px] sm:h-[300px]'}`}
         style={detail ? { height: heroHeight ?? 520 } : undefined}
       >
         <OralViewer3D

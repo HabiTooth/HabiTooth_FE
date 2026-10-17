@@ -24,7 +24,7 @@ body {
 
 .splash-page {
   width: 100%;
-  max-width: 430px;
+  max-width: 600px;
   height: 100vh;
   height: 100svh;
   margin: 0 auto;
@@ -152,7 +152,20 @@ body {
   }
 }
 
-/* 모니터에서 앱 영역(430px) 바깥을 연한 그림자로 구분한다. 폰 너비에서는 안 보인다 */
+/* 넓은 화면 확대용. svh는 배율로 나눠야 화면 높이 유지 */
+:root {
+  --app-zoom: 1;
+}
+@media (min-width: 640px) {
+  :root {
+    --app-zoom: 1.25;
+  }
+  .app-frame {
+    zoom: var(--app-zoom);
+  }
+}
+
+/* 큰 화면에서 앱 프레임 그림자 */
 @media (min-width: 431px) {
   .app-frame {
     box-shadow:
