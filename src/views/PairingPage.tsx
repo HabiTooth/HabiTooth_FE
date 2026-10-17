@@ -9,7 +9,7 @@ import ListItem from '@/components/molecules/ListItem';
 import type { SignalLevel } from '@/components/atoms/SignalBars';
 import { useAuthStore } from '@/stores/authStore';
 import { deviceApi, DEVICE_MODEL } from '@/lib/api/device';
-import { withStreamPort } from '@/lib/deviceAddress';
+import { CONFIGURED_HOST, controlHost, withStreamPort } from '@/lib/deviceAddress';
 
 interface FoundDevice {
   ip: string;
@@ -51,7 +51,12 @@ const ToothThumb = () => (
   </svg>
 );
 
-const DEMO_DEVICE_IP = withStreamPort(process.env.NEXT_PUBLIC_ESP32_HOST ?? '10.49.238.25');
+function withConfigured(devices: FoundDevice[]): FoundDevice[] {
+  if (!CONFIGURED_HOST) return devices;
+  const ip = controlHost(CONFIGURED_HOST);
+  if (devices.some((d) => d.ip === ip)) return devices;
+  return [...devices, { ip, latencyMs: 0 }];
+}
 
 const HELP_STEPS = [
   '기기 전원 스위치가 켜져 있고 표시등이 들어와 있는지 확인해요.',
@@ -73,9 +78,9 @@ export default function PairingPage() {
     try {
       const r = await fetch('/api/camera/discover');
       const { devices } = await r.json();
-      setFoundDevices(Array.isArray(devices) ? devices : []);
+      setFoundDevices(withConfigured(Array.isArray(devices) ? devices : []));
     } catch {
-      setFoundDevices([]);
+      setFoundDevices(withConfigured([]));
     }
     setScanState('done');
   }, []);
@@ -282,21 +287,6 @@ export default function PairingPage() {
               <Wifi size={18} />
               다시 검색하기
             </button>
-          )}
-
-          {!connectingIp && process.env.NODE_ENV !== 'production' && (
-            <div className="pt-2 border-t border-hairline">
-              <p className="text-[11px] text-muted/60 text-center mb-2">테스트 모드</p>
-              <button
-                type="button"
-                onClick={() => handleWiFiConnect(DEMO_DEVICE_IP)}
-                disabled={scanState === 'scanning'}
-                className="w-full h-[48px] rounded-[12px] border border-primary/40 bg-primary/5 text-primary text-[13px] font-medium flex items-center justify-center gap-2 disabled:opacity-60 hover:bg-primary/10 transition-colors"
-              >
-                <Wifi size={16} />
-                {DEMO_DEVICE_IP}(으)로 연결 (데모)
-              </button>
-            </div>
           )}
         </div>
 
