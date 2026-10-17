@@ -1,4 +1,3 @@
-// 카카오맵 JS SDK는 타입 패키지를 안 주고, 이 앱이 실제로 쓰는 것만 선언함
 declare namespace kakao.maps {
   class LatLng {
     constructor(lat: number, lng: number);
@@ -14,6 +13,7 @@ declare namespace kakao.maps {
   class Map {
     constructor(container: HTMLElement, options: { center: LatLng; level?: number });
     setCenter(latlng: LatLng): void;
+    getCenter(): LatLng;
     setLevel(level: number): void;
     setBounds(bounds: LatLngBounds): void;
     relayout(): void;

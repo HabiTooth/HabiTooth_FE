@@ -7,7 +7,7 @@ export default function TermsPage() {
   const router = useRouter();
 
   return (
-    <div className="max-w-[430px] min-h-svh mx-auto bg-background px-5 pt-[56px] pb-10 flex flex-col relative z-10">
+    <div className="app-frame max-w-[430px] min-h-svh mx-auto bg-background px-5 pt-[56px] pb-10 flex flex-col relative z-10">
       <div className="aurora-blob-1" />
       <div className="aurora-blob-2" />
       <div className="aurora-blob-3" />

@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowDownUp, ChevronLeft, ChevronRight } from 'lucide-react';
 import NavBar from '@/components/organisms/NavBar';
+import PageShell from '@/components/organisms/PageShell';
+import ConfirmSheet from '@/components/molecules/ConfirmSheet';
 import { useSessionIndex } from '@/hooks/useSessionIndex';
 import {
   historyApi,
@@ -14,7 +15,10 @@ import {
 } from '@/lib/api/history';
 import { userApi } from '@/lib/api/user';
 import type { RiskLevel } from '@/lib/api/common';
-import { RISK_LABEL, formatDate } from '@/lib/score';
+import { RISK_TAG } from '@/lib/lesionRisk';
+import { RISK_MODEL_FILL } from '@/lib/riskColors';
+import { formatDate, scoreGrade } from '@/lib/score';
+import PageHeader from '@/components/molecules/PageHeader';
 
 const PERIOD_LABELS: Record<HistoryPeriodFilter, string> = {
   ALL: '전체',
@@ -23,27 +27,32 @@ const PERIOD_LABELS: Record<HistoryPeriodFilter, string> = {
   SIX_MONTHS: '6개월',
 };
 
+const SCORE_ORDER: HistoryScoreFilter[] = ['ALL', 'HIGH', 'MEDIUM', 'LOW'];
 const SCORE_LABELS: Record<HistoryScoreFilter, string> = {
-  ALL: '전체',
-  HIGH: '80점↑',
+  ALL: '모든 점수',
+  HIGH: '80점 이상',
   MEDIUM: '70~79점',
-  LOW: '70점↓',
+  LOW: '70점 미만',
 };
 
-function riskColor(level: RiskLevel) {
-  if (level === 'CRITICAL' || level === 'HIGH') return 'text-danger';
-  if (level === 'MEDIUM') return 'text-[#B87F00]';
-  return 'text-success';
-}
+const GRADE_STYLE: Record<string, string> = {
+  A: 'bg-success/15 text-success',
+  B: 'bg-primary/15 text-primary',
+  C: 'bg-warning/20 text-[#B87F00]',
+  D: 'bg-warning/20 text-[#B87F00]',
+  F: 'bg-danger/15 text-danger',
+};
 
-function scoreColor(score: number) {
-  if (score >= 80) return 'bg-success/15 text-success';
-  if (score >= 70) return 'bg-warning/15 text-[#B87F00]';
-  return 'bg-danger/15 text-danger';
+function RiskDot({ label, level }: { label: string; level: RiskLevel }) {
+  return (
+    <span className="flex items-center gap-1 text-[11px] text-muted">
+      <span className="h-2 w-2 rounded-full" style={{ backgroundColor: RISK_MODEL_FILL[level] }} />
+      {label} {RISK_TAG[level]}
+    </span>
+  );
 }
 
 export default function HistoryListPage() {
-  const router = useRouter();
   const { idByDate } = useSessionIndex();
   const [page, setPage] = useState(0);
   const [period, setPeriod] = useState<HistoryPeriodFilter>('ALL');
@@ -51,6 +60,7 @@ export default function HistoryListPage() {
   const [data, setData] = useState<HistoryList | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
@@ -62,87 +72,82 @@ export default function HistoryListPage() {
       .finally(() => setIsLoading(false));
   }, [period, scoreFilter, page, reloadKey]);
 
-  const handleDeleteAll = async () => {
-    if (!window.confirm('기록을 전부 삭제할까요? 되돌릴 수 없어요.')) return;
+  const deleteAll = async () => {
     setIsDeleting(true);
     try {
       await userApi.deleteData();
       setPage(0);
       setReloadKey((k) => k + 1);
+      setConfirming(false);
     } finally {
       setIsDeleting(false);
     }
   };
 
-  const totalPages = data?.totalPages ?? 0;
+  const cycleScore = () => {
+    const next = SCORE_ORDER[(SCORE_ORDER.indexOf(scoreFilter) + 1) % SCORE_ORDER.length];
+    setScoreFilter(next);
+    setPage(0);
+  };
 
-  const Chip = ({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) => (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`px-3 py-1.5 rounded-full text-[12px] font-semibold border transition-colors whitespace-nowrap ${
-        active
-          ? 'bg-primary text-white border-primary'
-          : 'bg-white text-muted border-hairline hover:border-primary/40'
-      }`}
-    >
-      {label}
-    </button>
-  );
+  const totalPages = data?.totalPages ?? 0;
+  const totalCount = data?.totalCount ?? 0;
 
   return (
-    <div className="max-w-[430px] min-h-svh mx-auto bg-background flex flex-col relative pb-14">
-      <div className="aurora-blob-1" />
-      <div className="aurora-blob-2" />
-      <div className="aurora-blob-3" />
+    <PageShell withNav>
+      <PageHeader
+        title="기록 이력"
+        right={
+          <button
+            type="button"
+            onClick={() => setConfirming(true)}
+            disabled={isDeleting || totalCount === 0}
+            className="w-9 text-right text-[12px] font-semibold text-danger disabled:opacity-30 whitespace-nowrap"
+          >
+            전체 삭제
+          </button>
+        }
+      />
 
-      <div className="flex items-center px-4 py-3 bg-white border-b border-hairline flex-shrink-0 relative z-10">
-        <button
-          type="button"
-          onClick={() => router.back()}
-          className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-hairline transition-colors bg-transparent border-none cursor-pointer"
-        >
-          <ChevronLeft size={20} className="text-content" />
-        </button>
-        <span className="absolute left-1/2 -translate-x-1/2 text-[15px] font-semibold text-content">
-          기록 이력
-        </span>
-        <span className="ml-auto text-[12px] text-muted">{data?.totalCount ?? 0}건</span>
-        <button
-          type="button"
-          onClick={handleDeleteAll}
-          disabled={isDeleting || (data?.totalCount ?? 0) === 0}
-          className="ml-3 text-[12px] font-semibold text-danger bg-transparent border-none cursor-pointer disabled:opacity-30"
-        >
-          {isDeleting ? '삭제 중...' : '전체 삭제'}
-        </button>
-      </div>
-
-      <div className="relative z-10 flex-1 flex flex-col">
-        <div className="px-4 py-3 bg-white border-b border-hairline flex flex-col gap-2">
-          <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
+      <div className="px-5 pt-4 flex flex-col gap-3">
+        <div className="flex items-center gap-1.5">
+          <div className="flex gap-1.5 overflow-x-auto [scrollbar-width:none]">
             {(Object.keys(PERIOD_LABELS) as HistoryPeriodFilter[]).map((k) => (
-              <Chip key={k} active={period === k} label={PERIOD_LABELS[k]}
-                onClick={() => { setPeriod(k); setPage(0); }} />
+              <button
+                key={k}
+                type="button"
+                onClick={() => {
+                  setPeriod(k);
+                  setPage(0);
+                }}
+                aria-pressed={period === k}
+                className={`px-3 py-1.5 rounded-full text-[12px] font-semibold border transition-colors whitespace-nowrap ${
+                  period === k
+                    ? 'bg-primary text-white border-primary'
+                    : 'bg-white/90 text-muted border-hairline'
+                }`}
+              >
+                {PERIOD_LABELS[k]}
+              </button>
             ))}
           </div>
-          <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
-            {(Object.keys(SCORE_LABELS) as HistoryScoreFilter[]).map((k) => (
-              <Chip key={k} active={scoreFilter === k} label={SCORE_LABELS[k]}
-                onClick={() => { setScoreFilter(k); setPage(0); }} />
-            ))}
-          </div>
+          <button
+            type="button"
+            onClick={cycleScore}
+            className={`ml-auto flex items-center gap-1 px-3 py-1.5 rounded-full text-[12px] font-semibold border whitespace-nowrap transition-colors ${
+              scoreFilter === 'ALL'
+                ? 'bg-white/90 text-muted border-hairline'
+                : 'bg-primary-light text-primary border-primary/30'
+            }`}
+          >
+            <ArrowDownUp size={12} />
+            {SCORE_LABELS[scoreFilter]}
+          </button>
         </div>
 
-        <div className="grid grid-cols-[96px_1fr_1fr_1fr_14px] gap-1 px-4 py-2.5 bg-primary-light border-b border-hairline">
-          <span className="text-[11px] font-bold text-primary">날짜</span>
-          <span className="text-[11px] font-bold text-primary text-center">점수</span>
-          <span className="text-[11px] font-bold text-primary text-center">치태</span>
-          <span className="text-[11px] font-bold text-primary text-center">치석</span>
-          <span />
-        </div>
+        <p className="m-0 text-[11px] text-muted">{totalCount}건 · 누르면 그날 리포트로 넘어가요</p>
 
-        <div className="flex-1 bg-white divide-y divide-hairline">
+        <div className="bg-white/90 backdrop-blur-sm rounded-[20px] shadow-card px-5 py-1">
           {isLoading && (
             <p className="m-0 py-12 text-center text-[13px] text-muted">불러오는 중...</p>
           )}
@@ -151,67 +156,100 @@ export default function HistoryListPage() {
           )}
           {data?.items.map((h, i) => {
             const sessionId = idByDate(h.date);
-            const cells = (
+            const grade = scoreGrade(h.score);
+            const row = (
               <>
-                <span className="text-[13px] text-content">{formatDate(h.date)}</span>
-                <div className="flex justify-center">
-                  <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full ${scoreColor(h.score)}`}>
-                    {h.score}점
-                  </span>
+                <div
+                  className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl text-[15px] font-bold ${
+                    GRADE_STYLE[grade] ?? 'bg-hairline/60 text-muted'
+                  }`}
+                >
+                  {grade}
                 </div>
-                <span className={`text-[12px] font-medium text-center ${riskColor(h.plaqueRiskLevel)}`}>
-                  {RISK_LABEL[h.plaqueRiskLevel]}
-                </span>
-                <span className={`text-[12px] font-medium text-center ${riskColor(h.calculusRiskLevel)}`}>
-                  {RISK_LABEL[h.calculusRiskLevel]}
-                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="m-0 text-[13px] font-semibold text-content">{formatDate(h.date)}</p>
+                  <div className="mt-1 flex gap-2.5">
+                    <RiskDot label="치태" level={h.plaqueRiskLevel} />
+                    <RiskDot label="치석" level={h.calculusRiskLevel} />
+                  </div>
+                </div>
+                <p className="m-0 text-[20px] font-bold leading-none text-primary tabular-nums">
+                  {h.score}
+                  <span className="ml-0.5 text-[11px] font-normal text-muted">/100</span>
+                </p>
                 {sessionId === null ? (
-                  <span />
+                  <span className="w-4" />
                 ) : (
-                  <ChevronRight size={14} className="text-muted" />
+                  <ChevronRight size={16} className="text-gray-300" />
                 )}
               </>
             );
-            const cls = 'grid grid-cols-[96px_1fr_1fr_1fr_14px] gap-1 px-4 py-3.5 items-center';
-
+            const cls =
+              'flex items-center gap-3 py-3 border-b border-hairline last:border-none -mx-2 px-2 rounded-lg';
             return sessionId === null ? (
               <div key={`${h.date}-${i}`} className={cls}>
-                {cells}
+                {row}
               </div>
             ) : (
               <Link
                 key={`${h.date}-${i}`}
                 href={`/report/${sessionId}`}
-                className={`${cls} no-underline transition-colors active:bg-hairline/50`}
+                className={`${cls} no-underline transition-colors active:bg-primary-light/60`}
               >
-                {cells}
+                {row}
               </Link>
             );
           })}
         </div>
 
         {totalPages > 1 && (
-          <div className="bg-white border-t border-hairline px-4 py-3 flex items-center justify-center gap-1">
-            <button type="button" onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={page === 0}
-              className="w-8 h-8 flex items-center justify-center rounded-full bg-transparent border-none cursor-pointer disabled:opacity-30 hover:bg-hairline transition-colors">
+          <div className="flex items-center justify-center gap-1 py-1">
+            <button
+              type="button"
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+              disabled={page === 0}
+              aria-label="이전 페이지"
+              className="w-8 h-8 flex items-center justify-center rounded-full disabled:opacity-30 hover:bg-white/70 transition-colors"
+            >
               <ChevronLeft size={16} className="text-content" />
             </button>
             {Array.from({ length: totalPages }, (_, i) => i).map((p) => (
-              <button key={p} type="button" onClick={() => setPage(p)}
-                className={`w-8 h-8 rounded-full text-[13px] font-semibold border-none cursor-pointer transition-colors ${
-                  p === page ? 'bg-primary text-white' : 'bg-transparent text-muted hover:bg-hairline'
-                }`}>
+              <button
+                key={p}
+                type="button"
+                onClick={() => setPage(p)}
+                className={`w-8 h-8 rounded-full text-[13px] font-semibold transition-colors ${
+                  p === page ? 'bg-primary text-white' : 'text-muted hover:bg-white/70'
+                }`}
+              >
                 {p + 1}
               </button>
             ))}
-            <button type="button" onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))} disabled={page >= totalPages - 1}
-              className="w-8 h-8 flex items-center justify-center rounded-full bg-transparent border-none cursor-pointer disabled:opacity-30 hover:bg-hairline transition-colors">
+            <button
+              type="button"
+              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+              disabled={page >= totalPages - 1}
+              aria-label="다음 페이지"
+              className="w-8 h-8 flex items-center justify-center rounded-full disabled:opacity-30 hover:bg-white/70 transition-colors"
+            >
               <ChevronRight size={16} className="text-content" />
             </button>
           </div>
         )}
       </div>
+
+      <ConfirmSheet
+        open={confirming}
+        title="기록을 전부 지울까요?"
+        description="스캔 세션, 촬영한 사진, 분석 리포트가 모두 지워지고 되돌릴 수 없어요."
+        confirmLabel="전부 지우기"
+        danger
+        busy={isDeleting}
+        onConfirm={deleteAll}
+        onCancel={() => setConfirming(false)}
+      />
+
       <NavBar activeTab="history" />
-    </div>
+    </PageShell>
   );
 }

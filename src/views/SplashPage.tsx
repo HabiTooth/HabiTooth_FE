@@ -30,12 +30,12 @@ export default function SplashPage() {
     let cancelled = false;
     (async () => {
       const { token, clearAuth } = useAuthStore.getState();
-      // 만료 토큰은 서버 안 거치고 정리
+      // 만료 토큰은 로컬에서 정리
       if (token && isTokenExpired(token)) clearAuth();
       const valid = token && !isTokenExpired(token);
       const [dest] = await Promise.all([
         valid ? destinationAfterLogin() : Promise.resolve('/onboarding'),
-        new Promise((r) => setTimeout(r, 3500)), // 애니메이션 최소 노출 시간
+        new Promise((r) => setTimeout(r, 3500)),
       ]);
       if (!cancelled) router.push(dest);
     })();
@@ -55,7 +55,14 @@ export default function SplashPage() {
           style={{ overflow: 'visible' }}
         >
           <defs>
-            <linearGradient id="toothGrad" x1="75" y1="0" x2="330" y2="0" gradientUnits="userSpaceOnUse">
+            <linearGradient
+              id="toothGrad"
+              x1="75"
+              y1="0"
+              x2="330"
+              y2="0"
+              gradientUnits="userSpaceOnUse"
+            >
               <stop offset="0" stopColor="#a8d8ff" />
               <stop offset="0.4" stopColor="#e8f6ff" />
               <stop offset="0.5" stopColor="#ffffff" />
@@ -101,7 +108,12 @@ export default function SplashPage() {
               <span
                 key={i}
                 className="splash-letter"
-                style={{ display: 'inline-block', '--delay': `${1.55 + i * 0.045}s` } as React.CSSProperties}
+                style={
+                  {
+                    display: 'inline-block',
+                    '--delay': `${1.55 + i * 0.045}s`,
+                  } as React.CSSProperties
+                }
               >
                 {ch}
               </span>

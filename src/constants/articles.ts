@@ -4,11 +4,12 @@ export type ArticleCategory = '기본 관리' | '치태·치석' | '식습관' |
 
 export interface Article {
   id: string;
+  cover: string;
   category: ArticleCategory;
   title: string;
   summary: string;
   readMinutes: number;
-  /** 이 병변 위험도가 높은 사용자에게 먼저 보여줌 */
+  /** 위험도 높은 사용자에게 우선 노출 */
   relatedTo: LesionType[];
   body: string[];
 }
@@ -23,6 +24,7 @@ export const ARTICLE_CATEGORIES: ArticleCategory[] = [
 export const ARTICLES: Article[] = [
   {
     id: 'brushing-basics',
+    cover: '/images/articles/pastel/brushing-basics.webp',
     category: '기본 관리',
     title: '칫솔질, 세게보다 꼼꼼하게',
     summary: '힘을 주면 더 깨끗해질 것 같지만 실제로는 잇몸만 상해요.',
@@ -37,6 +39,7 @@ export const ARTICLES: Article[] = [
   },
   {
     id: 'missed-spots',
+    cover: '/images/articles/pastel/missed-spots.webp',
     category: '기본 관리',
     title: '늘 빠뜨리는 자리는 정해져 있어요',
     summary: '오른손잡이는 왼쪽 어금니 안쪽을 놓치기 쉬워요.',
@@ -51,6 +54,7 @@ export const ARTICLES: Article[] = [
   },
   {
     id: 'floss-why',
+    cover: '/images/articles/pastel/floss-why.webp',
     category: '기본 관리',
     title: '칫솔이 못 가는 40%',
     summary: '치아 사이는 칫솔모가 물리적으로 들어가지 않는 공간이에요.',
@@ -65,6 +69,7 @@ export const ARTICLES: Article[] = [
   },
   {
     id: 'plaque-to-calculus',
+    cover: '/images/articles/pastel/plaque-to-calculus.webp',
     category: '치태·치석',
     title: '치태가 치석이 되기까지',
     summary: '이틀이면 굳기 시작해요.',
@@ -79,6 +84,7 @@ export const ARTICLES: Article[] = [
   },
   {
     id: 'where-calculus-forms',
+    cover: '/images/articles/pastel/where-calculus-forms.webp',
     category: '치태·치석',
     title: '치석이 잘 생기는 자리',
     summary: '침샘 근처가 압도적이에요.',
@@ -93,6 +99,7 @@ export const ARTICLES: Article[] = [
   },
   {
     id: 'gum-bleeding',
+    cover: '/images/articles/pastel/gum-bleeding.webp',
     category: '치태·치석',
     title: '피가 나면 더 닦아야 할까',
     summary: '피하면 오히려 오래가요.',
@@ -107,6 +114,7 @@ export const ARTICLES: Article[] = [
   },
   {
     id: 'sugar-frequency',
+    cover: '/images/articles/pastel/sugar-frequency.webp',
     category: '식습관',
     title: '양보다 횟수가 중요해요',
     summary: '한 번에 먹는 편이 나눠 먹는 것보다 나아요.',
@@ -121,6 +129,7 @@ export const ARTICLES: Article[] = [
   },
   {
     id: 'after-acid',
+    cover: '/images/articles/pastel/after-acid.webp',
     category: '식습관',
     title: '신 음식 먹고 바로 닦지 마세요',
     summary: '30분 기다리는 편이 나아요.',
@@ -135,6 +144,7 @@ export const ARTICLES: Article[] = [
   },
   {
     id: 'water-and-saliva',
+    cover: '/images/articles/pastel/water-and-saliva.webp',
     category: '식습관',
     title: '입이 마르면 관리가 어려워져요',
     summary: '침은 그 자체로 세정 장치예요.',
@@ -149,6 +159,7 @@ export const ARTICLES: Article[] = [
   },
   {
     id: 'scan-routine',
+    cover: '/images/articles/pastel/scan-routine.webp',
     category: '기기 사용',
     title: '언제 스캔하는 게 좋을까',
     summary: '칫솔질 직후보다 직전이 쓸모 있어요.',
@@ -163,6 +174,7 @@ export const ARTICLES: Article[] = [
   },
   {
     id: 'scan-quality',
+    cover: '/images/articles/pastel/scan-quality.webp',
     category: '기기 사용',
     title: '스캔이 잘 안 될 때',
     summary: '대부분 조명과 거리 문제예요.',
@@ -177,6 +189,7 @@ export const ARTICLES: Article[] = [
   },
   {
     id: 'read-the-score',
+    cover: '/images/articles/pastel/read-the-score.webp',
     category: '기기 사용',
     title: '점수를 읽는 법',
     summary: '절대값보다 흐름이 정보예요.',
@@ -193,7 +206,6 @@ export const ARTICLES: Article[] = [
 
 export const findArticle = (id: string) => ARTICLES.find((a) => a.id === id) ?? null;
 
-/** 위험한 병변에 걸린 글을 앞으로, 나머지는 원래 순서 유지 */
 export function sortByRelevance(articles: Article[], risky: LesionType[]): Article[] {
   if (risky.length === 0) return articles;
   const score = (a: Article) => (a.relatedTo.some((t) => risky.includes(t)) ? 0 : 1);

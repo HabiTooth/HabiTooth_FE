@@ -68,6 +68,3 @@ export function toothName(tooth: number): string {
   return `${jaw} ${side} ${type}`;
 }
 
-export function toothType(tooth: number): string {
-  return TYPE_BY_POSITION[tooth % 10] ?? '';
-}

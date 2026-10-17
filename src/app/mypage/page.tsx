@@ -94,7 +94,7 @@ export default function MyPage() {
 
   return (
     <div
-      className="max-w-[430px] min-h-svh mx-auto px-5 pt-14 pb-[104px] flex flex-col relative"
+      className="app-frame max-w-[430px] min-h-svh mx-auto px-5 pt-14 pb-[104px] flex flex-col relative"
       style={{ backgroundColor: '#EEF2FF' }}
     >
       <div className="aurora-blob-1" />

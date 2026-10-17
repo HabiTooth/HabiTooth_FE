@@ -6,7 +6,6 @@ import {
   Bell,
   BellOff,
   CalendarCheck,
-  ChevronLeft,
   FileText,
   Flame,
   ScanLine,
@@ -16,8 +15,13 @@ import {
 import NavBar from '@/components/organisms/NavBar';
 import PageShell from '@/components/organisms/PageShell';
 import { useNotificationStore } from '@/stores/notificationStore';
-import { permissionState, requestPermission, type PermissionState } from '@/lib/notifications/browser';
+import {
+  permissionState,
+  requestPermission,
+  type PermissionState,
+} from '@/lib/notifications/browser';
 import type { NotificationType } from '@/lib/notifications/types';
+import PageHeader from '@/components/molecules/PageHeader';
 
 const ICON: Record<NotificationType, React.ElementType> = {
   REPORT_READY: FileText,
@@ -69,24 +73,19 @@ export default function NotificationsPage() {
 
   return (
     <PageShell withNav>
-      <div className="flex items-center px-4 py-3 bg-white/90 backdrop-blur-sm border-b border-hairline">
-        <button
-          type="button"
-          onClick={() => router.back()}
-          className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-hairline transition-colors"
-        >
-          <ChevronLeft size={20} className="text-content" />
-        </button>
-        <span className="flex-1 text-center text-[15px] font-semibold text-content">알림</span>
-        <button
-          type="button"
-          onClick={markAllRead}
-          disabled={unread === 0}
-          className="text-xs text-primary disabled:text-muted disabled:opacity-50 px-2"
-        >
-          모두 읽음
-        </button>
-      </div>
+      <PageHeader
+        title="알림"
+        right={
+          <button
+            type="button"
+            onClick={markAllRead}
+            disabled={unread === 0}
+            className="text-xs text-primary disabled:text-muted disabled:opacity-50 px-2"
+          >
+            모두 읽음
+          </button>
+        }
+      />
 
       <div className="px-5 pt-4">
         {permission === 'default' && (
@@ -131,8 +130,8 @@ export default function NotificationsPage() {
                 tabIndex={0}
                 onClick={() => open(n.id, n.link)}
                 onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && open(n.id, n.link)}
-                className={`rounded-[18px] shadow-card p-4 flex items-start gap-3 cursor-pointer transition-transform active:scale-[0.99] backdrop-blur-sm ${
-                  n.read ? 'bg-white/70' : 'bg-white/95'
+                className={`rounded-[18px] shadow-card p-4 flex items-start gap-3 cursor-pointer transition-transform active:scale-[0.99] backdrop-blur-sm bg-white/90 ${
+                  n.read ? 'opacity-70' : ''
                 }`}
               >
                 <div
@@ -142,7 +141,9 @@ export default function NotificationsPage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
-                    {!n.read && <span className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0" />}
+                    {!n.read && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0" />
+                    )}
                     <p
                       className={`m-0 text-[13px] truncate ${n.read ? 'text-muted font-medium' : 'text-content font-semibold'}`}
                     >
@@ -168,11 +169,7 @@ export default function NotificationsPage() {
         </div>
 
         {items.length > 0 && (
-          <button
-            type="button"
-            onClick={clearAll}
-            className="w-full mt-4 py-3 text-xs text-muted"
-          >
+          <button type="button" onClick={clearAll} className="w-full mt-4 py-3 text-xs text-muted">
             전체 삭제
           </button>
         )}

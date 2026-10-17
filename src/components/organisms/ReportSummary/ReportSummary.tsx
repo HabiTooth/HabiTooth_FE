@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import MoreLink from '@/components/atoms/MoreLink';
 import ToothStatusItem from '@/components/molecules/ToothStatusItem';
-import { RISK_FILL, RISK_LEGEND } from '@/lib/riskColors';
+import { RISK_FILL } from '@/lib/riskColors';
 import { scoreDiffText, scoreGrade } from '@/lib/score';
 import type { ReportSummaryProps, RiskLevel } from './ReportSummary.types';
 
@@ -17,7 +17,7 @@ const GRADE_STYLE: Record<string, string> = {
   F: 'bg-danger/15 text-danger',
 };
 
-function focusText(plaque?: RiskLevel, calculus?: RiskLevel): string | null {
+export function focusText(plaque?: RiskLevel, calculus?: RiskLevel): string | null {
   if (!plaque || !calculus) return null;
   const worst = Math.max(RISK_RANK[plaque], RISK_RANK[calculus]);
   if (worst <= RISK_RANK.low) return '치태와 치석 모두 잘 관리되고 있어요';
@@ -79,31 +79,30 @@ export default function ReportSummary({
       tabIndex={open ? 0 : undefined}
       onClick={open}
       onKeyDown={open ? (e) => (e.key === 'Enter' || e.key === ' ') && open() : undefined}
-      className={`bg-white/90 backdrop-blur-sm rounded-[20px] shadow-card p-5 mt-4 ${
+      className={`bg-white rounded-[24px] border border-white shadow-[0_6px_24px_rgba(71,105,154,0.045)] p-5 mt-4 ${
         open ? 'cursor-pointer transition-transform active:scale-[0.99]' : ''
       }`}
     >
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-semibold text-content">
-          {date ? `${date} 분석 결과` : '최근 분석 결과'}
-        </h3>
+        <div><h3 className="m-0 text-sm font-bold text-content">최근 분석 결과</h3>{date && <p className="m-0 mt-1 text-[11px] font-medium text-[#687B94] tabular-nums">{date}</p>}</div>
         {open && <MoreLink label="전체 보기" />}
       </div>
 
       <div className="flex items-center gap-4">
-        <div className="flex flex-col items-center justify-center w-24 h-24 bg-primary-light rounded-2xl flex-shrink-0">
-          <span className="text-3xl font-bold text-primary tabular-nums">{score}</span>
-          <span className="text-xs text-muted">종합 점수</span>
+        <div className="relative flex flex-col items-center justify-center w-[106px] h-[112px] flex-shrink-0">
+          <svg viewBox="0 0 32 34" className="absolute inset-0 w-full h-full" aria-hidden="true"><path d="M16 5C11 2 2 2 2 10C2 16 4 20 5 26C6 31 8 33 11 31C13 29 13 27 16 27C19 27 19 29 21 31C24 33 26 31 27 26C28 20 30 16 30 10C30 2 21 2 16 5Z" fill="#E4F0FF" /></svg>
+          <span className="relative text-[40px] font-bold leading-none tracking-[-1.5px] text-[#4A86D9] tabular-nums">{score}</span>
+          <span className="relative text-[10px] font-semibold text-[#6785AD] mt-1">종합 점수</span>
         </div>
         <div className="flex-1 min-w-0 flex flex-col gap-1.5">
           <div className="flex items-center gap-2">
             <span className={`px-2 py-0.5 rounded-md text-xs font-bold ${GRADE_STYLE[grade]}`}>
               {grade}
             </span>
-            <span className="text-sm font-semibold text-content">{status}</span>
+            <span className="text-sm font-bold text-content">{status}</span>
           </div>
-          {diff !== null && <span className="text-xs text-muted">{scoreDiffText(diff)}</span>}
-          {focus && <span className="text-xs text-muted">{focus}</span>}
+          {diff !== null && <span className="text-xs font-medium text-[#667791]">{scoreDiffText(diff)}</span>}
+          {focus && <span className="text-xs font-medium text-[#667791]">{focus}</span>}
         </div>
       </div>
 
@@ -125,26 +124,14 @@ export default function ReportSummary({
         </div>
       )}
 
-      {plaqueScore !== undefined && (
-        <>
-          <div className="border-t border-dashed border-hairline my-4" />
-          <h4 className="text-sm font-semibold text-content mb-3">위험도 요약</h4>
+      {(plaqueScore !== undefined || calculusScore !== undefined) && (
+        <div className="mt-5 pt-4 border-t border-[#EDF1F7]">
+          <h4 className="m-0 text-[13px] font-bold text-content mb-3">위험도 요약</h4>
           <div className="grid grid-cols-2 gap-3">
-            <ToothStatusItem label="치태" score={plaqueScore} riskLevel={plaqueRisk!} />
-            <ToothStatusItem label="치석" score={calculusScore!} riskLevel={calculusRisk!} />
+            {plaqueScore !== undefined && plaqueRisk && <ToothStatusItem label="치태" score={plaqueScore} riskLevel={plaqueRisk} />}
+            {calculusScore !== undefined && calculusRisk && <ToothStatusItem label="치석" score={calculusScore} riskLevel={calculusRisk} />}
           </div>
-          <div className="flex items-center justify-center gap-4 mt-3">
-            {RISK_LEGEND.map(({ label, color }) => (
-              <div key={label} className="flex items-center gap-1">
-                <span
-                  className="w-1.5 h-1.5 rounded-full"
-                  style={{ backgroundColor: color }}
-                />
-                <span className="text-[10px] text-muted">{label}</span>
-              </div>
-            ))}
-          </div>
-        </>
+        </div>
       )}
     </div>
   );

@@ -22,7 +22,7 @@ function write(missing: number[], answered: boolean) {
     localStorage.setItem(KEY, JSON.stringify(missing));
     if (answered) localStorage.setItem(DONE_KEY, 'true');
   } catch {
-    // 저장이 막혀도 이번 세션 판정은 그대로
+    // 저장 실패해도 세션 판정 유지
   }
 }
 
@@ -52,7 +52,7 @@ export const useDentitionStore = create<DentitionState>((set, get) => ({
   hydrate: () => {
     if (get().hydrated) return;
 
-    // 서버 응답을 기다리는 동안 모형이 빈 채로 뜨지 않게 캐시부터 올린다
+    // 캐시 먼저 적용. 빈 모형 방지
     const answered =
       typeof window !== 'undefined' && localStorage.getItem(DONE_KEY) === 'true';
     set({ missing: read(), hydrated: true, answered });
@@ -91,7 +91,7 @@ export const useDentitionStore = create<DentitionState>((set, get) => ({
 
   reset: () => set({ missing: [], saveError: null }),
 
-  // hydrated를 안 내리면 다음 로그인에서 hydrate가 통째로 건너뛴다
+  // 빼면 다음 로그인에서 hydrate 건너뜀
   clear: () =>
     set({
       missing: [],

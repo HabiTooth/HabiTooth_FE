@@ -4,16 +4,20 @@ import Link from 'next/link';
 import { ArrowRight, TrendingDown, TrendingUp } from 'lucide-react';
 import MoreLink from '@/components/atoms/MoreLink';
 import { compareSummary, type CompareResult } from '@/lib/compare';
-import { RISK_LABEL } from '@/lib/score';
+import { toothName } from '@/lib/dentition';
+import { RISK_TAG } from '@/lib/lesionRisk';
+import { RISK_MODEL_FILL } from '@/lib/riskColors';
 
 export default function ChangeSummary({
   result,
   scoreDelta,
   previousDate,
+  onToothClick,
 }: {
   result: CompareResult;
   scoreDelta: number | null;
   previousDate: string;
+  onToothClick?: (tooth: number) => void;
 }) {
   const notable = [...result.worsened, ...result.improved].slice(0, 4);
 
@@ -42,32 +46,71 @@ export default function ChangeSummary({
         {previousDate && <span className="text-[11px] text-muted">{previousDate} 기준</span>}
       </div>
 
-      <p className="m-0 text-[12.5px] text-content leading-relaxed">
+      <p className="m-0 text-[13px] text-content leading-relaxed">
         {compareSummary(result, scoreDelta)}
       </p>
 
       {notable.length > 0 && (
-        <div className="mt-3 pt-3 border-t border-dashed border-hairline flex flex-col gap-1.5">
+        <div className="mt-3 pt-3 border-t border-dashed border-hairline flex flex-col gap-1">
           {notable.map((change) => {
             const better = change.delta < 0;
             return (
-              <div key={change.toothNumber} className="flex items-center gap-2">
-                <span className="w-11 text-[12px] font-semibold text-content tabular-nums">
-                  {change.toothNumber}번
-                </span>
-                <span className="text-[11px] text-muted">{RISK_LABEL[change.before]}</span>
-                <ArrowRight size={11} className="text-muted flex-shrink-0" />
+              <div
+                key={change.toothNumber}
+                role={onToothClick ? 'button' : undefined}
+                tabIndex={onToothClick ? 0 : undefined}
+                onClick={
+                  onToothClick
+                    ? (e) => {
+                        e.preventDefault();
+                        onToothClick(change.toothNumber);
+                      }
+                    : undefined
+                }
+                onKeyDown={
+                  onToothClick
+                    ? (e) => {
+                        if (e.key !== 'Enter' && e.key !== ' ') return;
+                        e.preventDefault();
+                        onToothClick(change.toothNumber);
+                      }
+                    : undefined
+                }
+                className={`flex items-center gap-2 py-1.5 ${onToothClick ? 'cursor-pointer rounded-md -mx-1 px-1 hover:bg-primary-light/60' : ''}`}
+              >
                 <span
-                  className={`text-[11px] font-semibold ${better ? 'text-success' : 'text-danger'}`}
+                  className={`inline-block rounded-md px-1.5 py-0.5 text-[10.5px] font-bold ${
+                    better ? 'bg-success/15 text-success' : 'bg-danger/15 text-danger'
+                  }`}
                 >
-                  {RISK_LABEL[change.after]}
+                  {better ? '좋아짐' : '나빠짐'}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[13px] font-semibold text-content leading-tight">
+                    {toothName(change.toothNumber)}
+                  </span>
+                  <span className="block text-[10.5px] text-muted">{change.toothNumber}번</span>
+                </span>
+                <span className="flex items-center gap-1 text-[11.5px] text-muted">
+                  <span
+                    className="h-2 w-2 rounded-full"
+                    style={{ backgroundColor: RISK_MODEL_FILL[change.before] }}
+                  />
+                  {RISK_TAG[change.before]}
+                  <ArrowRight size={11} className="flex-shrink-0" />
+                  <span
+                    className="h-2 w-2 rounded-full"
+                    style={{ backgroundColor: RISK_MODEL_FILL[change.after] }}
+                  />
+                  <span className="font-semibold text-content">{RISK_TAG[change.after]}</span>
                 </span>
               </div>
             );
           })}
           {result.improved.length + result.worsened.length > notable.length && (
-            <p className="m-0 mt-0.5 text-[10px] text-muted">
-              그 외 {result.improved.length + result.worsened.length - notable.length}개 더 바뀌었어요.
+            <p className="m-0 mt-1 text-[11px] text-muted">
+              그 외 {result.improved.length + result.worsened.length - notable.length}개 더
+              바뀌었어요. 누르면 위 모형에서 봐요
             </p>
           )}
         </div>

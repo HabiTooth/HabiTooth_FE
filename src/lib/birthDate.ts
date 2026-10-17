@@ -1,4 +1,4 @@
-// 숫자만 받아 1995-03-15 꼴로 채워준다
+// 숫자만 받아 YYYY-MM-DD로 변환
 export function formatBirthDate(input: string): string {
   const digits = input.replace(/\D/g, '').slice(0, 8);
   if (digits.length <= 4) return digits;
@@ -8,7 +8,7 @@ export function formatBirthDate(input: string): string {
 
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
 
-// 달력 input은 완성된 날짜만 받는다
+// 달력 input은 완성된 날짜만
 export const asIsoDate = (value: string) => (ISO.test(value) ? value : '');
 
 export const todayIso = () => new Date().toISOString().slice(0, 10);

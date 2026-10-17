@@ -14,7 +14,7 @@ export default function NextStepsSection({
   categories: Array<{ lesionType: LesionType; riskLevel: RiskLevel }>;
   sessionId?: number;
 }) {
-  // 어느 스캔 기준인지 넘겨야 관리 용품 페이지가 최신 스캔으로 갈아치우지 않음
+  // 빼면 관리 용품 페이지가 최신 스캔 기준으로 바뀜
   const productsHref = sessionId ? `/products?session=${sessionId}` : '/products';
   const risky = categories.filter((c) => isRisky(c.riskLevel)).map((c) => c.lesionType);
   const products = recommendProducts(categories).slice(0, 2);

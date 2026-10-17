@@ -1,4 +1,5 @@
 import type { ProductArt } from '@/constants/products';
+import Image from 'next/image';
 
 const ART: Record<ProductArt, React.ReactNode> = {
   brush: (
@@ -124,19 +125,32 @@ export default function ProductThumb({
   art,
   tint,
   size = 56,
+  clay = false,
 }: {
   art: ProductArt;
   tint: string;
   size?: number;
+  clay?: boolean;
 }) {
   return (
     <div
       className="rounded-[16px] flex items-center justify-center flex-shrink-0 overflow-hidden"
       style={{ backgroundColor: tint, width: size, height: size }}
     >
-      <svg width={size - 6} height={size - 6} viewBox="0 0 72 72" aria-hidden>
-        {ART[art]}
-      </svg>
+      {clay ? (
+        <Image
+          src={`/images/products/clay/${art}.webp`}
+          alt=""
+          width={size}
+          height={size}
+          sizes={`${size}px`}
+          className="w-full h-full object-contain p-2"
+        />
+      ) : (
+        <svg width={size - 6} height={size - 6} viewBox="0 0 72 72" aria-hidden>
+          {ART[art]}
+        </svg>
+      )}
     </div>
   );
 }

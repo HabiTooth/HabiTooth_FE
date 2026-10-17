@@ -1,12 +1,6 @@
 'use client';
 
-import {
-  GUM_LOWER,
-  GUM_UPPER,
-  PALATE,
-  TONGUE_SHADE,
-  TOOTH_SHAPES,
-} from '@/constants/toothShapes';
+import { GUM_LOWER, GUM_UPPER, PALATE, TONGUE_SHADE, TOOTH_SHAPES } from '@/constants/toothShapes';
 import { LOWER_ROW, UPPER_ROW } from '@/lib/dentition';
 
 const ALL = [...UPPER_ROW, ...LOWER_ROW];
@@ -20,12 +14,10 @@ export default function ToothArch({
   onToggle: (tooth: number) => void;
   selected: number | null;
 }) {
-  // SVG는 나중에 그린 게 위로 올라와서, 선택한 치아를 맨 뒤로 보내야 강조 테두리가 안 잘림
   const order = selected === null ? ALL : [...ALL.filter((t) => t !== selected), selected];
 
   return (
     <div className="relative w-full max-w-[300px] mx-auto">
-      {/* 치열이 원본 캔버스의 가운데 절반만 써서 양옆 여백을 잘라낸다 */}
       <svg viewBox="242 62 540 900" className="w-full h-auto block">
         <defs>
           <linearGradient id="arch-gum-upper" x1="0" y1="0" x2="0" y2="1">
@@ -94,13 +86,8 @@ export default function ToothArch({
                   pointerEvents="none"
                 />
               )}
-              {/* 얇은 앞니는 그대로면 누르기 어려워서 투명 스트로크로 영역을 넓힌다 */}
-              <path
-                d={shape.base}
-                fill="transparent"
-                stroke="transparent"
-                strokeWidth={14}
-              />
+              {/* 앞니 터치 영역 확장용 */}
+              <path d={shape.base} fill="transparent" stroke="transparent" strokeWidth={14} />
             </g>
           );
         })}

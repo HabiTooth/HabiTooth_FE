@@ -2,7 +2,7 @@ import type { Page } from '@playwright/test';
 
 const ok = <T,>(result: T) => ({ success: true, code: 'OK', message: '성공', result });
 
-// exp가 미래인 아무 토큰. AuthGuard가 만료만 보고 서명은 안 봄
+// exp가 미래인 임의 토큰. 서명 검증 없음
 function fakeToken(): string {
   const payload = {
     sub: 'qa@habitooth.test',
@@ -180,7 +180,7 @@ export async function mockApi(page: Page) {
     }
 
     if (/\/llm-report$/.test(path)) {
-      // GET으로 가져와야 함. POST면 재생성이라 느림
+      // GET. POST는 재생성
       if (route.request().method() !== 'GET') {
         return route.fulfill({ status: 500, json: { error: 'POST로 재생성하면 안 됨' } });
       }
@@ -201,7 +201,32 @@ export async function mockApi(page: Page) {
     }
 
     if (/\/3d$/.test(path)) {
-      return route.fulfill({ json: ok({ sessionId: 42, meshData: [] }) });
+      return route.fulfill({
+        json: ok({
+          sessionId: 42,
+          lesions: [
+            {
+              toothNumber: 16,
+              surfaceType: 'OUTER',
+              lesionType: 'CALCULUS',
+              polygon: [{ u: 0.2, v: 0.1 }, { u: 0.8, v: 0.1 }, { u: 0.8, v: 0.5 }, { u: 0.2, v: 0.5 }],
+            },
+            {
+              // 16번: 바깥쪽 치석 + 안쪽 치태. 보기 토글 케이스
+              toothNumber: 16,
+              surfaceType: 'INNER',
+              lesionType: 'PLAQUE',
+              polygon: [{ u: 0.3, v: 0.2 }, { u: 0.7, v: 0.2 }, { u: 0.7, v: 0.6 }, { u: 0.3, v: 0.6 }],
+            },
+            {
+              toothNumber: 31,
+              surfaceType: 'OUTER',
+              lesionType: 'PLAQUE',
+              polygon: [{ u: 0.3, v: 0.6 }, { u: 0.7, v: 0.6 }, { u: 0.7, v: 0.95 }, { u: 0.3, v: 0.95 }],
+            },
+          ],
+        }),
+      });
     }
 
     if (/\/api\/habits/.test(path)) {

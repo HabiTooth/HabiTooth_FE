@@ -56,7 +56,7 @@ const SHUTTER_POLLS = 12;
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-/** 포트가 닫혀 있으면 error 없이 매달려서 시간으로 판단해야 함 */
+// 포트 닫힘 시 error 없이 대기. 시간으로 판단
 const firstFrame = (url: string, timeoutMs: number) =>
   new Promise<number>((resolve, reject) => {
     const img = new Image();
@@ -583,7 +583,7 @@ export const QA_CHECKS: QaCheck[] = [
     endpoint: 'GET /api/reports/scan-sessions/{id}/3d',
     needs: ['sessionId'],
     run: (ctx) => reportApi.getMeshCoordinates(ctx.sessionId!).then(unwrap),
-    expectKeys: ['sessionId', 'meshData'],
+    expectKeys: ['sessionId', 'lesions'],
   },
   {
     id: 'report.singleImage',

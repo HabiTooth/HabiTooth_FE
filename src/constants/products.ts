@@ -31,7 +31,6 @@ export interface Product {
   items: ShopItem[];
 }
 
-// 가격·재고·평점은 안 넣음. 바뀌는 값이라 화면에 박아두면 틀린 정보가 됨
 const OLIVEYOUNG_SEARCH = 'https://www.oliveyoung.co.kr/store/search/getSearchMain.do?query=';
 
 export const shopUrl = (keyword: string) => `${OLIVEYOUNG_SEARCH}${encodeURIComponent(keyword)}`;

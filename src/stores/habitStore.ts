@@ -41,7 +41,7 @@ export const useHabitStore = create<HabitState>((set, get) => ({
 
   hydrate: () => {
     if (get().hydrated) return;
-    // 서버 응답을 기다리는 동안 달력이 비어 보이지 않게 캐시부터 올린다
+    // 캐시 먼저 적용
     set({ log: read(), hydrated: true });
     void get().refresh();
   },
@@ -56,7 +56,7 @@ export const useHabitStore = create<HabitState>((set, get) => ({
       write(log);
       set({ log, hydrated: true });
     } catch {
-      // 못 받아오면 캐시로 계속 쓴다
+      // 실패 시 캐시 유지
     }
   },
 

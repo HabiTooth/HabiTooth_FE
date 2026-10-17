@@ -3,22 +3,41 @@
 import dynamic from 'next/dynamic';
 import { useEffect } from 'react';
 import { useDentitionStore } from '@/stores/dentitionStore';
-import type { ToothAnalysisResult } from './ThreeScene';
+import type { MarkerVisibility, ToothAnalysisResult } from './ThreeScene';
+import type { SurfaceType, ToothLesion } from '@/lib/api/report';
 
 const ThreeScene = dynamic(() => import('./ThreeScene'), { ssr: false });
 
 interface OralViewer3DProps {
   analysisResults: ToothAnalysisResult[];
+  lesions?: ToothLesion[];
   scannedTeeth?: number[];
-  onToothSelect?: (result: ToothAnalysisResult) => void;
+  onToothSelect?: (fdi: string | null) => void;
+  selectedTooth?: string | null;
   calibrationMode?: boolean;
+  minimal?: boolean;
+  zoom?: number;
+  visibleMarkers?: MarkerVisibility;
+  initialPose?: 'front' | 'inside';
+  focusSurface?: SurfaceType | null;
+  idleMarkers?: boolean;
+  toothColors?: Record<string, string>;
 }
 
 export default function OralViewer3D({
   analysisResults,
+  lesions,
   scannedTeeth,
   onToothSelect,
+  selectedTooth,
   calibrationMode = false,
+  minimal,
+  zoom,
+  visibleMarkers,
+  initialPose,
+  focusSurface,
+  idleMarkers,
+  toothColors,
 }: OralViewer3DProps) {
   const { missing, hydrate } = useDentitionStore();
 
@@ -28,10 +47,19 @@ export default function OralViewer3D({
     <div className="w-full h-full">
       <ThreeScene
         analysisResults={analysisResults}
+        lesions={lesions}
         missingTeeth={missing}
         scannedTeeth={scannedTeeth}
         onToothSelect={onToothSelect}
+        selectedTooth={selectedTooth}
         calibrationMode={calibrationMode}
+        minimal={minimal}
+        zoom={zoom}
+        visibleMarkers={visibleMarkers}
+        initialPose={initialPose}
+        focusSurface={focusSurface}
+        idleMarkers={idleMarkers}
+        toothColors={toothColors}
       />
     </div>
   );

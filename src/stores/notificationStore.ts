@@ -5,7 +5,7 @@ import type { AppNotification } from '@/lib/notifications/types';
 import { showLocal } from '@/lib/notifications/browser';
 import { notificationApi } from '@/lib/api/notification';
 
-// 브라우저 팝업을 이미 띄운 알림. 새로고침해도 같은 걸 또 띄우지 않게 남긴다
+// 이미 띄운 브라우저 알림. 중복 방지용
 const POPPED_KEY = 'habitooth.notifications.popped';
 const MAX_POPPED = 300;
 
@@ -63,7 +63,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
       fresh.forEach(showLocal);
       writePopped([...fresh.map((n) => n.id), ...popped]);
     } catch {
-      // 목록을 못 가져와도 화면은 그대로 둔다
+      // 실패 시 화면 유지
     } finally {
       set({ loading: false });
     }
