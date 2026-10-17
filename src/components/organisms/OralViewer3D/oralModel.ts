@@ -12,11 +12,11 @@ export const ORAL_VIEW_LIMITS = {
   maxPolarAngle: Math.PI / 2 + 0.4,
 };
 
-// 월드 단위(모형 최대 변 10). 라디안, 간격
-// 정면은 어금니 뒤쪽을 경첩 삼아 벌린다. 상악을 위로 많이, 하악을 아래로 조금
+// 월드 단위(최대 변 10). 라디안
+// 정면은 어금니 뒤 경첩 기준
 const FRONT_TILT_UPPER = 0.52;
 const FRONT_TILT_LOWER = 0.3;
-// 모델 자체에 위아래 치아 틈이 있어서 음수로 당겨야 어금니 쪽이 붙는다
+// 모델에 위아래 틈이 있어 음수
 const FRONT_GAP = -0.4;
 const INSIDE_TILT = 0.7;
 const INSIDE_GAP = 1.6;
@@ -26,7 +26,6 @@ export function prepareOralModel(model: THREE.Object3D) {
     pivot: THREE.Group;
     base: THREE.Vector3;
     direction: number;
-    // 피벗 기준 뒤쪽 경첩 위치
     hinge: THREE.Vector3;
   }> = [];
   const meshes: Array<{ mesh: THREE.Mesh; upper: boolean }> = [];
@@ -39,7 +38,7 @@ export function prepareOralModel(model: THREE.Object3D) {
       return;
     }
     if (/^(upper|lower)_gum$/.test(object.name)) {
-      // Compress only the base below the tooth neck; keep the gingival margin intact.
+      // 치경부 아래만 압축
       if (!object.userData.reportGumHeightAdjusted) {
         object.geometry = object.geometry.clone();
         object.geometry.computeBoundingBox();
@@ -50,7 +49,6 @@ export function prepareOralModel(model: THREE.Object3D) {
           const y = positions.getY(i);
           if (y < 0) {
             positions.setY(i, y * GUM_BASE_HEIGHT);
-            // Gradually retract the outer cap rim instead of leaving a flared lip.
             const rim = THREE.MathUtils.smoothstep(y / baseY, 0.65, 1);
             const inset = 1 - GUM_RIM_INSET * rim;
             positions.setX(i, center.x + (positions.getX(i) - center.x) * inset);
@@ -64,7 +62,7 @@ export function prepareOralModel(model: THREE.Object3D) {
         object.userData.reportGumHeightAdjusted = true;
       }
 
-      // Match the final HTML's standalone gum material, without GLB texture tinting.
+      // 단색 잇몸 재질
       object.material = new THREE.MeshPhysicalMaterial({
         name: 'gum',
         color: ORAL_GUM_COLOR,
@@ -116,8 +114,7 @@ export function prepareOralModel(model: THREE.Object3D) {
       hinge: new THREE.Vector3(0, 0, (jawBox.min.z - worldCenter.z) / scale),
     });
   }
-  // 정면(p=0)도 입을 벌린 상태. 피벗은 턱 가운데지만 경첩을 뒤쪽에 둔 것처럼
-  // 회전으로 밀린 만큼 되돌려서 앞니만 벌어지게 한다. 안쪽 보기(p=1)는 기존 그대로
+  // 정면(p=0)은 앞니만 벌어지게 회전 보정. 안쪽 보기(p=1)는 그대로
   const setPose = (progress: number) => {
     const p = THREE.MathUtils.clamp(progress, 0, 1);
     const gap = THREE.MathUtils.lerp(FRONT_GAP, INSIDE_GAP, p);

@@ -53,7 +53,6 @@ export function useScanDetection({ videoRef, imgRef, enabled }: Options) {
     };
   }, [enabled]);
 
-  // 밝기 감지
   useEffect(() => {
     if (!enabled) return;
 
@@ -63,7 +62,7 @@ export function useScanDetection({ videoRef, imgRef, enabled }: Options) {
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
     if (!ctx) return;
 
-    // 스캐너 스트림은 타 오리진 — 캔버스 오염 시 재시도 중단
+    // 타 오리진 스트림. 캔버스 오염 시 재시도 중단
     let pixelsReadable = true;
 
     const sampleBrightness = (): number | null => {

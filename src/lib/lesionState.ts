@@ -16,11 +16,10 @@ interface LesionRow {
   riskLevel?: string;
 }
 
-// 면적이 있어도 위험도가 깨끗이면 병변으로 안 본다
+// 위험도 VERY_LOW는 병변 아님
 export const isActiveLesion = (row: { areaRatio: number; riskLevel?: string }) =>
   row.areaRatio > 0 && row.riskLevel !== 'VERY_LOW';
 
-// 치석 폴리곤(또는 치석 비율)이 있으면 calculus, 치태만 있으면 plaque
 export function lesionState(lesions: ToothLesion[], results: LesionRow[]): ToothLesionState {
   const has = (type: LesionType) =>
     lesions.some((l) => l.lesionType === type && l.polygon.length >= 3) ||
@@ -30,7 +29,7 @@ export function lesionState(lesions: ToothLesion[], results: LesionRow[]): Tooth
   return 'normal';
 }
 
-// 3D 모형 범례와 리포트 상단이 같은 숫자를 보여주도록 한 곳에서 센다
+// 3D 범례와 리포트 상단 공용 집계
 export function countToothStates(input: {
   teeth: readonly number[];
   missing: readonly number[];

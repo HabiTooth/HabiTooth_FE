@@ -27,7 +27,6 @@ const PERIOD_LABELS: Record<HistoryPeriodFilter, string> = {
   SIX_MONTHS: '6개월',
 };
 
-// 점수대 필터는 정렬 토글 하나로. 누를 때마다 전체 → 80점↑ → 70~79 → 70점↓ 순환
 const SCORE_ORDER: HistoryScoreFilter[] = ['ALL', 'HIGH', 'MEDIUM', 'LOW'];
 const SCORE_LABELS: Record<HistoryScoreFilter, string> = {
   ALL: '모든 점수',
@@ -36,7 +35,6 @@ const SCORE_LABELS: Record<HistoryScoreFilter, string> = {
   LOW: '70점 미만',
 };
 
-// 리포트 상단·스캔 기록과 같은 등급 배지 색
 const GRADE_STYLE: Record<string, string> = {
   A: 'bg-success/15 text-success',
   B: 'bg-primary/15 text-primary',

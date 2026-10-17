@@ -19,23 +19,20 @@ interface ReportHeroProps {
   date: string;
   score: number | null;
   prevScore?: number;
-  // 모형 아래 말풍선 한 줄. 없으면 안 그린다
   message?: string | null;
   counts: ToothStateCounts;
   analysisResults: ToothAnalysisResult[];
   lesions: ToothLesion[];
   scannedTeeth: number[];
-  // 위험한 순서의 신경 쓸 치아
   focusTeeth: FocusChip[];
   selected: string | null;
   detail: ToothDetail | null;
-  // AI 리포트 중 이 치아를 짚은 항목
   aiNote?: { title: string; description: string } | null;
   onSelect: (fdi: string | null) => void;
   onBack: () => void;
 }
 
-// 포인터를 따라 움직이는 빛. 멀리 있는 것일수록 적게 움직인다
+// 포인터 추적 빛. 멀수록 적게 이동
 const FOLLOW = { glow: 220, aurora1: 90, aurora2: -110 };
 
 const CHANGE_LABEL = { better: '좋아짐', worse: '나빠짐', same: '그대로', first: '첫 기록' };
@@ -48,12 +45,11 @@ interface FocusView {
   surface: SurfaceType;
 }
 
-// 고른 치아에 병변이 여러 면·여러 종류로 있으면 하나씩 골라 볼 수 있게 보기 목록을 만든다
 function focusViews(lesions: ToothLesion[], fdi: string | null): FocusView[] {
   if (!fdi) return [];
   const own = lesions.filter((l) => String(l.toothNumber) === fdi && l.polygon.length >= 3);
   const seen = new Map<string, FocusView>();
-  // 치석을 앞에, 같은 종류면 바깥쪽을 앞에
+  // 치석 먼저, 같은 종류면 바깥쪽 먼저
   const order = (l: ToothLesion) =>
     (l.lesionType === 'CALCULUS' ? 0 : 10) + (l.surfaceType === 'OUTER' ? 0 : 1);
   [...own]
@@ -70,7 +66,7 @@ function focusViews(lesions: ToothLesion[], fdi: string | null): FocusView[] {
   const surfaces = new Set(views.map((v) => v.surface)).size;
   return views.map((v) => ({
     ...v,
-    // 종류만 다르면 "치석 보기", 면만 다르면 "안쪽 보기", 둘 다 섞이면 "치석 · 안쪽"
+    // 종류만 다르면 치석 보기, 면만 다르면 안쪽 보기, 둘 다면 치석 · 안쪽
     label:
       types > 1 && surfaces > 1
         ? `${LESION_LABEL[v.lesionType]} · ${SURFACE_LABEL[v.surface]}`
@@ -80,7 +76,7 @@ function focusViews(lesions: ToothLesion[], fdi: string | null): FocusView[] {
   }));
 }
 
-// 등급 배지. 파란 바탕 위라 채운 색으로 구분한다
+// 등급 배지 색
 const GRADE_BADGE: Record<string, string> = {
   A: 'bg-success text-white',
   B: 'bg-white text-primary',
@@ -89,7 +85,6 @@ const GRADE_BADGE: Record<string, string> = {
   F: 'bg-danger text-white',
 };
 
-// 모형 색 안내. 치아 색이 뜻하는 단계
 const LEGEND: RiskLevel[] = ['VERY_LOW', 'LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
 const UNSCANNED_COLOR = '#C7C7CC';
 
@@ -110,8 +105,7 @@ export default function ReportHero({
   onBack,
 }: ReportHeroProps) {
   const sectionRef = useRef<HTMLElement>(null);
-  // 전체 보기일 때 히어로 높이. 확대해도 카드 높이가 안 바뀌게 무대를 이 높이로 채운다
-  // 점수·범례가 나중에 채워지며 높이가 자라니 전체 보기 동안 계속 잰다
+  // 전체 보기 높이 유지용. 점수·범례가 늦게 채워져서 계속 측정
   const [heroHeight, setHeroHeight] = useState<number | null>(null);
   const idleRef = useRef(!detail);
   idleRef.current = !detail;
@@ -120,7 +114,7 @@ export default function ReportHero({
   const [viewKey, setViewKey] = useState<string | null>(null);
   useEffect(() => setViewKey(null), [selected]);
   const activeView = views.find((v) => v.key === viewKey) ?? views[0] ?? null;
-  // 보기를 골랐으면 그 종류 마커만. 종류가 하나뿐이면 전부
+  // 선택한 종류 마커만
   const markerFilter = useMemo<MarkerVisibility | undefined>(() => {
     if (!activeView || new Set(views.map((v) => v.lesionType)).size < 2) return undefined;
     return { PLAQUE: activeView.lesionType === 'PLAQUE', CALCULUS: activeView.lesionType === 'CALCULUS' };
@@ -138,7 +132,7 @@ export default function ReportHero({
   const aurora1Ref = useRef<HTMLSpanElement>(null);
   const aurora2Ref = useRef<HTMLSpanElement>(null);
 
-  // 리렌더 없이 빛만 옮긴다. 가운데가 0, 가장자리가 ±0.5
+  // 리렌더 없이 빛 이동. 가운데 0, 가장자리 ±0.5
   const follow = (x: number, y: number) => {
     const move = (el: HTMLElement | null, amount: number) => {
       if (el) el.style.transform = `translate(${x * amount}px, ${y * amount}px)`;
@@ -188,7 +182,7 @@ export default function ReportHero({
       onPointerCancel={release}
       className="relative overflow-hidden rounded-b-[28px] bg-[linear-gradient(170deg,#3F7BD1_0%,#4A86D9_45%,#5C97E4_100%)] text-white"
     >
-      {/* 앱 배경과 같은 오로라. 바깥 span은 느리게 흐르고 안쪽 span은 포인터를 따라온다 */}
+      {/* 오로라 배경. 안쪽 span이 포인터 추적 */}
       <span
         aria-hidden
         className="hero-aurora-1 pointer-events-none absolute -left-20 top-4 block h-80 w-80"
@@ -235,7 +229,6 @@ export default function ReportHero({
         </header>
       )}
 
-      {/* 모형 무대. 치아를 고르면 글자가 모형 위에 얹힌다 */}
       <div
         className={`relative ${detail ? '' : 'h-[380px]'}`}
         style={detail ? { height: heroHeight ?? 520 } : undefined}
@@ -255,7 +248,6 @@ export default function ReportHero({
 
         {detail && (
           <div key={detail.fdi} className="hero-rise pointer-events-none absolute inset-0 z-10">
-            {/* 글자 뒤 어두운 그라데이션. 아티클 상단 이미지와 같은 결 */}
             <div className="absolute inset-x-0 top-0 h-56 bg-gradient-to-b from-[#17213F]/70 via-[#17213F]/25 to-transparent" />
             <div className="absolute inset-x-0 bottom-0 h-64 bg-gradient-to-t from-[#17213F]/75 via-[#17213F]/30 to-transparent" />
 

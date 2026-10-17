@@ -38,7 +38,7 @@ const RISK_RANK: RiskLevel[] = ['VERY_LOW', 'LOW', 'MEDIUM', 'HIGH', 'CRITICAL']
 
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 
-// #RRGGBB 두 색을 t만큼 섞는다. three를 페이지 번들에 끌어오지 않으려고 직접 계산
+// #RRGGBB 두 색 혼합. three 번들 회피
 function lerpHex(from: string, to: string, t: number): string {
   const channel = (hex: string, i: number) => parseInt(hex.slice(1 + i * 2, 3 + i * 2), 16);
   const mixed = [0, 1, 2].map((i) =>
@@ -49,7 +49,6 @@ function lerpHex(from: string, to: string, t: number): string {
   return `#${mixed.join('')}`;
 }
 
-// 치아마다 가장 높은 위험도. 모형 색을 정할 때 쓴다
 function worstRiskByTooth(results: ToothAnalysisResult[]): Map<string, RiskLevel> {
   const worst = new Map<string, RiskLevel>();
   for (const r of results) {
@@ -61,7 +60,7 @@ function worstRiskByTooth(results: ToothAnalysisResult[]): Map<string, RiskLevel
   return worst;
 }
 
-// 슬라이더 위치에 맞춰 기준 색과 비교 색을 섞는다. 한쪽에만 있는 치아는 깨끗 색에서 출발
+// 슬라이더 위치로 색 혼합. 한쪽에만 있으면 깨끗 색에서 시작
 function blendToothColors(
   before: ToothAnalysisResult[],
   after: ToothAnalysisResult[],
@@ -139,7 +138,7 @@ export default function ComparePage() {
   const [after, setAfter] = useState<SessionReport | null>(null);
   const [beforeLesions, setBeforeLesions] = useState<ToothLesion[]>([]);
   const [afterLesions, setAfterLesions] = useState<ToothLesion[]>([]);
-  // 0이면 기준 스캔, 1이면 비교 스캔. 손을 떼면 가까운 쪽으로 붙는다
+  // 0 기준 스캔, 1 비교 스캔. 놓으면 가까운 쪽
   const [blend, setBlend] = useState(1);
   const [selected, setSelected] = useState<string | null>(null);
   const [failed, setFailed] = useState<number[]>([]);
@@ -194,7 +193,7 @@ export default function ComparePage() {
   const ready = before !== null && after !== null;
   const scoreDelta = ready ? after.totalScore - before.totalScore : null;
   const liveScore = ready ? Math.round(lerp(before.totalScore, after.totalScore, blend)) : null;
-  // 슬라이더 중간에서는 두 스캔 색이 섞이고, 병변 마커와 툴팁은 가까운 쪽 것을 쓴다
+  // 마커·툴팁은 가까운 스캔 기준
   const toothColors = useMemo(
     () => blendToothColors(beforeResults, afterResults, blend),
     [beforeResults, afterResults, blend],
@@ -211,7 +210,7 @@ export default function ComparePage() {
 
   const snap = () => setBlend((v) => (v >= 0.5 ? 1 : 0));
 
-  // 치아별 변화 캐러셀. 마우스 휠을 가로 스크롤로 돌리고, 고른 치아 카드가 보이게 맞춘다
+  // 변화 캐러셀. 휠 → 가로 스크롤
   const railRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const rail = railRef.current;
@@ -229,7 +228,7 @@ export default function ComparePage() {
     const rail = railRef.current;
     const card = rail.querySelector<HTMLElement>(`[data-tooth="${selected}"]`);
     if (!card) return;
-    // scrollIntoView는 페이지까지 세로로 끌어내리니 가로만 직접 맞춘다
+    // scrollIntoView는 세로 스크롤 유발. 가로만 직접
     rail.scrollTo({
       left: card.offsetLeft - (rail.clientWidth - card.clientWidth) / 2,
       behavior: 'smooth',
@@ -313,7 +312,6 @@ export default function ComparePage() {
             </div>
           )}
 
-          {/* 카드가 아니라 화면을 가로로 가르는 구역. 모서리와 여백 없이 가장자리까지 */}
           <div className="relative -mt-1 overflow-hidden bg-[linear-gradient(170deg,#1F5F8F_0%,#2690A0_55%,#3FB4A8_100%)] pb-7 text-white">
             <div
               aria-hidden
@@ -356,7 +354,6 @@ export default function ComparePage() {
               )}
             </div>
 
-            {/* 시간 슬라이더. 왼쪽이 기준, 오른쪽이 비교 */}
             <div className="mx-5 mt-4">
               <div className="flex items-center justify-between text-[12.5px] font-semibold">
                 <span className={blend < 0.5 ? 'text-white' : 'text-white/80'}>

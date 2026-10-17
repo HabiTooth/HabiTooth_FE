@@ -42,24 +42,17 @@ interface ThreeSceneProps {
   lesions?: ToothLesion[];
   missingTeeth?: number[];
   scannedTeeth?: number[];
-  // 치아를 누르면 FDI, 빈 곳을 누르면 null
   onToothSelect?: (fdi: string | null) => void;
-  // 바깥에서 고른 치아. 있으면 그 치아로 당겨 보고 나머지는 흐려진다
   selectedTooth?: string | null;
   calibrationMode?: boolean;
-  // 범례·안내 띠 없이 모형만. 상단 히어로처럼 바깥에서 숫자를 보여줄 때
   minimal?: boolean;
-  // 1보다 크면 모형을 더 크게 잡는다
   zoom?: number;
-  // 바깥에서 마커 표시를 제어할 때. 없으면 자체 범례 토글을 쓴다
   visibleMarkers?: MarkerVisibility;
-  // 처음 보여줄 포즈. inside면 위아래 턱을 펼친 교합면 뷰로 시작
   initialPose?: PoseName;
-  // 고른 치아의 어느 면을 볼지. 바깥쪽이면 정면, 안쪽이면 펼친 포즈. 없으면 병변 위치로 정한다
+  // 볼 면. 없으면 병변 위치로 결정
   focusSurface?: SurfaceType | null;
-  // 고른 치아가 없을 때도 마커를 보여줄지. 히어로는 끄고 치아를 고르면 그 치아만 켠다
+  // 치아 미선택 시 마커 표시 여부
   idleMarkers?: boolean;
-  // FDI별 치아 색 덮어쓰기. 비교 슬라이더가 두 스캔의 색을 섞어 넘긴다
   toothColors?: Record<string, string>;
 }
 
@@ -69,9 +62,8 @@ interface ToothInfo {
   fdi: string;
   state: ToothState;
   lesion: ToothLesionState;
-  // 색을 정하는 대표 결과
   result?: ToothAnalysisResult;
-  // 같은 치아의 병변 전부. 치석이 먼저 온다
+  // 치석 먼저
   results?: ToothAnalysisResult[];
 }
 
@@ -81,7 +73,7 @@ interface TooltipState extends ToothInfo {
 }
 
 const MODEL_PATH = ORAL_MODEL_PATH;
-// 기본값을 매 렌더 새 배열로 만들면 이펙트 의존성이 계속 바뀌어 무한 갱신에 빠진다
+// 빼면 이펙트 무한 갱신
 const NO_LESIONS: ToothLesion[] = [];
 const NO_TEETH: number[] = [];
 const LESION_TYPES: LesionType[] = ['CALCULUS', 'PLAQUE'];
@@ -105,10 +97,9 @@ function disposeModel(model: THREE.Object3D) {
   textures.forEach((texture) => texture.dispose());
 }
 
-// Y를 키우면 위에서 내려다보는 교합면 뷰, 줄이면 정면 뷰
+// Y 크면 교합면 뷰, 작으면 정면 뷰
 const VIEW_DIR = new THREE.Vector3(0, Math.sin(0.08), Math.cos(0.08));
 
-// 드롭 섀도 스프라이트용 라디얼 그라데이션
 function radialShadowTexture() {
   const size = 256;
   const canvas = document.createElement('canvas');
@@ -129,29 +120,27 @@ function radialShadowTexture() {
   return texture;
 }
 const FIT_MARGIN = 1.06;
-// 치아 하나로 당겨 볼 때 전체 거리 대비 비율
 const FOCUS_DISTANCE = 0.34;
-// 당겨 볼 때 치아가 화면 위쪽에 오도록 시선을 조금 아래로
+// 확대 시 시선 아래로 이동
 const FOCUS_TARGET_DROP = 0.04;
-// 전체 보기에서 모형을 살짝 위로 올려 바닥 그림자가 깔릴 자리를 남긴다
+// 전체 보기 모형 위치 보정. 그림자 자리용
 const IDLE_LIFT = 0.07;
-// 전체 보기에서 휠로 당길 수 있는 한계(맞춤 거리 대비). 모형이 무대 높이를 꽉 채우는 정도
+// 전체 보기 휠 확대 한계
 const IDLE_MIN_DISTANCE = 0.64;
-// 당겨 볼 때는 옆에서도 볼 수 있게 좌우 회전 폭을 넓힌다
+// 확대 시 좌우 회전 폭
 const FOCUS_AZIMUTH = (80 * Math.PI) / 180;
 const FOCUS_DURATION = 550;
 const POSE_DURATION = 650;
-// 이 거리보다 움직이면 드래그라서 클릭으로 안 본다
+// 이 거리 이상 이동은 드래그
 const CLICK_SLOP = 6;
 
-// 이번 스캔에 안 잡힌 치아. 깨끗(하늘색)과 섞이지 않게 파란기 뺀 중립 회색
+// 미촬영 치아 색. 깨끗(하늘색)과 구분
 const UNSCANNED_COLOR = '#C7C7CC';
 const UNSCANNED_OPACITY = 0.6;
 const DIM_OPACITY = 0.3;
-// 당겨 볼 때 고른 치아는 흰색. 병변 마커 색이 치아 색과 섞이지 않게
+// 확대 시 선택 치아 색. 마커 색과 구분
 const FOCUS_TOOTH_COLOR = '#F6F2EC';
 
-// 레퍼런스 치아 재질에 관리 필요도 색만 얹은 것
 const toothMaterial = (color: string) =>
   new THREE.MeshPhysicalMaterial({
     color,
@@ -294,7 +283,7 @@ export default function ThreeScene({
   useEffect(() => {
     selectedRef.current = selectedTooth;
     focusSurfaceRef.current = focusSurface;
-    // 누르기 직전에 떠 있던 툴팁이 상세 글자 위에 남지 않게
+    // 툴팁 잔상 방지
     setTooltip(null);
     focusRef.current?.();
   }, [selectedTooth, focusSurface]);
@@ -305,7 +294,7 @@ export default function ThreeScene({
     const mount = mountRef.current;
     let disposed = false;
     let oralModel: ReturnType<typeof prepareOralModel> | null = null;
-    // 버튼으로 고른 포즈. 치아를 골랐다 놓으면 여기로 돌아온다
+    // 버튼으로 고른 포즈
     let userPose = initialPose === 'inside' ? 1 : 0;
     let pose = userPose;
     let poseAnimation: { from: number; to: number; start: number } | null = null;
@@ -316,7 +305,7 @@ export default function ThreeScene({
       toPosition: THREE.Vector3;
       toTarget: THREE.Vector3;
     } | null = null;
-    // 포즈가 바뀌는 중이면 끝난 뒤에 카메라를 옮긴다
+    // 포즈 전환 후 카메라 이동용
     let focusAfterPose = false;
     setLoaded(false);
     setLoadFailed(false);
@@ -329,29 +318,29 @@ export default function ThreeScene({
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    // 1.05면 잇몸이 떠 보여서 조금 낮춘다
+    // 1.05면 잇몸이 떠 보임
     renderer.toneMappingExposure = 0.84;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     mount.appendChild(renderer.domElement);
 
-    // 클리어코트 반사용 환경맵. background는 안 깔아서 카드 배경은 그대로 비친다
+    // 클리어코트 반사용 환경맵. background 미적용
     const pmrem = new THREE.PMREMGenerator(renderer);
     const envMap = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
     scene.environment = envMap;
     pmrem.dispose();
 
-    // 위에서만 비추면 교합면이 보이는 하악이 더 밝아진다. 반구광을 키우고 키 라이트는 정면 쪽으로
+    // 하악 교합면 과노출 방지
     scene.add(new THREE.HemisphereLight(0xffffff, 0xe4dfd8, 1.2));
 
-    // 모델이 최대 변 10 단위로 리스케일되므로 레퍼런스 방향을 그 비율로 키움
+    // 모델 스케일(최대 변 10)에 맞춤
     const keyLight = new THREE.DirectionalLight(0xffffff, 1.1);
     keyLight.position.set(10, 16, 50);
     keyLight.castShadow = true;
     keyLight.shadow.mapSize.set(2048, 2048);
     keyLight.shadow.bias = -0.00005;
     keyLight.shadow.normalBias = 0.0004;
-    // 기본 섀도 카메라(±5)는 10 단위 모델을 못 덮는다
+    // 기본 섀도 카메라(±5)는 모델보다 작음
     Object.assign(keyLight.shadow.camera, {
       left: -8,
       right: 8,
@@ -373,7 +362,7 @@ export default function ThreeScene({
     Object.assign(controls, ORAL_VIEW_LIMITS);
 
     const modelSphere = new THREE.Sphere(new THREE.Vector3(), 1);
-    // 모형 바닥에 깔리는 납작한 그림자. 스프라이트라 돌려도 바닥에 남는다
+    // 바닥 그림자 스프라이트
     const dropShadow = new THREE.Sprite(
       new THREE.SpriteMaterial({
         map: radialShadowTexture(),
@@ -385,14 +374,12 @@ export default function ThreeScene({
     );
     dropShadow.visible = false;
     scene.add(dropShadow);
-    // 기준점 위로는 30%만. 아래로 길면 캔버스 끝에서 잘린다
     dropShadow.center.set(0.5, 0.6);
-    // 포즈가 바뀌면 바닥 높이와 앞면 깊이도 바뀌니 그때마다 다시 잰다
     let modelBottom = 0;
     let modelFront = 0;
     function placeDropShadow() {
       const r = modelSphere.radius;
-      // 앞면보다 조금 뒤, 바닥보다 조금 아래. 더 뒤면 원근 때문에 떠 보이고, 바닥 높이면 턱에 가려진다
+      // 더 뒤면 떠 보이고 바닥 높이면 턱에 가려짐
       dropShadow.position.set(modelSphere.center.x, modelBottom - r * 0.06, modelFront - r * 0.45);
       dropShadow.scale.set(r * 2.3, r * 0.26, 1);
     }
@@ -405,7 +392,6 @@ export default function ThreeScene({
       PLAQUE: markerMaterial('PLAQUE'),
       CALCULUS: markerMaterial('CALCULUS'),
     };
-    // 치아별 마커. 그릴 게 있는 치아만 만든다
     const markers = new Map<string, Partial<Record<LesionType, THREE.Mesh>>>();
     let frames: ReturnType<typeof buildToothFrames> = new Map();
 
@@ -413,10 +399,10 @@ export default function ThreeScene({
     const pointer = new THREE.Vector2();
     let modelRoot: THREE.Object3D | null = null;
     let pressAt: { x: number; y: number } | null = null;
-    // 모형을 직접 눌러 고른 치아. 이때만 보던 각도를 유지한다
+    // 모형을 직접 눌러 고른 치아. 각도 유지용
     let clickedTooth: string | null = null;
 
-    // 모형 전체가 들어오는 거리. 펼친 포즈는 모형이 커지니 줌을 조금만 남긴다
+    // 모형 전체 거리. 펼친 포즈는 줌 축소
     function fitDistance() {
       const vFov = THREE.MathUtils.degToRad(camera.fov);
       const hFov = 2 * Math.atan(Math.tan(vFov / 2) * camera.aspect);
@@ -426,7 +412,6 @@ export default function ThreeScene({
       );
     }
 
-    // 지금 보고 있는 각도 그대로, 고른 치아가 있으면 그 치아로 다가가고 없으면 모형 전체로 물러난다
     function cameraGoal(fdi: string | null) {
       const target = modelSphere.center.clone();
       let distance = fitDistance();
@@ -442,17 +427,17 @@ export default function ThreeScene({
         distance *= FOCUS_DISTANCE;
         if (fdi !== clickedTooth && frame) {
           if (pose > 0.5) {
-            // 펼친 포즈는 교합면이 정면을 보니 정면에서
+            // 펼친 포즈는 정면에서
             direction.copy(VIEW_DIR);
           } else {
-            // 치열궁 바깥 방향을 월드로 옮기고 앞쪽을 조금 섞어 완전 옆에서 보지 않게
+            // 치열궁 바깥 방향 + 앞쪽 약간
             const outward = frame.normal.clone().transformDirection(meshes[0].matrixWorld);
             outward.y = 0;
             if (outward.lengthSq() > 1e-6) {
               direction
                 .copy(outward.normalize().multiplyScalar(0.7))
                 .add(new THREE.Vector3(0, 0, 0.5));
-              // 모형 뒤로 돌아가면 회전 제한에 걸려 엉뚱한 각도가 된다
+              // 뒤로 가면 회전 제한에 걸림
               direction.z = Math.max(direction.z, 0.35);
               direction.y = 0.22;
               direction.normalize();
@@ -471,7 +456,7 @@ export default function ThreeScene({
       camera.near = distance / 100;
       camera.far = distance * 10;
       camera.updateProjectionMatrix();
-      // 치아를 골랐을 때는 치아 하나가 화면을 채울 만큼 더 당길 수 있게
+      // 선택 시 확대 한계 완화
       controls.minDistance = distance * (selectedRef.current ? 0.12 : IDLE_MIN_DISTANCE);
       controls.maxDistance = distance * 2.2;
 
@@ -498,7 +483,7 @@ export default function ThreeScene({
       if (w === 0 || h === 0) return;
       camera.aspect = w / h;
       renderer.setSize(w, h);
-      // 무대 높이가 바뀌는 중이면 전환을 이어가고, 아니면 바로 놓는다
+      // 무대 높이 전환 중이면 이어서
       placeCamera(!cameraTransition);
     }
 
@@ -524,7 +509,6 @@ export default function ThreeScene({
       console.log(`[치아 매핑] ${fdiToMeshes.size}개 FDI 인식:`, [...fdiToMeshes.keys()].sort());
     }
 
-    // 고른 치아가 있으면 그 치아 마커만, 없으면 범례 토글대로
     function applyMarkerVisibility() {
       const selected = selectedRef.current;
       markers.forEach((set, fdi) => {
@@ -538,7 +522,6 @@ export default function ThreeScene({
       });
     }
 
-    // 고른 치아만 또렷하게, 나머지는 유리처럼 흐리게
     function applyDimming() {
       const selected = selectedRef.current;
       pickableMeshes.forEach((mesh) => {
@@ -555,7 +538,7 @@ export default function ThreeScene({
         }
         material.opacity = dimmed ? base * DIM_OPACITY : base;
         const transparent = material.opacity < 1;
-        // 불투명 셰이더는 알파를 1로 고정하니 transparent가 바뀌면 다시 컴파일해야 한다
+        // 빼면 transparent 변경이 반영 안 됨
         if (material.transparent !== transparent) material.needsUpdate = true;
         material.transparent = transparent;
         material.depthWrite = !dimmed;
@@ -566,10 +549,9 @@ export default function ThreeScene({
       controls.maxAzimuthAngle = azimuth;
     }
 
-    // 고른 치아의 병변이 전부 안쪽 면이면 펼친 포즈로 보여준다
+    // 병변이 전부 안쪽이면 펼친 포즈
     function desiredPose(fdi: string | null) {
       if (!fdi) return userPose;
-      // 바깥에서 면을 짚어 주면 그 면이 보이는 포즈로
       if (focusSurfaceRef.current) return focusSurfaceRef.current === 'INNER' ? 1 : 0;
       const own = lesionsRef.current.filter((l) => String(l.toothNumber) === fdi);
       if (own.length > 0 && own.every((l) => l.surfaceType === 'INNER')) return 1;
@@ -662,7 +644,6 @@ export default function ThreeScene({
         const state: ToothState = lesion !== 'normal' ? 'lesion' : scanned ? 'clean' : 'unscanned';
         const lesionRows = rows.filter((r) => r.lesionType);
         const top = worst(lesionRows);
-        // 치아 색은 관리 필요도. 병변 면적은 치아를 골랐을 때 마커로 보여준다
         const color = top ? RISK_MODEL_FILL[top.riskLevel] : RISK_MODEL_FILL.VERY_LOW;
         const mat = scanned ? toothMaterial(color) : unscannedMaterial();
         createdMaterials.push(mat);
@@ -680,7 +661,7 @@ export default function ThreeScene({
         });
       });
 
-      // 고른 치아의 병변 면이 바뀌어(예: 비교 슬라이더로 스캔 전환) 다른 포즈가 필요하면 다시 당겨 본다
+      // 병변 면이 바뀌면 포즈 재설정
       const selected = selectedRef.current;
       const needsPoseChange =
         Boolean(selected) && oralModel !== null && Math.abs(desiredPose(selected) - pose) > 0.001;
@@ -782,7 +763,7 @@ export default function ThreeScene({
     }
 
     function handleClick(event: PointerEvent) {
-      // 돌려보다 손을 뗀 건 클릭이 아니다
+      // 드래그는 클릭 아님
       if (
         pressAt &&
         Math.hypot(event.clientX - pressAt.x, event.clientY - pressAt.y) > CLICK_SLOP
