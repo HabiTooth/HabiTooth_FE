@@ -4,20 +4,34 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Camera, Bluetooth, Bot, BarChart3, Loader2 } from 'lucide-react';
 
-const OUTLINE_D = 'M 194 79 C 171 59 138 58 116 76 C 95 94 91 122 100 151 C 106 171 115 194 126 219 L 147 268 C 152 281 160 286 174 283 L 174 221 C 174 202 185 190 200 190 C 215 190 226 202 226 221 L 226 283 C 240 286 248 281 253 268 L 274 219 C 285 194 294 171 300 151 C 309 122 305 94 284 76 C 267 62 245 58 225 64';
+const OUTLINE_D =
+  'M 194 79 C 171 59 138 58 116 76 C 95 94 91 122 100 151 C 106 171 115 194 126 219 L 147 268 C 152 281 160 286 174 283 L 174 221 C 174 202 185 190 200 190 C 215 190 226 202 226 221 L 226 283 C 240 286 248 281 253 268 L 274 219 C 285 194 294 171 300 151 C 309 122 305 94 284 76 C 267 62 245 58 225 64';
 const STEM_D = 'M 194 79 L 194 143';
 
 function LogoIcon() {
   return (
     <svg width="40" height="40" viewBox="75 45 255 258" fill="none">
       <defs>
-        <linearGradient id="onboardingLogoGrad" x1="75" y1="0" x2="330" y2="0" gradientUnits="userSpaceOnUse">
+        <linearGradient
+          id="onboardingLogoGrad"
+          x1="75"
+          y1="0"
+          x2="330"
+          y2="0"
+          gradientUnits="userSpaceOnUse"
+        >
           <stop offset="0" stopColor="#4A86D9" />
           <stop offset="0.4" stopColor="#93C5FD" />
           <stop offset="1" stopColor="#4A86D9" />
         </linearGradient>
       </defs>
-      <path d={OUTLINE_D} stroke="url(#onboardingLogoGrad)" strokeWidth="15.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d={OUTLINE_D}
+        stroke="url(#onboardingLogoGrad)"
+        strokeWidth="15.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
       <path d={STEM_D} stroke="url(#onboardingLogoGrad)" strokeWidth="15.5" strokeLinecap="round" />
       <circle cx={194} cy={143} r={16.5} fill="url(#onboardingLogoGrad)" />
       <circle cx={222} cy={70} r={16.5} fill="url(#onboardingLogoGrad)" />
@@ -39,7 +53,15 @@ function FeatureRow({ icon, title, desc }: { icon: React.ReactNode; title: strin
   );
 }
 
-function PermissionRow({ icon, title, desc }: { icon: React.ReactNode; title: string; desc: string }) {
+function PermissionRow({
+  icon,
+  title,
+  desc,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  desc: string;
+}) {
   return (
     <div className="flex items-center gap-3 py-3 border-b border-hairline last:border-b-0">
       <div className="w-10 h-10 rounded-[12px] bg-primary-light flex items-center justify-center text-primary flex-shrink-0">
@@ -63,9 +85,7 @@ export default function OnboardingPage() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
       stream.getTracks().forEach((t) => t.stop());
-    } catch {
-      // 거부돼도 계속 진행
-    }
+    } catch {}
 
     router.push('/login');
   };
@@ -88,7 +108,9 @@ export default function OnboardingPage() {
         </div>
 
         <div className="bg-white/90 backdrop-blur-sm rounded-[20px] shadow-card px-4 pt-3 pb-1 mb-4">
-          <p className="m-0 text-[11px] font-bold text-muted uppercase tracking-widest mb-1">주요 기능</p>
+          <p className="m-0 text-[11px] font-bold text-muted uppercase tracking-widest mb-1">
+            주요 기능
+          </p>
           <FeatureRow
             icon={<Camera size={20} />}
             title="UV 듀얼 촬영"
@@ -107,12 +129,10 @@ export default function OnboardingPage() {
         </div>
 
         <div className="bg-white/90 backdrop-blur-sm rounded-[20px] shadow-card px-4 pt-3 pb-1 mb-4">
-          <p className="m-0 text-[11px] font-bold text-muted uppercase tracking-widest mb-1">권한 안내</p>
-          <PermissionRow
-            icon={<Camera size={20} />}
-            title="카메라"
-            desc="구강 촬영에 필요해요"
-          />
+          <p className="m-0 text-[11px] font-bold text-muted uppercase tracking-widest mb-1">
+            권한 안내
+          </p>
+          <PermissionRow icon={<Camera size={20} />} title="카메라" desc="구강 촬영에 필요해요" />
           <PermissionRow
             icon={<Bluetooth size={20} />}
             title="블루투스"
@@ -133,7 +153,9 @@ export default function OnboardingPage() {
               <Loader2 size={18} className="animate-spin" />
               권한 요청 중...
             </>
-          ) : '시작하기'}
+          ) : (
+            '시작하기'
+          )}
         </button>
       </div>
     </div>

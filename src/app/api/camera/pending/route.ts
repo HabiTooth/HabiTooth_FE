@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// 기기 하드웨어 셔터로 찍은 컷을 가져오는 프록시 (CORS 우회용)
-// wand 펌웨어는 버튼을 누르면 백색광/UV 두 장을 들고 있다가 /pend 로 넘겨준다.
-// 이걸 안 가져가면 기기가 촬영 상태에 머물러서 스트림도 멈추고 /snap 도 실패한다.
+// 기기 셔터 컷 프록시. CORS 우회용
+// wand 펌웨어는 백색·UV 두 장을 /pend로 전달
 
-// 기기가 스트림 때문에 바쁘면 어차피 다음 폴에서 다시 묻는다. 오래 붙잡지 않는다
+// 기기 응답 없으면 다음 폴에서 재시도
 const PENDING_TIMEOUT = 1500;
 const IMAGE_TIMEOUT = 10000;
 

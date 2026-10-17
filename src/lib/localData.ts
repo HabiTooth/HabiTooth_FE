@@ -1,6 +1,6 @@
 const PREFIX = 'habitooth.';
 
-// 계정을 바꿔도 앞 사용자 데이터가 그대로 보이던 문제 때문에 로그아웃 때 통째로 지운다
+// 로그아웃 시 전부 삭제. 계정 전환 시 데이터 잔류 방지
 export function clearAppData() {
   if (typeof window === 'undefined') return;
   [localStorage, sessionStorage].forEach((store) => {

@@ -25,7 +25,7 @@ const CALCULUS_BUMP = 0.35 * MM;
 const GUM_FADE = 0.03;
 const HALF_WIDTH_SCALE = 0.9;
 
-// 환자 오른쪽(18/48)→왼쪽(28/38) 순
+// 사용자 오른쪽(18/48)→왼쪽(28/38) 순
 const ARCH_ORDER = {
   upper: [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28],
   lower: [48, 47, 46, 45, 44, 43, 42, 41, 31, 32, 33, 34, 35, 36, 37, 38],
@@ -251,7 +251,7 @@ export function coverageMask(
 
     let value = 0;
     if (masks.length > 0) {
-      // u=1 환자 오른쪽. 잇몸선은 상악 v=0, 하악 v=1
+      // u=1 사용자 오른쪽. 잇몸선은 상악 v=0, 하악 v=1
       const px = 1 - (u + 1) / 2;
       const py = upper ? h : 1 - h;
       for (const mask of masks) {

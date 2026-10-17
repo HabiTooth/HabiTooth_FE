@@ -24,7 +24,7 @@ export function useKakaoMaps(): MapsStatus {
 
     const src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${key}&libraries=services&autoload=false`;
 
-    // 도메인이 등록 안 됐으면 카카오가 401을 주고 script는 error로 끝남
+    // 도메인 미등록 시 401. script error로 종료
     const fail = () => {
       console.error(
         `[카카오맵] SDK를 못 불러왔어요.\n` +

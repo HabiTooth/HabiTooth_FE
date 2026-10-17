@@ -39,7 +39,7 @@ function GoogleCallback() {
   return <Pending />;
 }
 
-// useSearchParams는 Suspense 경계가 있어야 프로덕션 빌드에서 프리렌더된다
+// 빼면 프로덕션 프리렌더 오류
 export default function GoogleCallbackPage() {
   return (
     <Suspense fallback={<Pending />}>

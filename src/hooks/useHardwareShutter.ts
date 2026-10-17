@@ -2,9 +2,9 @@
 
 import { useEffect, useRef } from 'react';
 
-// 스트림이랑 같은 기기를 두드리는 거라 너무 잦으면 스트림이 끊긴다
+// 너무 잦으면 스트림 끊김
 const POLL_MS = 3000;
-// 촬영 직후에는 기기가 바빠서 계속 실패하므로 간격을 벌린다
+// 촬영 직후는 응답 실패가 잦아 간격 확대
 const MAX_POLL_MS = 9600;
 
 interface Pending {
@@ -16,32 +16,40 @@ export interface HardwareShot {
   uv: Blob | null;
 }
 
-/**
- * 기기 셔터 버튼 감시. seq가 오르면 기기가 들고 있는 컷을 가져온다.
- * 안 가져가면 기기가 촬영 상태에 머물러서 스트림이 멈춘 채로 있는다.
- */
+// 기기 셔터 감시 기능. seq 증가 시 컷 수집. 안 가져가면 스트림 멈춤
 export function useHardwareShutter({
   host,
   enabled,
   onCapture,
+  onError,
 }: {
   host: string | null;
   enabled: boolean;
-  onCapture: (shot: HardwareShot) => void;
+  onCapture: (shot: HardwareShot) => void | Promise<void>;
+  onError?: (message: string | null) => void;
 }) {
   const lastSeq = useRef<number | null>(null);
+  const lastHost = useRef<string | null>(null);
   const onCaptureRef = useRef(onCapture);
+  const onErrorRef = useRef(onError);
 
   useEffect(() => {
     onCaptureRef.current = onCapture;
+    onErrorRef.current = onError;
   });
 
   useEffect(() => {
     if (!host || !enabled) return;
+    if (lastHost.current !== host) {
+      lastHost.current = host;
+      lastSeq.current = null;
+    }
 
     let alive = true;
     let busy = false;
     let wait = POLL_MS;
+    let transferring: { seq: number; white?: Blob; uv?: Blob } | null = null;
+    let transferFailures = 0;
     let timer: ReturnType<typeof setTimeout>;
 
     const schedule = () => {
@@ -53,36 +61,60 @@ export function useHardwareShutter({
       if (busy) return;
       busy = true;
       try {
-        const res = await fetch(`/api/camera/pending?ip=${host}`);
+        const res = await fetch(`/api/camera/pending?ip=${encodeURIComponent(host)}`, {
+          cache: 'no-store',
+        });
         if (!res.ok) {
-          wait = Math.min(wait * 2, MAX_POLL_MS);
-          return;
+          throw new Error(`셔터 상태 수신 실패: ${res.status}`);
         }
         wait = POLL_MS;
 
         const { seq } = (await res.json()) as Pending;
         if (typeof seq !== 'number') return;
 
-        // 붙자마자 들어있던 예전 컷을 촬영으로 오해하지 않게 첫 값은 기준점으로만 씀
+        // 첫 값은 기준점. 이전 컷 오인 방지
         if (lastSeq.current === null) {
           lastSeq.current = seq;
+          onErrorRef.current?.(null);
           return;
         }
-        if (seq <= lastSeq.current) return;
-        lastSeq.current = seq;
+        if (seq < lastSeq.current) {
+          lastSeq.current = seq;
+          transferring = null;
+          return;
+        }
+        if (seq === lastSeq.current) {
+          onErrorRef.current?.(null);
+          return;
+        }
+        if (transferring?.seq !== seq) {
+          transferring = { seq };
+          transferFailures = 0;
+        }
 
-        // 기기가 백색(0)·UV(1) 두 장을 들고 있다. 둘 다 가져가야 촬영 상태에서 빠져나온다
+        // 백색(0)·UV(1) 둘 다 가져가야 촬영 상태 해제
         const pick = async (i: 0 | 1) => {
-          const res = await fetch(`/api/camera/pending?ip=${host}&i=${i}`);
-          return res.ok ? res.blob() : null;
+          const res = await fetch(`/api/camera/pending?ip=${encodeURIComponent(host)}&i=${i}`, {
+            cache: 'no-store',
+          });
+          if (!res.ok) throw new Error(`셔터 사진 수신 실패: ${res.status}`);
+          const blob = await res.blob();
+          if (!blob.size) throw new Error('빈 셔터 사진');
+          return blob;
         };
 
-        const white = await pick(0);
-        const uv = await pick(1);
-        if (!white || !alive) return;
-
-        onCaptureRef.current({ white, uv });
+        transferring.white ??= await pick(0);
+        transferring.uv ??= await pick(1);
+        if (!alive) return;
+        await onCaptureRef.current({ white: transferring.white, uv: transferring.uv });
+        lastSeq.current = seq;
+        transferring = null;
+        transferFailures = 0;
+        onErrorRef.current?.(null);
       } catch {
+        if (alive && transferring && ++transferFailures >= 2) {
+          onErrorRef.current?.('촬영한 사진을 다시 받고 있어요. 잠시만 기다려 주세요.');
+        }
         wait = Math.min(wait * 2, MAX_POLL_MS);
       } finally {
         busy = false;

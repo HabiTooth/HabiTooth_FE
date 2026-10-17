@@ -98,7 +98,7 @@ export const scanApi = {
     );
   },
 
-  // 업로드 전에 한 컷씩 판정만 받는다. 저장은 안 함
+  // 이미지 퀄리티 판정만. 저장 안 함
   checkCaptureQuality: (
     sessionId: number,
     params: { file: File; viewType: ViewType; lightType?: LightType },

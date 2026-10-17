@@ -32,7 +32,6 @@ const lesion = (
   lesionType: ToothLesion['lesionType'] = 'PLAQUE',
 ): ToothLesion => ({ toothNumber, surfaceType, lesionType, polygon });
 
-// 덮인 정점들의 치아 로컬 통계
 function covered(fdi: string, a: Float32Array) {
   const positions = teeth.get(fdi)!.geometry.getAttribute('position');
   const frame = frames.get(fdi)!;
@@ -72,16 +71,16 @@ beforeAll(async () => {
 describe('tooth frames', () => {
   it('builds a frame for every tooth with outward normals', () => {
     expect(frames.size).toBe(32);
-    // 앞니 바깥은 +z(입술 쪽)
+    // 앞니 바깥 = +z
     expect(frames.get('11')!.normal.z).toBeGreaterThan(0.9);
     expect(frames.get('41')!.normal.z).toBeGreaterThan(0.9);
-    // 사랑니 바깥은 치열궁 바깥쪽 x
+    // 사랑니 바깥 = 치열궁 바깥쪽 x
     expect(frames.get('18')!.normal.x).toBeGreaterThan(0.5);
     expect(frames.get('48')!.normal.x).toBeLessThan(-0.5);
   });
 
   it('points the tangent toward the patient left in each jaw local space', () => {
-    // 상악 그룹은 Z축 180° 회전이라 로컬 -x 가 환자 왼쪽
+    // 상악은 Z축 180° 회전. 로컬 -x = 사용자 왼쪽
     expect(frames.get('11')!.tangent.x).toBeLessThan(0);
     expect(frames.get('41')!.tangent.x).toBeGreaterThan(0);
   });
@@ -100,7 +99,7 @@ describe('coverage mask', () => {
     );
     expect(upper.count).toBeGreaterThan(0);
     expect(lower.count).toBeGreaterThan(0);
-    // 환자 오른쪽 = 월드 -x. 상악 로컬은 뒤집혀 있어 +x
+    // 사용자 오른쪽 = 월드 -x. 상악 로컬은 +x
     expect(upper.meanX).toBeGreaterThan(0);
     expect(lower.meanX).toBeLessThan(0);
   });
@@ -201,7 +200,6 @@ describe('marker mesh', () => {
         }
         raised++;
       } else {
-        // 세 정점이 한 점으로 접혀야 한다
         for (let k = 1; k < 3; k++) {
           expect(position.getX(f + k)).toBeCloseTo(position.getX(f), 9);
           expect(position.getY(f + k)).toBeCloseTo(position.getY(f), 9);

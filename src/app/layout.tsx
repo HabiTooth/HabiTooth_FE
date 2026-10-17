@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   description: 'AI-powered oral health monitoring',
 };
 
-// viewport-fit=cover가 없으면 env(safe-area-inset-*)이 전부 0으로 나와서 하단 탭이 잘림
+// 빼면 safe-area-inset이 0이 되어 하단 탭 잘림
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,

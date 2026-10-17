@@ -25,7 +25,6 @@ export interface DeviceStatusResponse {
   connected: boolean;
 }
 
-// 캡스톤 데모 기기는 1대라 시리얼 고정 (BE는 시리얼로 기기를 식별·공유함)
 export const DEVICE_SERIAL = process.env.NEXT_PUBLIC_DEVICE_SERIAL ?? 'ESP32S3-HABITOOTH-01';
 export const DEVICE_MODEL = 'HabiTooth-Scanner-V1';
 export const DEVICE_FIRMWARE = '1.0.0';
@@ -38,6 +37,5 @@ export const deviceApi = {
       firmwareVersion: params?.firmwareVersion ?? DEVICE_FIRMWARE,
     }),
 
-  getStatus: () =>
-    apiClient.get<ApiResponse<DeviceStatusResponse[]>>('/api/device/status'),
+  getStatus: () => apiClient.get<ApiResponse<DeviceStatusResponse[]>>('/api/device/status'),
 };

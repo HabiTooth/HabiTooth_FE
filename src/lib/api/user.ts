@@ -32,18 +32,15 @@ export const userApi = {
   updateProfile: (payload: ProfileUpdatePayload) =>
     apiClient.patch<ApiResponse<Profile>>('/api/user/profile', payload),
 
-  getDeviceStatus: () =>
-    apiClient.get<ApiResponse<DeviceStatusResponse[]>>('/api/user/status'),
+  getDeviceStatus: () => apiClient.get<ApiResponse<DeviceStatusResponse[]>>('/api/user/status'),
 
-  getNotification: () =>
-    apiClient.get<ApiResponse<NotificationSetting>>('/api/user/notification'),
+  getNotification: () => apiClient.get<ApiResponse<NotificationSetting>>('/api/user/notification'),
 
   updateNotification: (payload: NotificationSetting) =>
     apiClient.patch<ApiResponse<NotificationSetting>>('/api/user/notification', payload),
 
   getToothProfile: () => apiClient.get<ApiResponse<ToothProfile>>('/api/user/tooth-profile'),
 
-  // 토글이 아니라 목록 통째로 덮어쓴다
   updateToothProfile: (missingTeeth: number[]) =>
     apiClient.put<ApiResponse<null>>('/api/user/tooth-profile', { missingTeeth }),
 
