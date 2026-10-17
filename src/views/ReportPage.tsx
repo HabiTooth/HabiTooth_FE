@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
 import { useParams, useRouter } from 'next/navigation';
@@ -36,7 +37,7 @@ import { historyApi, type HistoryScoreTrendItem } from '@/lib/api/history';
 import { formatDate, formatShortDate, toSummaryRisk } from '@/lib/score';
 import { ALL_TEETH } from '@/lib/dentition';
 import { useDentitionStore } from '@/stores/dentitionStore';
-import { remapTeeth } from '@/lib/toothMapping';
+import { countMissingConflicts, excludeMissingTeeth } from '@/lib/toothMapping';
 import { LESION_LABEL, RISK_ORDER, worstByLesion } from '@/lib/lesionRisk';
 import { countToothStates } from '@/lib/lesionState';
 import { buildToothDetail, focusOrder } from '@/lib/toothDetail';
@@ -270,11 +271,19 @@ export default function ReportPage() {
   }, [previousId]);
 
   const scannedTeeth = useMemo(() => teethInZones(capturedZones), [capturedZones]);
+  const viewerLesions = useMemo(() => excludeMissingTeeth(lesions, missing), [lesions, missing]);
 
-  const teeth = useMemo(() => remapTeeth(report?.toothStatuses ?? [], missing), [report, missing]);
+  const teeth = useMemo(
+    () => excludeMissingTeeth(report?.toothStatuses ?? [], missing),
+    [report, missing],
+  );
   const prevTeeth = useMemo(
-    () => remapTeeth(previous?.toothStatuses ?? [], missing),
+    () => excludeMissingTeeth(previous?.toothStatuses ?? [], missing),
     [previous, missing],
+  );
+  const missingConflicts = useMemo(
+    () => countMissingConflicts(report?.toothStatuses ?? [], missing),
+    [report, missing],
   );
 
   const diff = useMemo(
@@ -408,7 +417,7 @@ export default function ReportPage() {
         message={heroMessage}
         counts={toothCounts}
         analysisResults={analysisResults}
-        lesions={lesions}
+        lesions={viewerLesions}
         scannedTeeth={scannedTeeth}
         focusTeeth={focusTeeth}
         selected={selected}
@@ -419,6 +428,15 @@ export default function ReportPage() {
       />
 
       <main className="px-5">
+        {missingConflicts > 0 && (
+          <p className="m-0 mt-4 rounded-xl bg-warning/15 px-4 py-3 text-[12.5px] leading-relaxed text-[#8A5A00]">
+            등록한 결손치 자리에서 온 결과 {missingConflicts}개는 제외했어요.{' '}
+            <Link href="/mypage/teeth" className="font-semibold underline">
+              치아 정보
+            </Link>
+            에서 결손치 등록이 맞는지 확인해 주세요.
+          </p>
+        )}
         <RiskAnalysisSection
           plaque={report?.summary.totalPlaqueRatio ?? 0}
           calculus={report?.summary.totalCalculusRatio ?? 0}
