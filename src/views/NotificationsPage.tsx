@@ -16,7 +16,11 @@ import {
 import NavBar from '@/components/organisms/NavBar';
 import PageShell from '@/components/organisms/PageShell';
 import { useNotificationStore } from '@/stores/notificationStore';
-import { permissionState, requestPermission, type PermissionState } from '@/lib/notifications/browser';
+import {
+  permissionState,
+  requestPermission,
+  type PermissionState,
+} from '@/lib/notifications/browser';
 import type { NotificationType } from '@/lib/notifications/types';
 
 const ICON: Record<NotificationType, React.ElementType> = {
@@ -131,8 +135,8 @@ export default function NotificationsPage() {
                 tabIndex={0}
                 onClick={() => open(n.id, n.link)}
                 onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && open(n.id, n.link)}
-                className={`rounded-[18px] shadow-card p-4 flex items-start gap-3 cursor-pointer transition-transform active:scale-[0.99] backdrop-blur-sm ${
-                  n.read ? 'bg-white/70' : 'bg-white/95'
+                className={`rounded-[18px] shadow-card p-4 flex items-start gap-3 cursor-pointer transition-transform active:scale-[0.99] backdrop-blur-sm bg-white/90 ${
+                  n.read ? 'opacity-70' : ''
                 }`}
               >
                 <div
@@ -142,7 +146,9 @@ export default function NotificationsPage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
-                    {!n.read && <span className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0" />}
+                    {!n.read && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0" />
+                    )}
                     <p
                       className={`m-0 text-[13px] truncate ${n.read ? 'text-muted font-medium' : 'text-content font-semibold'}`}
                     >
@@ -168,11 +174,7 @@ export default function NotificationsPage() {
         </div>
 
         {items.length > 0 && (
-          <button
-            type="button"
-            onClick={clearAll}
-            className="w-full mt-4 py-3 text-xs text-muted"
-          >
+          <button type="button" onClick={clearAll} className="w-full mt-4 py-3 text-xs text-muted">
             전체 삭제
           </button>
         )}
