@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
-import { Check, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Check, ChevronRight } from 'lucide-react';
 import NavBar from '@/components/organisms/NavBar';
 import PageShell from '@/components/organisms/PageShell';
 import ProductThumb from '@/components/atoms/ProductThumb';
@@ -15,6 +15,7 @@ import { useDentitionStore } from '@/stores/dentitionStore';
 import { isRisky, recommendProducts, shopUrl, type ProductArt } from '@/constants/products';
 
 import { RISK_LABEL } from '@/lib/score';
+import PageHeader from '@/components/molecules/PageHeader';
 
 const PRODUCT_REASON: Record<ProductArt, string> = {
   brush: '매일 쓰는 기본 용품으로, 부드럽고 작은 헤드를 골랐어요.',
@@ -29,7 +30,6 @@ const PRODUCT_REASON: Record<ProductArt, string> = {
 };
 
 export default function ProductsPage() {
-  const router = useRouter();
   const params = useSearchParams();
   const sessionId = Number(params.get('session'));
   const fromReport = Number.isFinite(sessionId) && sessionId > 0;
@@ -42,7 +42,7 @@ export default function ProductsPage() {
 
   useEffect(() => {
     setLoaded(false);
-    // 리포트에서 넘어왔으면 그 스캔 기준으로, 아니면 최신 스캔 기준으로 고른다
+    // 리포트 경유 시 그 스캔 기준
     const load = fromReport
       ? reportApi
           .getSessionReport(sessionId)
@@ -62,19 +62,7 @@ export default function ProductsPage() {
 
   return (
     <PageShell withNav decorative={false} className="!bg-[#F8F6F0]">
-      <div className="flex items-center px-4 py-3 bg-white/90 backdrop-blur-sm border-b border-hairline">
-        <button
-          type="button"
-          onClick={() => router.back()}
-          className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-hairline transition-colors"
-        >
-          <ChevronLeft size={20} className="text-content" />
-        </button>
-        <span className="flex-1 text-center text-[15px] font-semibold text-content">
-          관리 용품 추천
-        </span>
-        <div className="w-9" />
-      </div>
+      <PageHeader title="관리 용품 추천" divider="border-[#F3E4B5]" />
 
       <div className="px-5 pt-4 flex flex-col gap-4">
         <section className="relative isolate overflow-hidden -mx-5 -mt-4 bg-[#FFF3CF] px-5 py-6 min-h-[184px]">

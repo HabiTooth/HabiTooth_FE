@@ -2,11 +2,12 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { AlertTriangle, ChevronLeft, Loader2 } from 'lucide-react';
+import { AlertTriangle, Loader2 } from 'lucide-react';
 import PageShell from '@/components/organisms/PageShell';
 import Checkbox from '@/components/atoms/Checkbox';
 import { userApi } from '@/lib/api/user';
 import { useAuthStore } from '@/stores/authStore';
+import PageHeader from '@/components/molecules/PageHeader';
 
 const ERASED = ['스캔 세션과 촬영한 사진', '분석 리포트와 점수 기록', '연속 스캔 기록'];
 
@@ -32,17 +33,7 @@ export default function WithdrawPage() {
 
   return (
     <PageShell>
-      <div className="flex items-center px-4 py-3 bg-white/90 backdrop-blur-sm border-b border-hairline">
-        <button
-          type="button"
-          onClick={() => router.back()}
-          className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-hairline transition-colors"
-        >
-          <ChevronLeft size={20} className="text-content" />
-        </button>
-        <span className="flex-1 text-center text-[15px] font-semibold text-content">회원 탈퇴</span>
-        <div className="w-9" />
-      </div>
+      <PageHeader title="회원 탈퇴" />
 
       <div className="px-5 pt-4 flex flex-col gap-4">
         <div className="bg-white/90 backdrop-blur-sm rounded-[20px] shadow-card p-5">

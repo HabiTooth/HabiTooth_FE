@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { ChevronLeft, Clock, Sparkles } from 'lucide-react';
+import { Clock, Sparkles } from 'lucide-react';
 import NavBar from '@/components/organisms/NavBar';
 import PageShell from '@/components/organisms/PageShell';
 import { dashboardApi } from '@/lib/api/dashboard';
@@ -15,6 +15,7 @@ import {
   type ArticleCategory,
 } from '@/constants/articles';
 import type { LesionType } from '@/lib/api/common';
+import PageHeader from '@/components/molecules/PageHeader';
 
 export default function ArticlesPage() {
   const basePath = '/articles';
@@ -56,19 +57,7 @@ export default function ArticlesPage() {
 
   return (
     <PageShell withNav>
-      <div className="flex items-center px-4 py-3 bg-white/90 backdrop-blur-sm border-b border-hairline">
-        <button
-          type="button"
-          onClick={() => router.back()}
-          className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-hairline transition-colors"
-        >
-          <ChevronLeft size={20} className="text-content" />
-        </button>
-        <span className="flex-1 text-center text-[15px] font-semibold text-content">
-          구강 건강 정보
-        </span>
-        <div className="w-9" />
-      </div>
+      <PageHeader title="구강 건강 정보" />
 
       <div className="px-5 pt-4">
         {hasScan === false ? (

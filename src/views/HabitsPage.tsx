@@ -1,8 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Check, ChevronLeft, Lightbulb } from 'lucide-react';
+import { Check, Lightbulb } from 'lucide-react';
 import NavBar from '@/components/organisms/NavBar';
 import PageShell from '@/components/organisms/PageShell';
 import { historyApi } from '@/lib/api/history';
@@ -17,10 +16,9 @@ import {
 } from '@/lib/habits';
 import { toKey } from '@/lib/streak';
 import HabitWeek from '@/components/molecules/HabitWeek';
-
+import PageHeader from '@/components/molecules/PageHeader';
 
 export default function HabitsPage() {
-  const router = useRouter();
   const { log, hydrate, toggleHabit } = useHabitStore();
   const [scans, setScans] = useState<Array<{ date: string; score: number }>>([]);
 
@@ -41,19 +39,7 @@ export default function HabitsPage() {
 
   return (
     <PageShell withNav>
-      <div className="flex items-center px-4 py-3 bg-white/90 backdrop-blur-sm border-b border-hairline">
-        <button
-          type="button"
-          onClick={() => router.back()}
-          className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-hairline transition-colors"
-        >
-          <ChevronLeft size={20} className="text-content" />
-        </button>
-        <span className="flex-1 text-center text-[15px] font-semibold text-content">
-          구강 습관
-        </span>
-        <div className="w-9" />
-      </div>
+      <PageHeader title="구강 습관" />
 
       <div className="px-5 pt-4 flex flex-col gap-4">
         <section className="rounded-[22px] bg-gradient-to-br from-[#548BDA] to-[#86BAF1] p-5 text-white flex items-center justify-between gap-4" aria-label="오늘 관리 현황">

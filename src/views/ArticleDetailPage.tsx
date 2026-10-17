@@ -2,9 +2,10 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { ChevronLeft, Clock } from 'lucide-react';
+import { Clock } from 'lucide-react';
 import PageShell from '@/components/organisms/PageShell';
 import { ARTICLES, findArticle } from '@/constants/articles';
+import PageHeader from '@/components/molecules/PageHeader';
 
 export default function ArticleDetailPage() {
   const basePath = '/articles';
@@ -18,19 +19,7 @@ export default function ArticleDetailPage() {
 
   return (
     <PageShell>
-      <div className="flex items-center px-4 py-3 bg-white/90 backdrop-blur-sm border-b border-hairline sticky top-0 z-20">
-        <button
-          type="button"
-          onClick={() => router.back()}
-          className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-hairline transition-colors"
-        >
-          <ChevronLeft size={20} className="text-content" />
-        </button>
-        <span className="flex-1 text-center text-[15px] font-semibold text-content truncate px-2">
-          {article?.category ?? '구강 건강 정보'}
-        </span>
-        <div className="w-9" />
-      </div>
+      <PageHeader title={article?.category ?? '구강 건강 정보'} className="sticky top-0 z-20" />
 
       {article === null ? (
         <div className="px-5 pt-16 flex flex-col items-center gap-3">
