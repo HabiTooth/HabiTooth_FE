@@ -6,7 +6,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080';
 export const apiClient = axios.create({
   baseURL: API_URL,
   timeout: 30000,
-  // 없으면 ngrok이 브라우저 GET을 CORS 없는 경고 HTML로 가로챔
+  // 빼면 ngrok 경고 HTML 응답
   headers: { 'ngrok-skip-browser-warning': 'true' },
 });
 
@@ -16,7 +16,7 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
-// 토큰 만료(401) 시 자동 로그아웃 - 로그인 시도 자체의 401은 제외
+// 401 자동 로그아웃. 로그인 요청은 제외
 apiClient.interceptors.response.use(
   (res) => res,
   (error) => {

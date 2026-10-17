@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Check, ChevronLeft } from 'lucide-react';
+import { Check } from 'lucide-react';
 import PageShell from '@/components/organisms/PageShell';
 import ToothArch from '@/components/organisms/ToothArch';
 import { useDentitionStore } from '@/stores/dentitionStore';
@@ -15,6 +15,7 @@ import {
   presentCount,
   toothName,
 } from '@/lib/dentition';
+import PageHeader from '@/components/molecules/PageHeader';
 
 export default function TeethPage() {
   const router = useRouter();
@@ -29,7 +30,7 @@ export default function TeethPage() {
   const handleSave = async () => {
     if (!(await save())) return;
     setSaved(true);
-    // 저장됐다는 걸 보고 나갈 수 있게
+    // 저장 확인 후 이동용
     setTimeout(() => (fromScan ? router.replace('/scan') : router.back()), 900);
   };
 
@@ -51,17 +52,7 @@ export default function TeethPage() {
 
   return (
     <PageShell>
-      <div className="flex items-center px-4 py-3 bg-white/90 backdrop-blur-sm border-b border-hairline">
-        <button
-          type="button"
-          onClick={() => router.back()}
-          className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-hairline transition-colors"
-        >
-          <ChevronLeft size={20} className="text-content" />
-        </button>
-        <span className="flex-1 text-center text-[15px] font-semibold text-content">치아 정보</span>
-        <div className="w-9" />
-      </div>
+      <PageHeader title="치아 정보" />
 
       <div className="px-5 pt-4 flex flex-col gap-4">
         <div className="bg-white/90 backdrop-blur-sm rounded-[20px] shadow-card p-4">

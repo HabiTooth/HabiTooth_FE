@@ -1,4 +1,3 @@
-// 스크린샷은 localStorage에 넣으면 몇 장 만에 5MB를 넘겨서 IndexedDB에 따로 둔다
 const DB = 'habitooth.qa';
 const STORE = 'shots';
 const MAX_WIDTH = 720;

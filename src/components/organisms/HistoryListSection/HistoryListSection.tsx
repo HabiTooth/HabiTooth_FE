@@ -5,7 +5,6 @@ import { ChevronRight } from 'lucide-react';
 import MoreLink from '@/components/atoms/MoreLink';
 import type { HistoryItem, HistoryListSectionProps } from './HistoryListSection.types';
 
-// 리포트 상단 등급 배지와 같은 색
 const GRADE_STYLE: Record<string, string> = {
   A: 'bg-success/15 text-success',
   B: 'bg-primary/15 text-primary',

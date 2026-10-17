@@ -8,14 +8,12 @@ interface ConfirmSheetProps {
   title: string;
   description?: string;
   confirmLabel: string;
-  // 되돌릴 수 없는 일이면 빨간 버튼
   danger?: boolean;
   busy?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }
 
-// window.confirm 대신 쓰는 하단 시트. 앱 안에서 톤이 맞고 모바일에서 누르기 쉽다
 export default function ConfirmSheet({
   open,
   title,

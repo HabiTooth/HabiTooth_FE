@@ -87,7 +87,9 @@ export default function ScreenChecks() {
 
   useEffect(() => {
     setResults(readResults());
-    listShots().then(setShots).catch(() => {});
+    listShots()
+      .then(setShots)
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -188,7 +190,10 @@ export default function ScreenChecks() {
 
       <div className="mt-4 bg-white rounded-xl p-4 flex flex-wrap items-center gap-2">
         {(['pass', 'fail', 'hold', 'idle'] as const).map((s) => (
-          <span key={s} className={`px-2 py-1 rounded-full text-[11px] font-semibold ${STATUS_STYLE[s]}`}>
+          <span
+            key={s}
+            className={`px-2 py-1 rounded-full text-[11px] font-semibold ${STATUS_STYLE[s]}`}
+          >
             {STATUS_LABEL[s]} {counts[s]}
           </span>
         ))}
@@ -211,9 +216,7 @@ export default function ScreenChecks() {
         </button>
       </div>
 
-      {toast && (
-        <p className="m-0 mt-2 text-[11px] font-semibold text-blue-600">{toast}</p>
-      )}
+      {toast && <p className="m-0 mt-2 text-[11px] font-semibold text-blue-600">{toast}</p>}
 
       {SCREEN_GROUPS.map((group) => {
         const screens = SCREEN_CHECKS.filter((s) => s.group === group);
@@ -420,7 +423,6 @@ export default function ScreenChecks() {
       />
 
       {preview && (
-        // top·bottom을 같이 잡아야 화면이 짧을 때 헤더가 위로 잘려나가지 않음
         <div className="fixed right-6 top-6 bottom-6 z-50 w-[390px] flex flex-col bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden">
           <div className="flex items-center gap-2 px-3 py-2 border-b border-gray-100 flex-shrink-0">
             <span className="flex-1 font-mono text-[11px] text-gray-500 truncate">{preview}</span>

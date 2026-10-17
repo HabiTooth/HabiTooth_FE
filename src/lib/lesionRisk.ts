@@ -9,7 +9,6 @@ export const LESION_LABEL: Record<LesionType, string> = {
   CALCULUS: '치석',
 };
 
-// 3D 모형 툴팁과 치아 상세 카드에서 쓰는 짧은 위험도 말
 export const RISK_TAG: Record<RiskLevel, string> = {
   VERY_LOW: '깨끗',
   LOW: '양호',
@@ -23,7 +22,7 @@ export interface LesionRisk {
   riskLevel: RiskLevel;
 }
 
-// 한 치아에 병변 종류별 행이 따로 오니까 종류별 최악만 남김
+// 종류별 최악만 남김
 export function worstByLesion(
   teeth: Array<{ lesionType: LesionType | null; riskLevel: RiskLevel }>,
 ): LesionRisk[] {

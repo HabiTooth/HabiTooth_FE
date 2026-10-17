@@ -17,7 +17,6 @@ export default function ChangeSummary({
   result: CompareResult;
   scoreDelta: number | null;
   previousDate: string;
-  // 있으면 치아 행이 버튼이 되고 카드 링크 대신 이게 불린다
   onToothClick?: (tooth: number) => void;
 }) {
   const notable = [...result.worsened, ...result.improved].slice(0, 4);

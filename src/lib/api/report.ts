@@ -24,13 +24,13 @@ export interface SessionReport {
   }>;
 }
 
-// 치아 bbox 기준 0~1. u=1 이 환자 오른쪽, v=0 이 사진 위쪽
+// 치아 bbox 기준 0~1. u=1 사용자 오른쪽, v=0 사진 위
 export interface LesionPolygonPoint {
   u: number;
   v: number;
 }
 
-// 병변이 치아의 어느 면에 있는지. OUTER는 입술·볼 쪽, INNER는 혀·입천장 쪽
+// OUTER 입술·볼 쪽, INNER 혀·입천장 쪽
 export type SurfaceType = 'OUTER' | 'INNER';
 
 export interface ToothLesion {
@@ -102,13 +102,12 @@ export const reportApi = {
   getSingleImageReport: (scanImageId: number) =>
     apiClient.get<ApiResponse<SingleImageReport>>(`/api/reports/scan-images/${scanImageId}`),
 
-  // 저장된 리포트 조회. LLM을 안 부르니까 빠르고, 없으면 404
+  // 저장본 조회. 없으면 404
   getLlmReport: (sessionId: number) =>
     apiClient.get<ApiResponse<LlmReport>>(`/api/reports/scan-sessions/${sessionId}/llm-report`),
 
-  // LLM 응답이 수 분 걸려서 공용 타임아웃(30초)으로는 항상 끊김
   generateLlmReport: (sessionId: number) => {
-    // 이펙트가 두 번 돌 때 3분짜리 생성이 두 번 나가지 않게
+    // 이펙트 중복 실행 시 생성 요청 1회 제한
     const running = generating.get(sessionId);
     if (running) return running;
 

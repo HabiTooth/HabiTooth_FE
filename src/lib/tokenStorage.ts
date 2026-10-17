@@ -34,6 +34,6 @@ export function isTokenExpired(token: string): boolean {
     if (!exp) return false;
     return Date.now() >= exp * 1000;
   } catch {
-    return true; // 파싱 불가한 토큰은 만료로 간주
+    return true; // 파싱 불가 토큰은 만료 처리
   }
 }

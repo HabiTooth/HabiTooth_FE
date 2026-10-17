@@ -1,9 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import {
-  ChevronLeft,
   Crosshair,
   ExternalLink,
   LocateFixed,
@@ -17,6 +15,7 @@ import { useCurrentPosition, useKakaoMaps } from '@/hooks/useKakaoMaps';
 import { toothName } from '@/lib/dentition';
 import { LESION_LABEL } from '@/lib/lesionRisk';
 import type { LesionType } from '@/lib/api/common';
+import PageHeader from '@/components/molecules/PageHeader';
 
 const RADIUS_M = 3000;
 const RESULT_SIZE = 15;
@@ -49,7 +48,6 @@ function markMe(map: kakao.maps.Map, position: kakao.maps.LatLng) {
 }
 
 export default function ClinicsPage() {
-  const router = useRouter();
   const mapsStatus = useKakaoMaps();
   const { coords, exact, pending, refresh } = useCurrentPosition();
 
@@ -80,7 +78,7 @@ export default function ClinicsPage() {
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
-  // 리포트에서 어느 치아 때문에 왔는지. useSearchParams는 Suspense가 필요해서 직접 읽는다
+  // 출발 치아 쿼리. useSearchParams는 Suspense 필요해서 직접 읽음
   const [from, setFrom] = useState<string | null>(null);
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -210,17 +208,7 @@ export default function ClinicsPage() {
 
   return (
     <PageShell fill>
-      <div className="flex-shrink-0 flex items-center px-4 py-3 bg-white/90 backdrop-blur-sm border-b border-hairline">
-        <button
-          type="button"
-          onClick={() => router.back()}
-          className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-hairline transition-colors"
-        >
-          <ChevronLeft size={20} className="text-content" />
-        </button>
-        <span className="flex-1 text-center text-[15px] font-semibold text-content">근처 치과</span>
-        <div className="w-9" />
-      </div>
+      <PageHeader title="근처 치과" className="flex-shrink-0" />
 
       {from && (
         <p className="m-0 flex-shrink-0 bg-primary-light px-5 py-2 text-[11.5px] text-primary">

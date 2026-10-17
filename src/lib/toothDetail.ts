@@ -1,6 +1,6 @@
 import type { LesionType, RiskLevel } from '@/lib/api/common';
 import { toothName } from '@/lib/dentition';
-import { LESION_LABEL, RISK_ORDER, RISK_TAG } from '@/lib/lesionRisk';
+import { RISK_ORDER, RISK_TAG } from '@/lib/lesionRisk';
 import { isActiveLesion } from '@/lib/lesionState';
 
 export interface LesionRow {
@@ -12,7 +12,6 @@ export interface LesionRow {
 
 export type ToothChange = 'better' | 'worse' | 'same' | 'first';
 
-// 신경 쓸 치아 칩. 위험한 순서
 export interface FocusChip {
   fdi: string;
   label: string;
@@ -23,14 +22,12 @@ export interface ToothDetail {
   fdi: string;
   name: string;
   state: 'lesion' | 'clean' | 'unscanned';
-  // 치석이 먼저. 병변이 없으면 비어 있다
+  // 치석 먼저
   rows: Array<{ lesionType: LesionType; areaRatio: number; riskLevel: RiskLevel }>;
-  // 가장 신경 쓸 병변
   primary: ToothDetail['rows'][number] | null;
-  // 면적은 있지만 깨끗 범위라 병변으로 안 센 것
+  // 깨끗 범위라 병변으로 안 센 것
   minor: ToothDetail['rows'];
   riskLabel: string;
-  // 같은 병변의 직전 스캔 면적
   previousArea: number | null;
   change: ToothChange;
   tip: string;
@@ -44,7 +41,7 @@ const beats = (a: LesionRow, b: LesionRow) =>
     ? rank(a.riskLevel) > rank(b.riskLevel)
     : a.lesionType === 'CALCULUS' && b.lesionType !== 'CALCULUS';
 
-// 위험한 순서. 같은 위험도면 치석 먼저, 그다음 면적 큰 순
+// 위험도 순. 같으면 치석 먼저, 면적 큰 순
 export function focusOrder(rows: LesionRow[]): string[] {
   const best = new Map<number, LesionRow>();
   for (const row of rows) {
@@ -75,7 +72,7 @@ function tipFor(row: ToothDetail['primary']) {
     : '치태가 조금 보여요. 저녁 양치 때 이 부위를 먼저 닦아보세요.';
 }
 
-// 도착 페이지가 어느 치아 때문에 왔는지 알 수 있게 쿼리를 붙인다
+// 출발 치아 쿼리 부착
 function ctaFor(row: ToothDetail['primary'], fdi: string) {
   if (!row) return null;
   const query = `?tooth=${fdi}&lesion=${row.lesionType}`;
@@ -140,4 +137,3 @@ export function buildToothDetail(input: {
   };
 }
 
-export const lesionText = (type: LesionType) => LESION_LABEL[type];

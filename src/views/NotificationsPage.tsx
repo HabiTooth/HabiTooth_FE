@@ -6,7 +6,6 @@ import {
   Bell,
   BellOff,
   CalendarCheck,
-  ChevronLeft,
   FileText,
   Flame,
   ScanLine,
@@ -22,6 +21,7 @@ import {
   type PermissionState,
 } from '@/lib/notifications/browser';
 import type { NotificationType } from '@/lib/notifications/types';
+import PageHeader from '@/components/molecules/PageHeader';
 
 const ICON: Record<NotificationType, React.ElementType> = {
   REPORT_READY: FileText,
@@ -73,24 +73,19 @@ export default function NotificationsPage() {
 
   return (
     <PageShell withNav>
-      <div className="flex items-center px-4 py-3 bg-white/90 backdrop-blur-sm border-b border-hairline">
-        <button
-          type="button"
-          onClick={() => router.back()}
-          className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-hairline transition-colors"
-        >
-          <ChevronLeft size={20} className="text-content" />
-        </button>
-        <span className="flex-1 text-center text-[15px] font-semibold text-content">알림</span>
-        <button
-          type="button"
-          onClick={markAllRead}
-          disabled={unread === 0}
-          className="text-xs text-primary disabled:text-muted disabled:opacity-50 px-2"
-        >
-          모두 읽음
-        </button>
-      </div>
+      <PageHeader
+        title="알림"
+        right={
+          <button
+            type="button"
+            onClick={markAllRead}
+            disabled={unread === 0}
+            className="text-xs text-primary disabled:text-muted disabled:opacity-50 px-2"
+          >
+            모두 읽음
+          </button>
+        }
+      />
 
       <div className="px-5 pt-4">
         {permission === 'default' && (

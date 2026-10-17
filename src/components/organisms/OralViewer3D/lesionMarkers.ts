@@ -9,14 +9,14 @@ export { lesionState };
 
 export const MARKER_COLOR = MARKER_FILL;
 
-// GLB 단위가 m
+// GLB 단위 m
 const MM = 0.001;
-// 온 좌표를 기준으로 하되, 너무 작으면 확대해도 안 보여서 치아 폭·높이의 일부만큼은 보장한다
+// 최소 크기 보장용. 작으면 확대해도 안 보임
 const MIN_W = 0.25;
 const MIN_H = 0.22;
 const PAD = 0.06;
 const SHOW_THRESHOLD = 0.08;
-// 이 값보다 덮임이 작은 면은 아예 접어서 안 그린다
+// 이 값 미만 덮임은 안 그림
 const DRAW_EPSILON = 0.001;
 const NOISE_GRID = 2 * MM;
 const HIDE_OFFSET = -0.6 * MM;
@@ -25,7 +25,7 @@ const CALCULUS_BUMP = 0.35 * MM;
 const GUM_FADE = 0.03;
 const HALF_WIDTH_SCALE = 0.9;
 
-// 환자 오른쪽(18/48)에서 왼쪽(28/38)으로 치열궁을 따라가는 순서
+// 사용자 오른쪽(18/48)→왼쪽(28/38) 순
 const ARCH_ORDER = {
   upper: [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28],
   lower: [48, 47, 46, 45, 44, 43, 42, 41, 31, 32, 33, 34, 35, 36, 37, 38],
@@ -47,7 +47,7 @@ export function hashNoise(x: number, y: number, z: number) {
 const fade = (t: number) => t * t * (3 - 2 * t);
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 
-// 2mm 격자 해시를 삼선형 보간한 값 노이즈. 정점마다 제각각 튀지 않고 이웃끼리 이어진다
+// 2mm 격자 삼선형 보간 노이즈
 function smoothNoise(x: number, y: number, z: number) {
   const gx = x / NOISE_GRID;
   const gy = y / NOISE_GRID;
@@ -77,9 +77,7 @@ const vertexNoise = smoothNoise;
 export interface ToothFrame {
   upper: boolean;
   center: THREE.Vector3;
-  // 치열궁 바깥(협측) 방향
   normal: THREE.Vector3;
-  // 치열궁을 따라 환자 왼쪽으로 가는 방향
   tangent: THREE.Vector3;
   ru: number;
   rv: number;
@@ -87,8 +85,8 @@ export interface ToothFrame {
   y1: number;
 }
 
-// 치아마다 로컬 좌표계를 한 번만 만든다. 치아 지오메트리는 턱 그룹 로컬 좌표(치관 +y)에 있다
-// 접선은 치열궁 폴리라인을 환자 오른쪽→왼쪽으로 걷는 방향이라 어금니에서도 부호가 흔들리지 않는다
+// 치아별 로컬 좌표계. 턱 그룹 로컬 기준(치관 +y)
+// 접선은 치열궁 오른쪽→왼쪽 방향. 어금니에서 부호 유지
 export function buildToothFrames(teeth: Map<string, THREE.Mesh>): Map<string, ToothFrame> {
   const frames = new Map<string, ToothFrame>();
   for (const jaw of ['upper', 'lower'] as const) {
@@ -156,7 +154,7 @@ interface Mask {
   box: Box;
 }
 
-// 최소 크기를 보장하되 0~1 밖으로 나가면 반대쪽으로 민다
+// 0~1 밖이면 반대쪽으로 이동
 function grow(min: number, max: number, size: number): [number, number] {
   if (max - min >= size) return [min, max];
   const mid = (min + max) / 2;
@@ -185,7 +183,6 @@ function buildMask(lesion: ToothLesion): Mask {
   };
 }
 
-// 짝홀 규칙
 function insidePolygon(x: number, y: number, points: LesionPolygonPoint[]) {
   let inside = false;
   for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
@@ -227,7 +224,7 @@ function maskValue(mask: Mask, x: number, y: number) {
   return d < PAD ? 1 - (d / PAD) ** 2 : 0;
 }
 
-// 정점마다 덮임값 0~1. 폴리곤이 없으면 areaRatio 높이만큼 잇몸선에서 띠를 두른다
+// 정점별 덮임값 0~1. 폴리곤 없으면 areaRatio 높이의 띠
 export function coverageMask(
   frame: ToothFrame,
   positions: Float32Array,
@@ -254,7 +251,7 @@ export function coverageMask(
 
     let value = 0;
     if (masks.length > 0) {
-      // u=1 이 환자 오른쪽. 상악은 잇몸선이 사진 위(v=0), 하악은 아래
+      // u=1 사용자 오른쪽. 잇몸선은 상악 v=0, 하악 v=1
       const px = 1 - (u + 1) / 2;
       const py = upper ? h : 1 - h;
       for (const mask of masks) {
@@ -277,7 +274,7 @@ export function markerMaterial(type: LesionType) {
     metalness: 0,
     clearcoat: 0.3,
     vertexColors: true,
-    // 정점 알파로 경계를 녹인다. 면 단위로 켜고 끄면 삼각형 톱니가 그대로 드러난다
+    // 정점 알파로 경계 처리. 면 단위면 톱니 생김
     transparent: true,
     polygonOffset: true,
     polygonOffsetFactor: type === 'CALCULUS' ? -2 : -1,
@@ -285,8 +282,8 @@ export function markerMaterial(type: LesionType) {
   });
 }
 
-// 비인덱스 메시는 같은 자리 정점이 면마다 따로 있어서 법선이 면마다 다를 수 있다
-// 같은 자리끼리 평균 내야 밀어 올린 면들 사이에 틈이 안 생긴다
+// 비인덱스 메시는 같은 자리 정점이 면마다 따로 있음
+// 법선 평균 안 내면 면 사이 틈 생김
 function smoothNormals(position: Float32Array, normal: Float32Array) {
   const sums = new Map<string, [number, number, number]>();
   const keyOf = (i: number) =>
@@ -318,7 +315,7 @@ interface MarkerBase {
   normal: Float32Array;
 }
 
-// 치아 지오메트리를 복제해 치아 자식으로 붙인다. 치아의 포즈·가시성을 그대로 따라간다
+// 치아 자식으로 붙여 포즈·가시성 공유
 export function createMarkerMesh(tooth: THREE.Mesh, type: LesionType, material: THREE.Material) {
   const source = tooth.geometry.index ? tooth.geometry.toNonIndexed() : tooth.geometry;
   if (!source.getAttribute('normal')) source.computeVertexNormals();
@@ -338,7 +335,7 @@ export function createMarkerMesh(tooth: THREE.Mesh, type: LesionType, material: 
   marker.name = `${tooth.name}_${type.toLowerCase()}_marker`;
   marker.castShadow = false;
   marker.receiveShadow = false;
-  // 치석이 치태 위에 오도록
+  // 치석이 치태 위
   marker.renderOrder = type === 'CALCULUS' ? 3 : 2;
   marker.visible = false;
   marker.raycast = () => {};
@@ -350,8 +347,8 @@ export function createMarkerMesh(tooth: THREE.Mesh, type: LesionType, material: 
 export const markerBasePositions = (marker: THREE.Mesh) =>
   (marker.userData.base as MarkerBase).position;
 
-// 조금이라도 덮인 면은 통째로 밀어 올리고 덮임값을 정점 알파로 넣어 경계를 녹인다
-// 전혀 안 덮인 면은 안쪽으로 밀면서 한 점으로 접어 넓이를 0으로 만든다
+// 덮인 면은 밀어 올리고 덮임값을 알파로
+// 안 덮인 면은 한 점으로 접어 넓이 0
 export function updateMarker(marker: THREE.Mesh, coverage: Float32Array, type: LesionType) {
   const { position: base, normal } = marker.userData.base as MarkerBase;
   const position = marker.geometry.getAttribute('position') as THREE.BufferAttribute;

@@ -25,7 +25,7 @@ export function useCameraStream(): UseCameraStreamReturn {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  // 스트림은 81, 제어(/led, /control)는 80
+  // 스트림 81, 제어 80 포트
   const controlHostRef = useRef<string | null>(null);
   const streamWatchdog = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isReady, setIsReady] = useState(false);
@@ -52,19 +52,18 @@ export function useCameraStream(): UseCameraStreamReturn {
 
         if (mode === 'esp32' && esp32Url) {
           setCameraMode('esp32');
-          // 스트림은 :81, /led 같은 제어는 80 포트
           controlHostRef.current = esp32Url
             .replace(/^https?:\/\//, '')
             .split('/')[0]
             .split(':')[0];
-          // 스트림 포트가 닫혀 있으면 onerror도 안 뜨고 TCP 타임아웃까지 멈춰 있어서 직접 끊는다
+          // 포트 닫힘 시 onerror 없이 멈춤. 직접 끊음
           streamWatchdog.current = setTimeout(() => {
             setError(
               `스캐너 미리보기에 연결하지 못했어요.\n${esp32Url}\n기기 전원과 WiFi 연결을 확인해 주세요.`,
             );
           }, STREAM_TIMEOUT);
 
-          // img 엘리먼트가 마운트된 후 src 설정을 위해 requestAnimationFrame 사용
+          // img 마운트 후 src 설정용
           requestAnimationFrame(() => {
             const img = imgRef.current;
             if (!img) return;
@@ -81,7 +80,7 @@ export function useCameraStream(): UseCameraStreamReturn {
           });
         } else {
           setCameraMode('device');
-          // getUserMedia는 HTTPS나 localhost에서만 쓸 수 있다.
+          // getUserMedia는 HTTPS·localhost 전용
           // 폰에서 http://192.168.x.x 로 붙으면 mediaDevices 자체가 없어 권한 창도 안 뜬다.
           if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
             setError(
@@ -94,6 +93,7 @@ export function useCameraStream(): UseCameraStreamReturn {
               facingMode: { ideal: facingMode },
               width: { ideal: 1280 },
               height: { ideal: 960 },
+              aspectRatio: { ideal: 4 / 3 },
             },
             audio: false,
           });
@@ -130,12 +130,12 @@ export function useCameraStream(): UseCameraStreamReturn {
         const host = controlHostRef.current;
         if (!host) return;
         try {
-          // 펌웨어가 적용된 상태를 문자열로 돌려주므로 그 값을 그대로 신뢰한다
+          // 펌웨어 응답값 그대로 사용
           const res = await fetch(`http://${host}/led?mode=${mode.toLowerCase()}`);
           const applied = (await res.text()).trim().toUpperCase();
           setLedMode(applied === 'UV' || applied === 'WHITE' ? applied : 'OFF');
         } catch {
-          // 조명이 안 바뀌어도 촬영은 계속 되어야 함
+          // 조명 실패해도 촬영 계속
         }
         return;
       }
@@ -147,7 +147,7 @@ export function useCameraStream(): UseCameraStreamReturn {
         });
         setLedMode(mode);
       } catch {
-        // torch not supported
+        // 토치 미지원
       }
     },
     [cameraMode],

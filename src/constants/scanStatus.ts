@@ -1,7 +1,6 @@
 import { CheckCircle2, AlertCircle, XCircle, AlertTriangle, Sun } from 'lucide-react';
 import type { ScanStatusType } from '@/components/molecules/ScanStatusBanner/ScanStatusBanner.types';
 
-// 배너·도움말 공용
 export interface ScanStatusCopy {
   bg: string;
   border: string;

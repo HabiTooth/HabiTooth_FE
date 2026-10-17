@@ -154,7 +154,7 @@ export default function ProfileEditPage() {
                 onClick={() => {
                   const el = dateRef.current;
                   if (!el) return;
-                  // showPicker를 막는 브라우저에서는 포커스만 줘서 기본 UI가 뜨게 한다
+                  // showPicker 막는 브라우저용 포커스 폴백
                   if (typeof el.showPicker === 'function') el.showPicker();
                   else el.focus();
                 }}

@@ -16,11 +16,10 @@ interface FoundDevice {
   latencyMs: number;
 }
 
-// WiFi 스캔에는 신호 강도가 없어서 응답 속도로 대체
 const latencyToSignal = (ms: number): SignalLevel =>
   ms < 150 ? 'strong' : ms < 400 ? 'medium' : 'weak';
 
-// habitooth.local 같은 mDNS 이름도 오기 때문에 IP일 때만 끝자리를 붙임
+// IP일 때만 끝자리
 const deviceNameFor = (host: string) => {
   const last = /^\d+\.\d+\.\d+\.(\d+)$/.exec(host)?.[1];
   return last ? `${DEVICE_MODEL} (${last})` : DEVICE_MODEL;
@@ -85,14 +84,13 @@ export default function PairingPage() {
     runDiscovery();
   }, [runDiscovery]);
 
-  // BE는 시리얼로 기기를 식별하고 IP는 저장하지 않음 - IP는 로컬 store에만 보관
   const handleWiFiConnect = async (targetIp: string) => {
     setConnectingIp(targetIp);
     try {
       const res = await deviceApi.register();
       setDevice(res.data.result.deviceId, targetIp);
     } catch {
-      // 이미 등록된 계정(DEVICE_ALREADY_REGISTERED)이면 기존 deviceId 재사용
+      // DEVICE_ALREADY_REGISTERED면 기존 deviceId 재사용
       try {
         const status = await deviceApi.getStatus();
         const existing = status.data.result[0];

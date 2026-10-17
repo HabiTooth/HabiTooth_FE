@@ -27,7 +27,7 @@ export interface CompareResult {
   onlyInAfter: number[];
 }
 
-// 한 치아에 치태·치석 행이 따로 오니까 치아당 가장 높은 위험도 하나로 합친다
+// 치아당 관리 위험도 우선 순위에 맞춰서 합침
 function worstPerTooth(rows: ToothRisk[]): Map<number, RiskLevel> {
   const worst = new Map<number, RiskLevel>();
   for (const row of rows) {

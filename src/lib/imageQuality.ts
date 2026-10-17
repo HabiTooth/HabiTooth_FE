@@ -6,14 +6,13 @@ export interface CaptureQuality {
   brightness: number;
   sharpness: number;
   checking?: boolean;
-  // 서버 판정을 실제로 받았는지. 못 받았으면 통과로 말하면 안 됨
+  // 서버 판정 수신 여부
   verified?: boolean;
   message?: string | null;
-  // 개발 화면에서 판정 근거를 보려고 들고 다닌다
   detail?: Record<string, number | string | undefined> | null;
 }
 
-// 실시간 배너와 공유
+// 실시간 배너와 공용
 export const DARK_THRESHOLD = 60;
 export const BRIGHT_THRESHOLD = 228;
 export const SHARPNESS_THRESHOLD = 55;
@@ -35,7 +34,7 @@ const RETAKE_ISSUE = {
   LOW_CONFIDENCE: 'lowConfidence',
 } as const satisfies Record<string, CaptureIssue>;
 
-// 서버는 치아가 잡혔는지까지 보므로 로컬 판정 위에 덮어쓴다
+// 서버 판정이 로컬 판정보다 우선
 export function applyServerVerdict(
   local: CaptureQuality,
   verdict: {
@@ -49,10 +48,9 @@ export function applyServerVerdict(
 
   const detail = verdict.detail ?? null;
   if (!verdict.needsRetake) {
-    // BE는 판정 서버가 죽으면 needsRetake=false만 담아 200을 준다(fail-open).
-    // 근거가 하나도 없는 통과는 실제로 판정을 받은 게 아니다
+    // BE는 판정 서버 다운 시 needsRetake=false로 200 응답(fail-open)
+    // 근거 없는 통과는 판정 아님
     const judged = detail !== null && Object.keys(detail).length > 0;
-    // 실제로 판정을 받았으면 치아를 보고 내린 결론이라 로컬 추정보다 우선한다
     return judged
       ? { ...local, ok: true, issues: [], checking: false, verified: true, detail }
       : { ...local, checking: false, verified: false, detail };
@@ -70,7 +68,6 @@ export function applyServerVerdict(
   };
 }
 
-// 판정 불가 시 통과 처리
 const UNJUDGED: CaptureQuality = { ok: true, issues: [], brightness: 128, sharpness: 999 };
 
 export async function evaluateCaptureBlob(blob: Blob): Promise<CaptureQuality> {
@@ -87,7 +84,6 @@ export async function evaluateCaptureBlob(blob: Blob): Promise<CaptureQuality> {
   }
 }
 
-// 가중 평균
 export function meanLuma(data: Uint8ClampedArray): number {
   let sum = 0;
   for (let i = 0; i < data.length; i += 4) {

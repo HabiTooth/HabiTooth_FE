@@ -10,7 +10,7 @@ export function writeWebcamPreference(on: boolean) {
   try {
     localStorage.setItem(WEBCAM_KEY, String(on));
   } catch {
-    // 저장 실패해도 이번 스캔에는 반영됨
+    // 저장 실패해도 이번 스캔엔 반영
   }
 }
 
@@ -18,6 +18,5 @@ export function clearWebcamPreference() {
   try {
     localStorage.removeItem(WEBCAM_KEY);
   } catch {
-    // 무시
   }
 }

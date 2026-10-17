@@ -9,7 +9,7 @@ export interface Article {
   title: string;
   summary: string;
   readMinutes: number;
-  /** 이 병변 위험도가 높은 사용자에게 먼저 보여줌 */
+  /** 위험도 높은 사용자에게 우선 노출 */
   relatedTo: LesionType[];
   body: string[];
 }
@@ -206,7 +206,6 @@ export const ARTICLES: Article[] = [
 
 export const findArticle = (id: string) => ARTICLES.find((a) => a.id === id) ?? null;
 
-/** 위험한 병변에 걸린 글을 앞으로, 나머지는 원래 순서 유지 */
 export function sortByRelevance(articles: Article[], risky: LesionType[]): Article[] {
   if (risky.length === 0) return articles;
   const score = (a: Article) => (a.relatedTo.some((t) => risky.includes(t)) ? 0 : 1);

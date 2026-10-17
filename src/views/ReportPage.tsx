@@ -56,11 +56,11 @@ const GUIDE_TYPE: Record<RiskLevel, GuideItem['type']> = {
   CRITICAL: 'danger',
 };
 
-// 게이트웨이가 백엔드에 못 닿았거나(502·503) 기다리다 끊은(504) 응답
+// 게이트웨이 오류(502·503·504)
 const isGatewayHiccup = (status: number | undefined) =>
   status === 502 || status === 503 || status === 504;
 
-// 콘솔에 AxiosError 덩어리 대신 어느 요청이 어떻게 실패했는지 한 줄로
+// 실패 원인 한 줄 로그용
 function describeAxiosError(e: unknown): string {
   if (!axios.isAxiosError(e)) return e instanceof Error ? e.message : String(e);
   const method = e.config?.method?.toUpperCase() ?? '';
@@ -118,14 +118,13 @@ export default function ReportPage() {
   const [trend, setTrend] = useState<HistoryScoreTrendItem[]>([]);
   const [capturedZones, setCapturedZones] = useState<ViewType[]>([]);
   const [lesions, setLesions] = useState<ToothLesion[]>([]);
-  // 3D에서 고른 치아. 히어로가 상세 카드로 바뀐다
   const [selected, setSelected] = useState<string | null>(null);
-  // 확대 상태를 history에 한 칸 넣어서 뒤로 가기가 페이지가 아니라 확대를 닫게 한다
+  // 확대 상태를 history에 추가. 뒤로 가기로 닫힘
   const focusPushed = useRef(false);
   const selectTooth = useCallback((fdi: string | null) => {
     if (typeof window !== 'undefined') {
       if (fdi && !focusPushed.current) {
-        // Next 라우터 상태를 유지해야 popstate에서 새로고침하지 않는다
+        // 빼면 popstate에서 새로고침
         window.history.pushState(
           { ...window.history.state, toothFocus: true },
           '',
@@ -159,7 +158,7 @@ export default function ReportPage() {
       .then((res) => setReport(res.data.result))
       .catch(() => {});
 
-    // 3D 마커용 폴리곤. 없어도 리포트는 뜨고 비율 기반 띠로 대신 그린다
+    // 3D 마커용 폴리곤. 없으면 비율 띠로 대체
     reportApi
       .getMeshCoordinates(sessionId)
       .then((res) => setLesions(res.data.result?.lesions ?? []))
@@ -171,7 +170,7 @@ export default function ReportPage() {
     let cancelled = false;
     const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
-    // 저장된 리포트 조회. 게이트웨이가 잠깐 죽은 502·503·504는 몇 번 더 두드린다
+    // 저장본 조회. 게이트웨이 오류는 재시도
     const fetchStored = async (): Promise<LlmReport | null> => {
       for (let attempt = 0; ; attempt++) {
         try {
@@ -189,7 +188,7 @@ export default function ReportPage() {
       }
     };
 
-    // 생성 요청이 게이트웨이에서 끊겨도(502·504·타임아웃) 서버는 계속 만들고 있으니 저장본을 기다려 본다
+    // 생성 요청이 끊겨도 서버는 계속 생성. 저장본 폴링
     const waitForGenerated = async (): Promise<LlmReport | null> => {
       const deadline = Date.now() + 4 * 60_000;
       while (Date.now() < deadline && !cancelled) {
@@ -332,7 +331,6 @@ export default function ReportPage() {
     [selected, teeth, prevTeeth, scannedTeeth],
   );
 
-  // 확대 카드에 넣을 AI 가이드. 치아 번호를 짚은 항목이 있으면 그것, 없으면 같은 병변 항목, 그것도 없으면 첫 항목
   const aiNote = useMemo(() => {
     if (!selected || !llm || !toothDetail) return null;
     const items = llm.riskDetail;
@@ -343,12 +341,11 @@ export default function ReportPage() {
       (lesion ? items.find((r) => `${r.title} ${r.detail}`.includes(lesion)) : undefined) ??
       items[0];
     if (!hit) return null;
-    // 항목 제목("치태 · 치아 3개")은 전체 요약용이라 치아 하나를 보는 자리엔 안 맞는다
+    // 항목 제목은 전체 요약용. 치아별 제목으로 교체
     const title = direct ? '이 치아 맞춤 가이드' : lesion ? `${lesion} 관리 포인트` : '관리 포인트';
     return { title, description: hit.detail };
   }, [selected, llm, toothDetail]);
 
-  // 아래 섹션에서 치아를 고르면 히어로가 보이게 올린다
   const focusTooth = useCallback(
     (tooth: number | string | null) => {
       selectTooth(tooth === null ? null : String(tooth));
@@ -395,7 +392,6 @@ export default function ReportPage() {
 
   const prevScore = trend.length > 1 ? trend[trend.length - 2].score : undefined;
 
-  // 모형 아래 말풍선. 치태·치석 중 뭘 더 볼지 한 줄
   const heroMessage = report
     ? focusText(
         toSummaryRisk(riskCategories[0].riskLevel),

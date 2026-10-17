@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import Image from 'next/image';
 import NavBar from '@/components/organisms/NavBar';
@@ -18,6 +17,7 @@ import {
   nextMilestone,
   streakMessage,
 } from '@/lib/streak';
+import PageHeader from '@/components/molecules/PageHeader';
 
 function Stat({ value, label }: { value: string; label: string }) {
   return (
@@ -29,7 +29,6 @@ function Stat({ value, label }: { value: string; label: string }) {
 }
 
 export default function StreakPage() {
-  const router = useRouter();
   const [dates, setDates] = useState<string[]>([]);
   const [records, setRecords] = useState<HistoryRecordItem[]>([]);
   const { idByDate } = useSessionIndex();
@@ -66,17 +65,7 @@ export default function StreakPage() {
 
   return (
     <PageShell withNav>
-      <div className="flex items-center px-4 py-3 bg-white/90 backdrop-blur-sm border-b border-hairline">
-        <button
-          type="button"
-          onClick={() => router.back()}
-          className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-hairline transition-colors"
-        >
-          <ChevronLeft size={20} className="text-content" />
-        </button>
-        <span className="flex-1 text-center text-[15px] font-semibold text-content">스캔 기록</span>
-        <div className="w-9" />
-      </div>
+      <PageHeader title="스캔 기록" />
 
       <div className="px-5 pt-4 flex flex-col gap-4">
         <div className="relative overflow-hidden bg-gradient-to-br from-[#4A86D9] to-[#73B0F1] rounded-[24px] p-6 text-white min-h-[172px] flex items-center">

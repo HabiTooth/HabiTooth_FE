@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, Loader2, Monitor, RefreshCw, Smartphone, Trash2 } from 'lucide-react';
+import { Loader2, Monitor, RefreshCw, Smartphone, Trash2 } from 'lucide-react';
 import PageShell from '@/components/organisms/PageShell';
 import { useAuthStore } from '@/stores/authStore';
 import { userApi } from '@/lib/api/user';
@@ -13,6 +13,7 @@ import {
   writeWebcamPreference,
 } from '@/lib/cameraSource';
 import { CONFIGURED_HOST, deviceAddress } from '@/lib/deviceAddress';
+import PageHeader from '@/components/molecules/PageHeader';
 
 function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
   return (
@@ -56,7 +57,7 @@ export default function DeviceSettingsPage() {
     writeWebcamPreference(next);
   };
 
-  // BE는 기기를 시리얼로 공유해서 등록 해제 API가 없음 - 이 기기에 저장된 연결만 끊음
+  // 등록 해제 API 없음. 로컬 연결만 끊음
   const registered = Boolean(deviceIp) || device !== null;
   const address = deviceAddress(deviceIp);
 
@@ -68,19 +69,7 @@ export default function DeviceSettingsPage() {
 
   return (
     <PageShell>
-      <div className="flex items-center px-4 py-3 bg-white/90 backdrop-blur-sm border-b border-hairline">
-        <button
-          type="button"
-          onClick={() => router.back()}
-          className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-hairline transition-colors"
-        >
-          <ChevronLeft size={20} className="text-content" />
-        </button>
-        <span className="flex-1 text-center text-[15px] font-semibold text-content">
-          디바이스 설정
-        </span>
-        <div className="w-9" />
-      </div>
+      <PageHeader title="디바이스 설정" />
 
       <div className="px-5 pt-4 flex flex-col gap-4">
         <div className="bg-white/90 backdrop-blur-sm rounded-[20px] shadow-card p-5">

@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowDownUp, ChevronLeft, ChevronRight } from 'lucide-react';
 import NavBar from '@/components/organisms/NavBar';
@@ -19,6 +18,7 @@ import type { RiskLevel } from '@/lib/api/common';
 import { RISK_TAG } from '@/lib/lesionRisk';
 import { RISK_MODEL_FILL } from '@/lib/riskColors';
 import { formatDate, scoreGrade } from '@/lib/score';
+import PageHeader from '@/components/molecules/PageHeader';
 
 const PERIOD_LABELS: Record<HistoryPeriodFilter, string> = {
   ALL: '전체',
@@ -27,7 +27,6 @@ const PERIOD_LABELS: Record<HistoryPeriodFilter, string> = {
   SIX_MONTHS: '6개월',
 };
 
-// 점수대 필터는 정렬 토글 하나로. 누를 때마다 전체 → 80점↑ → 70~79 → 70점↓ 순환
 const SCORE_ORDER: HistoryScoreFilter[] = ['ALL', 'HIGH', 'MEDIUM', 'LOW'];
 const SCORE_LABELS: Record<HistoryScoreFilter, string> = {
   ALL: '모든 점수',
@@ -36,7 +35,6 @@ const SCORE_LABELS: Record<HistoryScoreFilter, string> = {
   LOW: '70점 미만',
 };
 
-// 리포트 상단·스캔 기록과 같은 등급 배지 색
 const GRADE_STYLE: Record<string, string> = {
   A: 'bg-success/15 text-success',
   B: 'bg-primary/15 text-primary',
@@ -55,7 +53,6 @@ function RiskDot({ label, level }: { label: string; level: RiskLevel }) {
 }
 
 export default function HistoryListPage() {
-  const router = useRouter();
   const { idByDate } = useSessionIndex();
   const [page, setPage] = useState(0);
   const [period, setPeriod] = useState<HistoryPeriodFilter>('ALL');
@@ -98,25 +95,19 @@ export default function HistoryListPage() {
 
   return (
     <PageShell withNav>
-      <div className="flex items-center px-4 py-3 bg-white/90 backdrop-blur-sm border-b border-hairline">
-        <button
-          type="button"
-          onClick={() => router.back()}
-          aria-label="뒤로 가기"
-          className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-hairline transition-colors"
-        >
-          <ChevronLeft size={20} className="text-content" />
-        </button>
-        <span className="flex-1 text-center text-[15px] font-semibold text-content">기록 이력</span>
-        <button
-          type="button"
-          onClick={() => setConfirming(true)}
-          disabled={isDeleting || totalCount === 0}
-          className="w-9 text-right text-[12px] font-semibold text-danger disabled:opacity-30 whitespace-nowrap"
-        >
-          전체 삭제
-        </button>
-      </div>
+      <PageHeader
+        title="기록 이력"
+        right={
+          <button
+            type="button"
+            onClick={() => setConfirming(true)}
+            disabled={isDeleting || totalCount === 0}
+            className="w-9 text-right text-[12px] font-semibold text-danger disabled:opacity-30 whitespace-nowrap"
+          >
+            전체 삭제
+          </button>
+        }
+      />
 
       <div className="px-5 pt-4 flex flex-col gap-3">
         <div className="flex items-center gap-1.5">
