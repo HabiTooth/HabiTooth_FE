@@ -24,9 +24,9 @@ export const SCAN_ZONES: ScanZone[] = [
   { viewType: 'LOWER_LEFT_PREMOLAR',  label: '왼쪽 송곳니 쪽', fullLabel: '아랫니 왼쪽 송곳니 쪽', group: 'LOWER', teeth: [33, 34, 35] },
   { viewType: 'LOWER_LEFT_MOLAR',     label: '왼쪽 어금니',     fullLabel: '아랫니 왼쪽 어금니',     group: 'LOWER', teeth: [36, 37, 38] },
 
-  { viewType: 'OUTER_RIGHT',  label: '오른쪽 볼 쪽', fullLabel: '오른쪽 볼 쪽', group: 'OUTER', teeth: [18, 17, 16, 15, 14, 48, 47, 46, 45, 44] },
-  { viewType: 'OUTER_CENTER', label: '앞니 입술 쪽', fullLabel: '앞니 입술 쪽', group: 'OUTER', teeth: [13, 12, 11, 21, 22, 23, 43, 42, 41, 31, 32, 33] },
-  { viewType: 'OUTER_LEFT',   label: '왼쪽 볼 쪽', fullLabel: '왼쪽 볼 쪽', group: 'OUTER', teeth: [24, 25, 26, 27, 28, 34, 35, 36, 37, 38] },
+  { viewType: 'OUTER_RIGHT',  label: '오른쪽 볼 쪽', fullLabel: '오른쪽 볼 쪽', group: 'OUTER', teeth: [18, 17, 16, 15, 14, 13, 48, 47, 46, 45, 44, 43] },
+  { viewType: 'OUTER_CENTER', label: '앞니 입술 쪽', fullLabel: '앞니 입술 쪽', group: 'OUTER', teeth: [12, 11, 21, 22, 42, 41, 31, 32] },
+  { viewType: 'OUTER_LEFT',   label: '왼쪽 볼 쪽', fullLabel: '왼쪽 볼 쪽', group: 'OUTER', teeth: [23, 24, 25, 26, 27, 28, 33, 34, 35, 36, 37, 38] },
 ];
 
 export const zonesOfGroup = (group: ZoneGroup) =>

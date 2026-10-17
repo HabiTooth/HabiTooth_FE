@@ -71,6 +71,6 @@ export function guideTip(zone: ViewType, missing: readonly number[] = []): strin
     case 'OUTER_LEFT':
       return SIDE;
     case 'OUTER_CENTER':
-      return '윗니·아랫니가 함께 보이게, 가운데 앞니 틈이 화면 가운데 오고 양쪽 송곳니까지 담아 주세요.';
+      return '윗니·아랫니 앞니가 각각 4개씩 함께 보이게, 가운데 앞니 틈을 화면 가운데 맞춰 주세요.';
   }
 }
