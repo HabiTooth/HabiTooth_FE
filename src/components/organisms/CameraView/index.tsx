@@ -77,7 +77,8 @@ export default function CameraView({
   const reviewing = Boolean(reviewOverlay);
 
   const streamH = Math.min(stage.w * streamRatio, stage.h);
-  const exampleH = Math.max(0, stage.h - streamH);
+  // 예시 사진 높이 4:3 상한
+  const exampleH = Math.min(Math.max(0, stage.h - streamH), stage.w * 0.75);
   const showExample = streamVisible && Boolean(guide) && exampleH >= 56;
   const contentTop = Math.max(0, (stage.h - streamH - (showExample ? exampleH : 0)) / 2);
 
@@ -114,7 +115,7 @@ export default function CameraView({
               src={guide.outline}
               alt=""
               aria-hidden
-              className="absolute left-1/2 top-1/2 w-[72%] -translate-x-1/2 -translate-y-1/2 opacity-60 pointer-events-none"
+              className="absolute inset-0 w-full h-full object-contain opacity-60 pointer-events-none"
             />
           )}
 

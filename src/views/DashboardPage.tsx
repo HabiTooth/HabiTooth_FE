@@ -47,7 +47,7 @@ export default function DashboardPage() {
     <PageShell withNav>
       <main className="px-5 pt-5">
         <div className="relative isolate -mx-5 -mt-5 px-5 pt-5 pb-3 rounded-b-[32px] overflow-hidden bg-[#4A86D9]">
-        <Image src="/images/dashboard/clay-landscape.webp" alt="" fill sizes="(max-width: 480px) 100vw, 480px" className="object-cover" priority />
+        <Image src="/images/dashboard/clay-landscape.webp" alt="" fill sizes="(max-width: 600px) 100vw, 600px" className="object-cover sm:object-[50%_85%]" priority />
         <div className="absolute inset-0 bg-gradient-to-r from-[#3B72BC]/35 via-transparent to-transparent" />
         <div className="relative z-10">
         <Header inverse />

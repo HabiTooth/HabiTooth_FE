@@ -19,6 +19,7 @@ interface ReportHeroProps {
   date: string;
   score: number | null;
   prevScore?: number;
+  scoreDelta?: number | null;
   message?: string | null;
   counts: ToothStateCounts;
   analysisResults: ToothAnalysisResult[];
@@ -92,6 +93,7 @@ export default function ReportHero({
   date,
   score,
   prevScore,
+  scoreDelta,
   message,
   counts,
   analysisResults,
@@ -117,7 +119,10 @@ export default function ReportHero({
   // 선택한 종류 마커만
   const markerFilter = useMemo<MarkerVisibility | undefined>(() => {
     if (!activeView || new Set(views.map((v) => v.lesionType)).size < 2) return undefined;
-    return { PLAQUE: activeView.lesionType === 'PLAQUE', CALCULUS: activeView.lesionType === 'CALCULUS' };
+    return {
+      PLAQUE: activeView.lesionType === 'PLAQUE',
+      CALCULUS: activeView.lesionType === 'CALCULUS',
+    };
   }, [activeView, views]);
   useEffect(() => {
     const el = sectionRef.current;
@@ -151,10 +156,15 @@ export default function ReportHero({
   };
   const release = () => follow(0, 0);
 
-  const diff = score !== null && prevScore !== undefined ? score - prevScore : null;
+  const diff =
+    scoreDelta !== undefined
+      ? scoreDelta
+      : score !== null && prevScore !== undefined
+        ? score - prevScore
+        : null;
   const scoreLine = [
     score !== null ? scoreStatus(score) : null,
-    diff !== null ? scoreDiffText(diff) : null,
+    diff !== null ? scoreDiffText(diff) : scoreDelta === null ? '첫 촬영이에요' : null,
   ]
     .filter(Boolean)
     .join(' · ');
@@ -230,21 +240,23 @@ export default function ReportHero({
       )}
 
       <div
-        className={`relative ${detail ? '' : 'h-[380px]'}`}
+        className={`relative ${detail ? '' : 'h-[380px] sm:h-[300px]'}`}
         style={detail ? { height: heroHeight ?? 520 } : undefined}
       >
-        <OralViewer3D
-          analysisResults={analysisResults}
-          lesions={lesions}
-          scannedTeeth={scannedTeeth}
-          minimal
-          zoom={1.22}
-          idleMarkers={false}
-          selectedTooth={selected}
-          focusSurface={activeView?.surface ?? null}
-          visibleMarkers={markerFilter}
-          onToothSelect={onSelect}
-        />
+        <div className="absolute inset-0 mx-auto max-w-[480px]">
+          <OralViewer3D
+            analysisResults={analysisResults}
+            lesions={lesions}
+            scannedTeeth={scannedTeeth}
+            minimal
+            zoom={1.22}
+            idleMarkers={false}
+            selectedTooth={selected}
+            focusSurface={activeView?.surface ?? null}
+            visibleMarkers={markerFilter}
+            onToothSelect={onSelect}
+          />
+        </div>
 
         {detail && (
           <div key={detail.fdi} className="hero-rise pointer-events-none absolute inset-0 z-10">

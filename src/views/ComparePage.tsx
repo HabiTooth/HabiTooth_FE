@@ -326,7 +326,7 @@ export default function ComparePage() {
               <ArrowRight size={16} className="mb-3 flex-shrink-0 text-white/70" />
               <Select value={afterId} onChange={setAfterId} label="비교" />
             </div>
-            <div className={`relative ${selected ? 'h-[420px]' : 'h-[360px]'}`}>
+            <div className={`relative ${selected ? 'h-[420px] sm:h-[340px]' : 'h-[360px] sm:h-[300px]'}`}>
               <OralViewer3D
                 analysisResults={viewerResults}
                 lesions={viewerLesions}

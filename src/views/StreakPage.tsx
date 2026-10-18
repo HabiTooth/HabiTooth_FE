@@ -145,7 +145,7 @@ export default function StreakPage() {
 
           <div className="grid grid-cols-7 gap-y-1">
             {cells.map((cell, i) => {
-              if (cell.day === null) return <div key={`pad-${i}`} className="aspect-square" />;
+              if (cell.day === null) return <div key={`pad-${i}`} className="aspect-square sm:aspect-auto sm:h-12" />;
 
               const dot = [
                 'relative w-10 h-10 flex items-center justify-center text-[12px] tabular-nums transition-transform',
@@ -160,7 +160,7 @@ export default function StreakPage() {
               const sessionId = cell.scanned ? idByDate(cell.key) : null;
 
               return (
-                <div key={cell.key} className="aspect-square flex items-center justify-center">
+                <div key={cell.key} className="aspect-square sm:aspect-auto sm:h-12 flex items-center justify-center">
                   {sessionId === null ? (
                     <span className={dot} aria-label={`${cell.day}일${cell.scanned ? ' 스캔 완료' : ''}`}>{stamp}</span>
                   ) : (

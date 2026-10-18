@@ -4,7 +4,7 @@ import { SCAN_STATUS, SCAN_STATUS_ORDER } from '@/constants/scanStatus';
 export default function ScanHelpSheet({ onClose }: { onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#213D60]/35 backdrop-blur-sm">
-      <div role="dialog" aria-modal="true" aria-labelledby="scan-help-title" className="bg-white rounded-t-[28px] w-full max-w-[430px] max-h-[85svh] overflow-y-auto pb-[max(32px,env(safe-area-inset-bottom))]">
+      <div role="dialog" aria-modal="true" aria-labelledby="scan-help-title" className="bg-white rounded-t-[28px] w-full max-w-app max-h-[calc(85svh/var(--app-zoom))] overflow-y-auto pb-[max(32px,env(safe-area-inset-bottom))]">
         <div className="flex justify-center pt-3 pb-2">
           <div className="w-10 h-1 bg-hairline rounded-full" />
         </div>
