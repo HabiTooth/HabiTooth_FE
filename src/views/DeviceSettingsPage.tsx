@@ -13,6 +13,7 @@ import {
   writeWebcamPreference,
 } from '@/lib/cameraSource';
 import { CONFIGURED_HOST, controlHost, deviceAddress, streamUrl } from '@/lib/deviceAddress';
+import { devicePending, lastDeviceRoute } from '@/lib/deviceClient';
 import PageHeader from '@/components/molecules/PageHeader';
 
 type Probe = { state: 'idle' | 'running' | 'ok' | 'fail'; reason?: string };
@@ -34,15 +35,20 @@ const probeStream = (address: string) =>
     img.src = `${streamUrl(address)}?t=${Date.now()}`;
   });
 
-// 촬영은 서버 프록시가 기기에 붙음. 배포 서버가 기기와 다른 네트워크면 여기서 실패
+// 촬영은 기기 직접 요청 후 안 되면 서버 프록시
 const probeCapture = async (address: string): Promise<Probe> => {
   try {
-    const res = await fetch(`/api/camera/pending?ip=${encodeURIComponent(controlHost(address))}`);
-    if (res.ok) return { state: 'ok' };
+    const res = await devicePending(controlHost(address));
+    if (res.ok) {
+      return {
+        state: 'ok',
+        reason: lastDeviceRoute() === 'direct' ? '기기에 직접 연결' : '서버를 거쳐 연결',
+      };
+    }
     const body = await res.json().catch(() => null);
     return { state: 'fail', reason: body?.error ?? `HTTP ${res.status}` };
   } catch {
-    return { state: 'fail', reason: '요청 실패' };
+    return { state: 'fail', reason: '기기 직접 요청과 서버 경유 모두 실패' };
   }
 };
 
@@ -57,9 +63,7 @@ function ProbeRow({ label, probe, hint }: { label: string; probe: Probe; hint: s
       </span>
       <div className="flex-1 min-w-0">
         <p className="m-0 text-[13px] font-semibold text-content">{label}</p>
-        <p className="m-0 text-[11px] text-muted">
-          {probe.state === 'fail' && probe.reason ? probe.reason : hint}
-        </p>
+        <p className="m-0 text-[11px] text-muted">{probe.reason ?? hint}</p>
       </div>
     </div>
   );

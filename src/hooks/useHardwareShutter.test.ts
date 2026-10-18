@@ -94,8 +94,8 @@ describe('hardware shutter transfer', () => {
     expect(onCapture).not.toHaveBeenCalled();
     await poll(6000);
     expect(onCapture).toHaveBeenCalledTimes(1);
-    expect(fetcher.mock.calls.filter(([url]) => String(url).endsWith('&i=0'))).toHaveLength(1);
-    expect(fetcher.mock.calls.filter(([url]) => String(url).endsWith('&i=1'))).toHaveLength(2);
+    expect(fetcher.mock.calls.filter(([url]) => /[?&]i=0(&|$)/.test(String(url)))).toHaveLength(1);
+    expect(fetcher.mock.calls.filter(([url]) => /[?&]i=1(&|$)/.test(String(url)))).toHaveLength(2);
   });
 
   it('accepts new shutter sequences after the scanner counter resets on reboot', async () => {
