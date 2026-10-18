@@ -257,7 +257,7 @@ function Step1({
   const [selectionSurface, setSelectionSurface] = useState<Surface>('LINGUAL');
 
   return (
-    <div className="app-frame max-w-[430px] min-h-svh mx-auto flex flex-col bg-background relative">
+    <div className="app-frame max-w-app min-h-[calc(100svh/var(--app-zoom))] mx-auto flex flex-col bg-background relative">
       <div className="aurora-blob-1" />
       <div className="aurora-blob-2" />
       <div className="aurora-blob-3" />
@@ -394,7 +394,7 @@ function Step1({
           </div>
           </section>
         </div>
-        <div className="sticky bottom-0 px-5 pt-3 pb-4 bg-white/95 backdrop-blur-sm border-t border-hairline">
+        <div className="sticky bottom-0 mt-auto px-5 pt-3 pb-4 bg-white/95 backdrop-blur-sm border-t border-hairline">
           {startError && (
             <p className="m-0 mb-2 text-[12px] font-medium text-danger text-center">{startError}</p>
           )}
@@ -472,7 +472,7 @@ function Step2({
   const allDone = done >= total;
 
   return (
-    <div className="app-frame max-w-[430px] mx-auto h-svh flex flex-col">
+    <div className="app-frame max-w-app mx-auto h-[calc(100svh/var(--app-zoom))] flex flex-col">
       <PageHeader title="실시간 구강 스캔" onExit={onExit} onHelp={onHelp} />
 
       <div className="bg-white px-3 pt-2 pb-2 flex-shrink-0 border-b border-hairline">
@@ -588,12 +588,12 @@ function Step3({
 }) {
   if (analyzeError) {
     return (
-      <div className="app-frame relative isolate overflow-hidden max-w-[430px] min-h-svh mx-auto bg-[#F1F7FB] flex flex-col">
+      <div className="app-frame relative isolate overflow-hidden max-w-app min-h-[calc(100svh/var(--app-zoom))] mx-auto bg-[#F1F7FB] flex flex-col">
         <div className="absolute inset-0 -z-10 pointer-events-none">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/images/dashboard/scan-error-clay-portrait.webp" alt="" className="w-full h-svh object-cover object-top" />
+          <img src="/images/dashboard/scan-error-clay-portrait.webp" alt="" className="w-full h-[calc(100svh/var(--app-zoom))] object-cover object-top" />
         </div>
-        <div className="flex-1 px-6 pt-[40svh] pb-6 flex flex-col gap-5">
+        <div className="flex-1 px-6 pt-[calc(40svh/var(--app-zoom))] pb-6 flex flex-col gap-5">
         <ScanStateHeading tone="blue" role="alert" label="분석이 잠시 멈췄어요" title="다시 시도해 볼까요?" description={analyzeError} />
         <div className="w-full mt-auto pt-4 flex flex-col gap-2 pb-[env(safe-area-inset-bottom)]">
           <button
@@ -627,12 +627,12 @@ function Step3({
 
   const currentLabel = ANALYZE_STEPS[Math.min(Math.max(analyzeStep - 1, 0), ANALYZE_STEPS.length - 1)];
   return (
-    <div className="app-frame relative isolate overflow-hidden max-w-[430px] min-h-svh mx-auto bg-[#F0F8F5] flex flex-col">
+    <div className="app-frame relative isolate overflow-hidden max-w-app min-h-[calc(100svh/var(--app-zoom))] mx-auto bg-[#F0F8F5] flex flex-col">
       <div className="absolute inset-0 -z-10 pointer-events-none">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/images/dashboard/scan-analyzing-mint-portrait.webp" alt="" className="w-full h-svh object-cover object-top" />
+        <img src="/images/dashboard/scan-analyzing-mint-portrait.webp" alt="" className="w-full h-[calc(100svh/var(--app-zoom))] object-cover object-top" />
       </div>
-      <div className="flex-1 px-6 pt-[40svh] pb-8 flex flex-col gap-5">
+      <div className="flex-1 px-6 pt-[calc(40svh/var(--app-zoom))] pb-8 flex flex-col gap-5">
         <ScanStateHeading tone="mint" role="status" label="AI 구강 분석" title="치아를 살펴보고 있어요" description="촬영한 사진으로 리포트를 준비하고 있어요" />
         <div className="rounded-[22px] bg-[#F9FFFC]/85 border border-[#CDE8DC] px-5 py-4 shadow-[0_4px_20px_rgba(61,119,95,0.05)]">
           <div className="flex items-center gap-2 mb-3">
@@ -668,12 +668,12 @@ function Step4({ onNext, onReset, analysisResult, capturedZones }: {
   capturedZones: ViewType[];
 }) {
   return (
-    <div className="app-frame relative isolate overflow-hidden max-w-[430px] min-h-svh mx-auto bg-[#FFFAEF] flex flex-col">
+    <div className="app-frame relative isolate overflow-hidden max-w-app min-h-[calc(100svh/var(--app-zoom))] mx-auto bg-[#FFFAEF] flex flex-col">
       <div className="absolute inset-0 -z-10 pointer-events-none">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/images/dashboard/scan-complete-apricot-portrait.webp" alt="" className="w-full h-svh object-cover object-top" />
+        <img src="/images/dashboard/scan-complete-apricot-portrait.webp" alt="" className="w-full h-[calc(100svh/var(--app-zoom))] object-cover object-top" />
       </div>
-      <div className="px-6 pt-[40svh] flex flex-col items-center gap-5">
+      <div className="px-6 pt-[calc(40svh/var(--app-zoom))] flex flex-col items-center gap-5">
         <ScanStateHeading tone="orange" label="리포트 준비 완료" title="분석이 완료됐어요" description="내 치아의 관리 포인트를 확인해 보세요" />
         {analysisResult && (
           <div className="w-full text-center py-1">
@@ -1126,10 +1126,6 @@ export default function ScanPage() {
           webcam={isDev ? { on: useWebcam, onToggle: toggleWebcam } : null}
           onExit={() => setShowExitModal(true)}
           onStart={async () => {
-            if (!deviceId && !isDev) {
-              console.error('기기가 등록되지 않았습니다');
-              return;
-            }
             setStartError(null);
             const enterScan = (sid: number) => {
               setSessionId(sid);

@@ -45,7 +45,7 @@ export default function ConfirmSheet({
         aria-modal="true"
         aria-labelledby="confirm-sheet-title"
         onClick={(e) => e.stopPropagation()}
-        className="hero-rise w-full max-w-[430px] rounded-t-[24px] bg-white px-5 pb-[calc(20px+env(safe-area-inset-bottom,0px))] pt-5 shadow-card"
+        className="hero-rise w-full max-w-app rounded-t-[24px] bg-white px-5 pb-[calc(20px+env(safe-area-inset-bottom,0px))] pt-5 shadow-card"
       >
         <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-hairline" />
         <h2 id="confirm-sheet-title" className="m-0 text-[16px] font-semibold text-content">

@@ -1,55 +1,46 @@
 'use client';
 
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import TrendPlot from '@/components/molecules/TrendPlot';
+import ReportBadge from '@/components/atoms/ReportBadge';
 import type { TrendChartSectionProps } from './TrendChartSection.types';
 
-const MAX_VISIBLE_POINTS = 5;
-const POINT_WIDTH = 70;
-
 export default function TrendChartSection({ data }: TrendChartSectionProps) {
-  const isScrollable = data.length > MAX_VISIBLE_POINTS;
-
-  const chart = (
-    <AreaChart
-      data={data}
-      {...(isScrollable ? { width: data.length * POINT_WIDTH, height: 160 } : {})}
-      margin={{ top: 5, right: 5, bottom: 0, left: 0 }}
-    >
-      <defs>
-        <linearGradient id="scoreGradient" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="5%" stopColor="#4A86D9" stopOpacity={0.6} />
-          <stop offset="95%" stopColor="#4A86D9" stopOpacity={0.15} />
-        </linearGradient>
-      </defs>
-      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-      <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
-      <YAxis domain={[50, 100]} tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} width={28} />
-      <Tooltip
-        contentStyle={{ fontSize: 12, borderRadius: 8, border: 'none', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}
-        formatter={(value) => [`${value}점`, '구강 점수']}
-      />
-      <Area
-        type="monotone"
-        dataKey="score"
-        stroke="#4A86D9"
-        strokeWidth={2}
-        fill="url(#scoreGradient)"
-        dot={{ fill: '#4A86D9', r: 4 }}
-        activeDot={{ r: 6 }}
-      />
-    </AreaChart>
-  );
-
+  const latest = data[data.length - 1];
+  const delta = data.length > 1 ? latest.score - data[data.length - 2].score : null;
   return (
-    <div className="bg-white/90 backdrop-blur-sm rounded-[20px] shadow-card p-5 mt-4">
-      <h2 className="text-sm font-semibold text-gray-800 mb-4">점수 변화 추이</h2>
-      {isScrollable ? (
-        <div className="overflow-x-auto">{chart}</div>
+    <section className="mt-4 rounded-[24px] border border-white bg-white p-5 shadow-[0_6px_24px_rgba(71,105,154,0.045)]">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="m-0 text-[18px] font-bold tracking-[-0.4px] text-content">점수 변화 추이</h2>
+        {data.length > 0 && <ReportBadge>최근 {data.length}회</ReportBadge>}
+      </div>
+      {data.length > 0 ? (
+        <>
+          <div className="mt-5 flex items-baseline gap-2">
+            <strong className="text-[32px] font-bold leading-none tabular-nums text-[#597EB8]">
+              {latest.score}
+              <span className="ml-1 text-[14px]">점</span>
+            </strong>
+            <span className="text-[13px] font-semibold text-[#8292AB]">
+              {delta === null
+                ? '첫 측정'
+                : delta === 0
+                  ? '지난 측정과 같아요'
+                  : `지난 측정 대비 ${delta > 0 ? '+' : '−'}${Math.abs(delta)}점`}
+            </span>
+          </div>
+          <TrendPlot
+            data={data.map((point) => ({ date: point.date, value: point.score }))}
+            label="구강 점수 변화"
+          />
+          <p className="mb-0 mt-3 text-[12px] font-medium leading-relaxed text-[#788BA4]">
+            측정한 날의 점수를 연결했어요.
+          </p>
+        </>
       ) : (
-        <ResponsiveContainer width="100%" height={160}>
-          {chart}
-        </ResponsiveContainer>
+        <p className="mb-0 mt-5 py-5 text-center text-[14px] text-[#788BA4]">
+          스캔 기록이 쌓이면 점수 변화를 볼 수 있어요.
+        </p>
       )}
-    </div>
+    </section>
   );
 }

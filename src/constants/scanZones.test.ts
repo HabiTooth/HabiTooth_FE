@@ -86,11 +86,15 @@ describe('치식 매핑', () => {
     expect(toothToZone(36, 'LINGUAL')).toBe('LOWER_LEFT_MOLAR');
   });
 
-  it('협측은 견치를 기준으로 갈린다', () => {
-    expect(toothToZone(14, 'BUCCAL')).toBe('OUTER_RIGHT');
-    expect(toothToZone(13, 'BUCCAL')).toBe('OUTER_CENTER');
-    expect(toothToZone(23, 'BUCCAL')).toBe('OUTER_CENTER');
-    expect(toothToZone(24, 'BUCCAL')).toBe('OUTER_LEFT');
+  it('협측 앞니 구역은 위아래 앞니 각각 4개만 포함한다', () => {
+    expect(SCAN_ZONES.find((zone) => zone.viewType === 'OUTER_CENTER')?.teeth)
+      .toEqual([12, 11, 21, 22, 42, 41, 31, 32]);
+    for (const tooth of [13, 43]) {
+      expect(toothToZone(tooth, 'BUCCAL')).toBe('OUTER_RIGHT');
+    }
+    for (const tooth of [23, 33]) {
+      expect(toothToZone(tooth, 'BUCCAL')).toBe('OUTER_LEFT');
+    }
   });
 
   it('없는 치아 번호는 null을 준다', () => {

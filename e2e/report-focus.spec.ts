@@ -12,6 +12,13 @@ test('report hero focuses a tooth and steps through risky teeth', async ({ page 
   await page.goto('/report/42', { waitUntil: 'domcontentloaded' });
   const inside = page.getByRole('button', { name: '안쪽 보기', exact: true });
   await expect(inside).toBeVisible({ timeout: 60_000 });
+  const modelBox = await page.locator('canvas').first().boundingBox();
+  const insideBox = await inside.boundingBox();
+  expect(modelBox).not.toBeNull();
+  expect(insideBox).not.toBeNull();
+  expect(modelBox!.width).toBeLessThanOrEqual(480);
+  expect(insideBox!.x + insideBox!.width).toBeLessThanOrEqual(modelBox!.x + modelBox!.width);
+  await expect(inside).toHaveClass(/bg-\[#173A73\]\/35/);
   await expect(page.getByText(/신경 쓸 치아 \d+개/)).toBeVisible();
 
   await page

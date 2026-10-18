@@ -19,9 +19,21 @@ export const GUIDE_SHOT: Record<ViewType, string> = {
   OUTER_LEFT: `${GUIDE_DIR}/OUTER_LEFT.webp`,
 };
 
-// 구역별 촬영 가이드라인
-export const GUIDE_OUTLINE: Partial<Record<ViewType, string>> = {
-  OUTER_CENTER: `${GUIDE_DIR}/outline-front.png`,
+// 구역별 촬영 가이드라인. 스트림과 같은 4:3 캔버스
+export const GUIDE_OUTLINE: Record<ViewType, string> = {
+  UPPER_RIGHT_MOLAR: `${GUIDE_DIR}/UPPER_RIGHT_MOLAR-outline.webp`,
+  UPPER_RIGHT_PREMOLAR: `${GUIDE_DIR}/UPPER_RIGHT_PREMOLAR-outline.webp`,
+  UPPER_FRONT: `${GUIDE_DIR}/UPPER_FRONT-outline.webp`,
+  UPPER_LEFT_PREMOLAR: `${GUIDE_DIR}/UPPER_LEFT_PREMOLAR-outline.webp`,
+  UPPER_LEFT_MOLAR: `${GUIDE_DIR}/UPPER_LEFT_MOLAR-outline.webp`,
+  LOWER_RIGHT_MOLAR: `${GUIDE_DIR}/LOWER_RIGHT_MOLAR-outline.webp`,
+  LOWER_RIGHT_PREMOLAR: `${GUIDE_DIR}/LOWER_RIGHT_PREMOLAR-outline.webp`,
+  LOWER_FRONT: `${GUIDE_DIR}/LOWER_FRONT-outline.webp`,
+  LOWER_LEFT_PREMOLAR: `${GUIDE_DIR}/LOWER_LEFT_PREMOLAR-outline.webp`,
+  LOWER_LEFT_MOLAR: `${GUIDE_DIR}/LOWER_LEFT_MOLAR-outline.webp`,
+  OUTER_RIGHT: `${GUIDE_DIR}/OUTER_RIGHT-outline.webp`,
+  OUTER_CENTER: `${GUIDE_DIR}/OUTER_CENTER-outline.webp`,
+  OUTER_LEFT: `${GUIDE_DIR}/OUTER_LEFT-outline.webp`,
 };
 
 const TONGUE = "'아' 소리 내듯 혀를 바닥으로 내리고, ";
@@ -59,6 +71,6 @@ export function guideTip(zone: ViewType, missing: readonly number[] = []): strin
     case 'OUTER_LEFT':
       return SIDE;
     case 'OUTER_CENTER':
-      return '윗니·아랫니가 함께 보이게, 가운데 앞니 틈이 화면 가운데 오고 양쪽 송곳니까지 담아 주세요.';
+      return '윗니·아랫니 앞니가 각각 4개씩 함께 보이게, 가운데 앞니 틈을 화면 가운데 맞춰 주세요.';
   }
 }

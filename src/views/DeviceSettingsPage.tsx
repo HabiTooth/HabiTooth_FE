@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, Monitor, RefreshCw, Smartphone, Trash2 } from 'lucide-react';
+import { CheckCircle2, Loader2, Monitor, RefreshCw, Smartphone, Trash2, Wifi, XCircle } from 'lucide-react';
 import PageShell from '@/components/organisms/PageShell';
 import { useAuthStore } from '@/stores/authStore';
 import { userApi } from '@/lib/api/user';
@@ -12,8 +12,58 @@ import {
   readWebcamPreference,
   writeWebcamPreference,
 } from '@/lib/cameraSource';
-import { CONFIGURED_HOST, deviceAddress } from '@/lib/deviceAddress';
+import { CONFIGURED_HOST, controlHost, deviceAddress, streamUrl } from '@/lib/deviceAddress';
 import PageHeader from '@/components/molecules/PageHeader';
+
+type Probe = { state: 'idle' | 'running' | 'ok' | 'fail'; reason?: string };
+
+// 미리보기는 브라우저가 기기에 직접 붙음
+const probeStream = (address: string) =>
+  new Promise<Probe>((resolve) => {
+    const img = new Image();
+    const done = (result: Probe) => {
+      clearTimeout(timer);
+      img.onload = null;
+      img.onerror = null;
+      img.src = '';
+      resolve(result);
+    };
+    const timer = setTimeout(() => done({ state: 'fail', reason: '6초 안에 응답 없음' }), 6000);
+    img.onload = () => done({ state: 'ok' });
+    img.onerror = () => done({ state: 'fail', reason: '연결 실패' });
+    img.src = `${streamUrl(address)}?t=${Date.now()}`;
+  });
+
+// 촬영은 서버 프록시가 기기에 붙음. 배포 서버가 기기와 다른 네트워크면 여기서 실패
+const probeCapture = async (address: string): Promise<Probe> => {
+  try {
+    const res = await fetch(`/api/camera/pending?ip=${encodeURIComponent(controlHost(address))}`);
+    if (res.ok) return { state: 'ok' };
+    const body = await res.json().catch(() => null);
+    return { state: 'fail', reason: body?.error ?? `HTTP ${res.status}` };
+  } catch {
+    return { state: 'fail', reason: '요청 실패' };
+  }
+};
+
+function ProbeRow({ label, probe, hint }: { label: string; probe: Probe; hint: string }) {
+  return (
+    <div className="flex items-start gap-2.5 py-2">
+      <span className="mt-0.5 flex-shrink-0">
+        {probe.state === 'running' && <Loader2 size={16} className="animate-spin text-primary" />}
+        {probe.state === 'ok' && <CheckCircle2 size={16} className="text-success" />}
+        {probe.state === 'fail' && <XCircle size={16} className="text-danger" />}
+        {probe.state === 'idle' && <span className="block w-4 h-4 rounded-full bg-hairline" />}
+      </span>
+      <div className="flex-1 min-w-0">
+        <p className="m-0 text-[13px] font-semibold text-content">{label}</p>
+        <p className="m-0 text-[11px] text-muted">
+          {probe.state === 'fail' && probe.reason ? probe.reason : hint}
+        </p>
+      </div>
+    </div>
+  );
+}
 
 function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
   return (
@@ -36,7 +86,9 @@ function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
 
 export default function DeviceSettingsPage() {
   const router = useRouter();
-  const { deviceIp, clearDevice } = useAuthStore();
+  const { deviceId, deviceIp, clearDevice } = useAuthStore();
+  const [stream, setStream] = useState<Probe>({ state: 'idle' });
+  const [capture, setCapture] = useState<Probe>({ state: 'idle' });
   const [device, setDevice] = useState<DeviceStatusResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [useWebcam, setUseWebcam] = useState(false);
@@ -58,8 +110,17 @@ export default function DeviceSettingsPage() {
   };
 
   // 등록 해제 API 없음. 로컬 연결만 끊음
-  const registered = Boolean(deviceIp) || device !== null;
+  const registered = deviceId !== null || Boolean(deviceIp) || device !== null;
   const address = deviceAddress(deviceIp);
+
+  const runCheck = async () => {
+    if (!address) return;
+    setStream({ state: 'running' });
+    setCapture({ state: 'running' });
+    const [s, c] = await Promise.all([probeStream(address), probeCapture(address)]);
+    setStream(s);
+    setCapture(c);
+  };
 
   const disconnect = () => {
     clearDevice();
@@ -103,6 +164,39 @@ export default function DeviceSettingsPage() {
             </div>
           )}
         </div>
+
+        {address && (
+          <div className="bg-white/90 backdrop-blur-sm rounded-[20px] shadow-card p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-primary-light flex items-center justify-center flex-shrink-0">
+                <Wifi size={18} className="text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="m-0 text-[13px] font-semibold text-content">스캐너 연결 확인</p>
+                <p className="m-0 text-[11px] text-muted">미리보기와 촬영 경로를 각각 확인해요</p>
+              </div>
+              <button
+                type="button"
+                onClick={runCheck}
+                disabled={stream.state === 'running'}
+                className="px-3 py-1.5 rounded-full bg-primary text-white text-[12px] font-semibold disabled:opacity-50"
+              >
+                확인
+              </button>
+            </div>
+            {stream.state !== 'idle' && (
+              <div className="mt-3 pt-2 border-t border-dashed border-hairline">
+                <ProbeRow label="미리보기" probe={stream} hint="이 브라우저에서 기기 영상으로 직접 연결" />
+                <ProbeRow label="촬영" probe={capture} hint="서버가 기기에 촬영 요청" />
+                {capture.state === 'fail' && stream.state === 'ok' && (
+                  <p className="m-0 mt-1 text-[11px] text-muted leading-relaxed">
+                    영상은 되는데 촬영이 안 되면 서버가 기기와 같은 네트워크에 없는 거예요.
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="bg-white/90 backdrop-blur-sm rounded-[20px] shadow-card p-4">
           <div className="flex items-center gap-3">

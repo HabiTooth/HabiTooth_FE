@@ -13,11 +13,11 @@ export default function PageShell({
   fill?: boolean;
   decorative?: boolean;
 }) {
-  const inner = fill ? 'h-svh flex flex-col pb-14' : withNav ? 'pb-[104px]' : 'pb-10';
+  const inner = fill ? 'h-[calc(100svh/var(--app-zoom))] flex flex-col pb-14' : withNav ? 'pb-[104px]' : 'pb-10';
 
   return (
     <div
-      className={`app-frame max-w-[430px] mx-auto bg-background relative ${fill ? 'h-svh overflow-hidden' : 'min-h-svh'} ${className}`}
+      className={`app-frame max-w-app mx-auto bg-background relative ${fill ? 'h-[calc(100svh/var(--app-zoom))] overflow-hidden' : 'min-h-[calc(100svh/var(--app-zoom))]'} ${className}`}
     >
       {decorative && <>
         <div className="aurora-blob-1" />
