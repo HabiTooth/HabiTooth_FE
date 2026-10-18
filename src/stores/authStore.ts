@@ -22,7 +22,7 @@ interface AuthState {
   deviceId: number | null;
   deviceIp: string | null;
   setToken: (token: string, remember?: boolean) => void;
-  setDevice: (deviceId: number, deviceIp: string) => void;
+  setDevice: (deviceId: number, deviceIp: string | null) => void;
   clearDevice: () => void;
   clearAuth: () => void;
   logout: () => Promise<void>;
@@ -40,8 +40,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
   setDevice: (deviceId, deviceIp) => {
     localStorage.setItem('deviceId', String(deviceId));
-    localStorage.setItem('deviceIp', deviceIp);
-    set({ deviceId, deviceIp });
+    if (deviceIp) localStorage.setItem('deviceIp', deviceIp);
+    set({ deviceId, deviceIp: deviceIp ?? get().deviceIp });
   },
   clearDevice: () => {
     localStorage.removeItem('deviceId');
