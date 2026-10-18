@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { devicePend, devicePending } from '@/lib/deviceClient';
 
 // 너무 잦으면 스트림 끊김
 const POLL_MS = 3000;
@@ -61,9 +62,7 @@ export function useHardwareShutter({
       if (busy) return;
       busy = true;
       try {
-        const res = await fetch(`/api/camera/pending?ip=${encodeURIComponent(host)}`, {
-          cache: 'no-store',
-        });
+        const res = await devicePending(host);
         if (!res.ok) {
           throw new Error(`셔터 상태 수신 실패: ${res.status}`);
         }
@@ -94,9 +93,7 @@ export function useHardwareShutter({
 
         // 백색(0)·UV(1) 둘 다 가져가야 촬영 상태 해제
         const pick = async (i: 0 | 1) => {
-          const res = await fetch(`/api/camera/pending?ip=${encodeURIComponent(host)}&i=${i}`, {
-            cache: 'no-store',
-          });
+          const res = await devicePend(host, i);
           if (!res.ok) throw new Error(`셔터 사진 수신 실패: ${res.status}`);
           const blob = await res.blob();
           if (!blob.size) throw new Error('빈 셔터 사진');
