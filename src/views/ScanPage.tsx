@@ -37,6 +37,7 @@ import { useNotificationStore } from '@/stores/notificationStore';
 import { useDentitionStore } from '@/stores/dentitionStore';
 import { readWebcamPreference, writeWebcamPreference } from '@/lib/cameraSource';
 import { controlHost, deviceAddress, streamUrl } from '@/lib/deviceAddress';
+import { deviceSnap } from '@/lib/deviceClient';
 import { useHardwareShutter } from '@/hooks/useHardwareShutter';
 
 type Step = 1 | 2 | 3 | 4;
@@ -826,9 +827,7 @@ export default function ScanPage() {
 
   const snap = useCallback(
     async (zone: ViewType, mode: 'white' | 'uv'): Promise<Blob> => {
-      const res = await fetch(
-        `/api/camera/capture?ip=${controlHost(scannerAddress!)}&view=${zone}&light=${mode}`,
-      );
+      const res = await deviceSnap(controlHost(scannerAddress!), zone, mode);
       if (!res.ok) {
         const detail = await res.json().catch(() => null);
         throw new Error(detail?.error ?? `capture proxy ${res.status}`);
