@@ -1126,10 +1126,6 @@ export default function ScanPage() {
           webcam={isDev ? { on: useWebcam, onToggle: toggleWebcam } : null}
           onExit={() => setShowExitModal(true)}
           onStart={async () => {
-            if (!deviceId && !isDev) {
-              console.error('기기가 등록되지 않았습니다');
-              return;
-            }
             setStartError(null);
             const enterScan = (sid: number) => {
               setSessionId(sid);
