@@ -16,7 +16,11 @@ test('report hero focuses a tooth and steps through risky teeth', async ({ page 
   const insideBox = await inside.boundingBox();
   expect(modelBox).not.toBeNull();
   expect(insideBox).not.toBeNull();
-  expect(modelBox!.width).toBeLessThanOrEqual(480);
+  // 넓은 화면은 app-frame zoom만큼 커짐
+  const zoom = await page.evaluate(
+    () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--app-zoom')) || 1,
+  );
+  expect(modelBox!.width).toBeLessThanOrEqual(480 * zoom + 1);
   expect(insideBox!.x + insideBox!.width).toBeLessThanOrEqual(modelBox!.x + modelBox!.width);
   await expect(inside).toHaveClass(/bg-\[#173A73\]\/35/);
   await expect(page.getByText(/신경 쓸 치아 \d+개/)).toBeVisible();

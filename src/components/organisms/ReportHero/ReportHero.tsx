@@ -21,6 +21,7 @@ interface ReportHeroProps {
   score: number | null;
   prevScore?: number;
   scoreDelta?: number | null;
+  coverage?: { captured: number; total: number } | null;
   message?: string | null;
   counts: ToothStateCounts;
   analysisResults: ToothAnalysisResult[];
@@ -92,6 +93,7 @@ export default function ReportHero({
   score,
   prevScore,
   scoreDelta,
+  coverage,
   message,
   counts,
   analysisResults,
@@ -402,6 +404,11 @@ export default function ReportHero({
             </div>
             {scoreLine && <p className="m-0 mt-2.5 text-[13px] text-white/85">{scoreLine}</p>}
             <p className="m-0 mt-1 text-[12px] text-white/65">{countLine}</p>
+            {coverage && coverage.captured < coverage.total && (
+              <p className="m-0 mt-2 inline-block rounded-full bg-white/15 px-3 py-1 text-[11.5px] font-semibold text-white/90">
+                {coverage.captured}/{coverage.total}구역 기준 점수 · 전부 찍으면 전체 점수
+              </p>
+            )}
 
             <div className="mt-3 flex flex-wrap justify-center gap-x-3 gap-y-1">
               {LEGEND.map((level) => (

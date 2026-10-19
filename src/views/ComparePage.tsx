@@ -22,13 +22,20 @@ import { useSessionIndex } from '@/hooks/useSessionIndex';
 import { compareSummary, compareTeeth, type ToothChange } from '@/lib/compare';
 import { useDentitionStore } from '@/stores/dentitionStore';
 import { excludeMissingTeeth } from '@/lib/toothMapping';
+import { keepCapturedLesions, keepCapturedTeeth } from '@/lib/scanCoverage';
+import { scanApi } from '@/lib/api/scan';
+import type { ViewType } from '@/lib/api/scan';
 import { RISK_LABEL, formatDateTime, formatShortDate } from '@/lib/score';
 import { toothName } from '@/lib/dentition';
 import { RISK_MODEL_FILL } from '@/lib/riskColors';
 import { RISK_TAG } from '@/lib/lesionRisk';
 
-const toViewerResults = (report: SessionReport | null, missing: number[]): ToothAnalysisResult[] =>
-  excludeMissingTeeth(report?.toothStatuses ?? [], missing).map((t) => ({
+const toViewerResults = (
+  report: SessionReport | null,
+  missing: number[],
+  zones: ViewType[],
+): ToothAnalysisResult[] =>
+  keepCapturedTeeth(excludeMissingTeeth(report?.toothStatuses ?? [], missing), zones).map((t) => ({
     toothNumber: String(t.toothNumber),
     lesionType: t.lesionType ?? '',
     areaRatio: t.areaRatio,
@@ -139,6 +146,8 @@ export default function ComparePage() {
   const [after, setAfter] = useState<SessionReport | null>(null);
   const [beforeLesions, setBeforeLesions] = useState<ToothLesion[]>([]);
   const [afterLesions, setAfterLesions] = useState<ToothLesion[]>([]);
+  const [beforeZones, setBeforeZones] = useState<ViewType[]>([]);
+  const [afterZones, setAfterZones] = useState<ViewType[]>([]);
   // 0 기준 스캔, 1 비교 스캔. 놓으면 가까운 쪽
   const [blend, setBlend] = useState(1);
   const [selected, setSelected] = useState<string | null>(null);
@@ -157,6 +166,7 @@ export default function ComparePage() {
       id: number,
       setReport: (r: SessionReport | null) => void,
       setLesions: (l: ToothLesion[]) => void,
+      setZones: (z: ViewType[]) => void,
     ) => {
       reportApi
         .getSessionReport(id)
@@ -169,18 +179,31 @@ export default function ComparePage() {
         .getMeshCoordinates(id)
         .then((res) => setLesions(res.data.result?.lesions ?? []))
         .catch(() => setLesions([]));
+      // 촬영 구역 밖 치아 제외용
+      scanApi
+        .getCaptureStatus(id)
+        .then((res) =>
+          setZones([...new Set((res.data.result?.capturedZones ?? []).map((z) => z.viewType))]),
+        )
+        .catch(() => setZones([]));
     },
     [],
   );
   useEffect(() => {
-    if (beforeId !== null) load(beforeId, setBefore, setBeforeLesions);
+    if (beforeId !== null) load(beforeId, setBefore, setBeforeLesions, setBeforeZones);
   }, [beforeId, load]);
   useEffect(() => {
-    if (afterId !== null) load(afterId, setAfter, setAfterLesions);
+    if (afterId !== null) load(afterId, setAfter, setAfterLesions, setAfterZones);
   }, [afterId, load]);
 
-  const beforeResults = useMemo(() => toViewerResults(before, missing), [before, missing]);
-  const afterResults = useMemo(() => toViewerResults(after, missing), [after, missing]);
+  const beforeResults = useMemo(
+    () => toViewerResults(before, missing, beforeZones),
+    [before, missing, beforeZones],
+  );
+  const afterResults = useMemo(
+    () => toViewerResults(after, missing, afterZones),
+    [after, missing, afterZones],
+  );
 
   const diff = useMemo(
     () =>
@@ -201,7 +224,10 @@ export default function ComparePage() {
   );
   const nearAfter = blend >= 0.5;
   const viewerResults = nearAfter ? afterResults : beforeResults;
-  const viewerLesions = excludeMissingTeeth(nearAfter ? afterLesions : beforeLesions, missing);
+  const viewerLesions = keepCapturedLesions(
+    excludeMissingTeeth(nearAfter ? afterLesions : beforeLesions, missing),
+    nearAfter ? afterZones : beforeZones,
+  );
 
   const label = (id: number | null) => {
     const found = sessions.find((s) => s.sessionId === id);
