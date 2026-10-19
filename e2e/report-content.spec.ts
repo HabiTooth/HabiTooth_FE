@@ -136,7 +136,7 @@ test('new report shows server scores, authenticated photos, overlay fallback and
   await expect(page.getByText('감점 13점은 모두 치석에서 왔어요.')).toBeVisible();
   await expect(page.getByText(score.formulaText, { exact: true })).toHaveCount(0);
   await expect(page.getByRole('heading', { name: '위험 부위 분석', exact: true })).toHaveCount(0);
-  await expect(page.getByText('스케일링으로만 회복', { exact: true })).toBeVisible();
+  await expect(page.getByText('스케일링으로만 회복', { exact: true })).toHaveCount(0);
   await expect(page.getByText('지난 스캔보다 30점 올랐어요', { exact: false })).toBeVisible();
   await expect(page.getByText('해석 네 번째', { exact: true })).toHaveCount(0);
   await expect(page.getByText('네 번째 행동', { exact: true })).toHaveCount(0);

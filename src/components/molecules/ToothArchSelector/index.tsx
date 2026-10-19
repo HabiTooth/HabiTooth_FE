@@ -19,7 +19,7 @@ export interface ToothArchSelectorProps {
   mode?: 'selection' | 'capture';
 }
 
-function archTeeth(lower: boolean, surface: Surface) {
+export function archTeeth(lower: boolean, surface: Surface) {
   const positions = [
     [108, 57, 22, 29, -4],
     [85, 62, 20, 27, -17],
@@ -35,8 +35,10 @@ function archTeeth(lower: boolean, surface: Surface) {
     const n = i < 8 ? 8 - i : i - 7;
     const [x, y, width, height, rotation] = positions[n - 1];
     const left = i < 8;
+    const upperX = left ? x : 240 - x;
     const upperRotation = left ? rotation : -rotation;
     const fdi = quadrant * 10 + n;
+    // 아랫니는 윗니를 180도 돌린 배치. 윗니 오른쪽이 화면 오른쪽이면 아랫니 오른쪽은 화면 왼쪽
     return {
       fdi,
       n,
@@ -44,14 +46,14 @@ function archTeeth(lower: boolean, surface: Surface) {
       width,
       height,
       zone: toothToZone(fdi, surface),
-      x: (lower ? 240 : 0) + (left ? x : 240 - x),
+      x: lower ? 480 - upperX : upperX,
       y: lower ? 260 - y : y,
-      rotation: lower ? 180 - upperRotation : upperRotation,
+      rotation: lower ? upperRotation + 180 : upperRotation,
     };
   });
 }
 
-function crownPath(n: number) {
+export function crownPath(n: number) {
   if (n <= 2) return 'M-9-13Q0-16 9-13C12-10 8 8 5 12Q0 16-5 12C-8 8-12-10-9-13Z';
   if (n === 3) return 'M0-15C4-14 10-6 10 0C10 7 5 13 0 14C-5 13-10 7-10 0C-10-6-4-14 0-15Z';
   if (n <= 5) return 'M-8-10C-3-14 6-13 10-6C14 1 9 10 2 12C-6 14-12 7-12 0Q-12-6-8-10Z';

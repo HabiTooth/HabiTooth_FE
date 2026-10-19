@@ -2,23 +2,24 @@
 
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
-import { Camera, Check, X, Loader2 } from 'lucide-react';
+import Link from 'next/link';
+import { Camera, Check, ChevronRight, X, Loader2 } from 'lucide-react';
 import {
   reportApi,
   type SessionZoneReport,
   type SingleImageReport,
   type ZoneReport,
 } from '@/lib/api/report';
-import { SCAN_ZONES, ZONE_GROUP_ORDER, GROUP_LABELS } from '@/constants/scanZones';
+import { SCAN_ZONES } from '@/constants/scanZones';
 import type { ViewType } from '@/lib/api/scan';
 import { toothName } from '@/lib/dentition';
-import { historyApi } from '@/lib/api/history';
 import type { FocusChip } from '@/lib/toothDetail';
 import ReportTooth from '@/components/molecules/ReportTooth';
 import { RISK_MODEL_FILL } from '@/lib/riskColors';
 import { RISK_ORDER, RISK_TAG } from '@/lib/lesionRisk';
-import TrendPlot from '@/components/molecules/TrendPlot';
 import ReportBadge from '@/components/atoms/ReportBadge';
+import ZoneScoreMap from '@/components/molecules/ZoneScoreMap';
+import type { Surface } from '@/components/molecules/ToothArchSelector';
 
 const TOOTH_TYPE: Record<number, string> = {
   1: '가운데 앞니',
@@ -35,90 +36,6 @@ const toothLabel = (tooth: number) =>
     /작은어금니|어금니|앞니|송곳니|사랑니/,
     TOOTH_TYPE[tooth % 10] ?? '치아',
   );
-
-function DetailTrend({
-  zone,
-  selected,
-  sessionId,
-}: {
-  zone: ZoneReport;
-  selected: string | null;
-  sessionId: number;
-}) {
-  const [lesion, setLesion] = useState<'CALCULUS' | 'PLAQUE'>('CALCULUS');
-  const [points, setPoints] = useState<Array<{ date: string; value: number }>>([]);
-  const [state, setState] = useState<'loading' | 'ready' | 'failed'>('loading');
-  useEffect(() => {
-    let active = true;
-    setState('loading');
-    setPoints([]);
-    const load = async () => {
-      try {
-        const points = selected
-          ? (
-              await historyApi.getToothTrend(Number(selected), zone.surfaceType, lesion)
-            ).data.result.map((p) => ({ ...p, value: p.areaRatio }))
-          : (await historyApi.getZoneTrend(zone.viewType)).data.result.map((p) => ({
-              ...p,
-              value: p.zoneScore,
-            }));
-        if (active) {
-          setPoints(points.filter((p) => p.sessionId <= sessionId).slice(-4));
-          setState('ready');
-        }
-      } catch {
-        if (active) setState('failed');
-      }
-    };
-    void load();
-    return () => {
-      active = false;
-    };
-  }, [zone.viewType, zone.surfaceType, selected, lesion, sessionId]);
-  if (state === 'ready' && points.length === 0) return null;
-  return (
-    <div className="mt-5 border-t border-hairline pt-5">
-      <h4 className="m-0 text-[15px] font-bold text-content">
-        {selected
-          ? `${toothLabel(Number(selected))}의 변화 · ${zone.surfaceType === 'INNER' ? '안쪽' : '바깥쪽'}`
-          : '이 구역의 점수 변화'}
-      </h4>
-      {selected && (
-        <div className="mt-3 flex gap-2">
-          {(['CALCULUS', 'PLAQUE'] as const).map((type) => (
-            <button
-              type="button"
-              key={type}
-              aria-pressed={lesion === type}
-              onClick={() => setLesion(type)}
-              className={`rounded-full px-3 py-1 text-[13px] font-semibold ${lesion === type ? 'bg-primary text-white' : 'bg-white text-[#62758E]'}`}
-            >
-              {type === 'CALCULUS' ? '치석' : '치태'} 면적
-            </button>
-          ))}
-        </div>
-      )}
-      {state !== 'ready' ? (
-        <p className="mb-0 mt-3 text-[13px] text-[#62758E]">
-          {state === 'loading' ? '변화를 불러오고 있어요' : '변화 기록을 불러오지 못했어요'}
-        </p>
-      ) : points.length === 0 ? (
-        <p className="mb-0 mt-3 text-[13px] text-[#62758E]">이 부위의 측정 기록이 아직 없어요.</p>
-      ) : (
-        <TrendPlot
-          data={points.map((point) => ({ ...point, date: point.date.slice(5).replace('-', '.') }))}
-          unit={selected ? '%' : '점'}
-          label={
-            selected
-              ? `${toothLabel(Number(selected))} ${lesion === 'CALCULUS' ? '치석' : '치태'} 면적 변화`
-              : '구역 점수 변화'
-          }
-          height={160}
-        />
-      )}
-    </div>
-  );
-}
 
 function ScanPhoto({ id, label }: { id: number; label: string }) {
   const [overlay, setOverlay] = useState(true);
@@ -219,12 +136,10 @@ function ZoneDetail({
   zone,
   selected,
   onSelect,
-  sessionId,
 }: {
   zone: ZoneReport;
   selected: string | null;
   onSelect: (tooth: string) => void;
-  sessionId: number;
 }) {
   const [reports, setReports] = useState<SingleImageReport[]>([]);
   const [loading, setLoading] = useState(true);
@@ -253,10 +168,12 @@ function ZoneDetail({
       active = false;
     };
   }, [zone.whiteScanImageId, zone.uvScanImageId, retry]);
-  const toothNumbers = [...new Set(reports.flatMap((r) => r.teeth.map((t) => t.toothNumber)))].sort(
-    (a, b) => a - b,
-  );
-  const name = SCAN_ZONES.find((z) => z.viewType === zone.viewType)?.fullLabel ?? zone.viewType;
+  const definition = SCAN_ZONES.find((z) => z.viewType === zone.viewType);
+  // 사진에 같이 찍힌 옆 구역 치아는 제외
+  const toothNumbers = [...new Set(reports.flatMap((r) => r.teeth.map((t) => t.toothNumber)))]
+    .filter((tooth) => definition?.teeth.includes(tooth) ?? true)
+    .sort((a, b) => a - b);
+  const name = definition?.fullLabel ?? zone.viewType;
   const activeTooth =
     focused ?? (selected && toothNumbers.includes(Number(selected)) ? Number(selected) : null);
   const rowsFor = (tooth: number, id: number | null) =>
@@ -455,11 +372,13 @@ function ZoneDetail({
           )}
         </div>
       )}
-      <DetailTrend
-        zone={zone}
-        selected={activeTooth !== null ? String(activeTooth) : null}
-        sessionId={sessionId}
-      />
+      <Link
+        href="/compare"
+        className="mt-5 flex items-center justify-between rounded-[14px] bg-white px-4 py-3 text-[13px] font-semibold text-primary no-underline"
+      >
+        이 구역의 변화는 스캔 비교에서
+        <ChevronRight size={16} />
+      </Link>
     </div>
   );
 }
@@ -478,6 +397,13 @@ export default function ZoneReportSection({
   coverage?: { captured: number; total: number };
 }) {
   const [opened, setOpened] = useState<ViewType | null>(null);
+  const [surface, setSurface] = useState<Surface>(() => {
+    const captured = (group: string) =>
+      report.zones.some(
+        (z) => z.captured && SCAN_ZONES.find((d) => d.viewType === z.viewType)?.group === group,
+      );
+    return !captured('UPPER') && !captured('LOWER') && captured('OUTER') ? 'BUCCAL' : 'LINGUAL';
+  });
   useEffect(() => {
     if (!selected) return;
     setOpened((current) => {
@@ -487,6 +413,11 @@ export default function ZoneReportSection({
       return report.zones.find((z) => z.captured && includes(z.viewType))?.viewType ?? current;
     });
   }, [selected, report.zones]);
+  useEffect(() => {
+    if (!opened) return;
+    const group = SCAN_ZONES.find((z) => z.viewType === opened)?.group;
+    if (group) setSurface(group === 'OUTER' ? 'BUCCAL' : 'LINGUAL');
+  }, [opened]);
   const zone = report.zones.find((z) => z.viewType === opened && z.captured);
   return (
     <section className="mt-4 overflow-hidden rounded-[24px] border border-white bg-white p-5 shadow-[0_6px_24px_rgba(71,105,154,0.045)]">
@@ -500,53 +431,15 @@ export default function ZoneReportSection({
         </ReportBadge>
       </div>
       <p className="mb-5 mt-2 text-[14px] font-medium leading-relaxed text-[#62758E]">
-        구역을 누르면 촬영 사진과 검출 부위를 볼 수 있어요.
+        구역을 누르면 촬영 사진과 검출 부위를 볼 수 있어요. 숫자는 구역 점수예요.
       </p>
-      <div className="space-y-3">
-        {ZONE_GROUP_ORDER.map((group) => (
-          <div key={group}>
-            <h3 className="mb-1.5 mt-0 text-[13px] font-semibold text-[#62758E]">
-              {GROUP_LABELS[group]}
-            </h3>
-            <div className="mx-auto grid w-full max-w-[330px] grid-cols-5 gap-1">
-              {SCAN_ZONES.filter((z) => z.group === group).map((definition) => {
-                const item = report.zones.find((z) => z.viewType === definition.viewType);
-                const active = item?.captured;
-                return (
-                  <button
-                    key={definition.viewType}
-                    type="button"
-                    disabled={!active}
-                    aria-label={`${definition.fullLabel} ${active ? (item.zoneScore !== null ? `${item.zoneScore}점` : '분석 미완료') : '미촬영'}`}
-                    aria-expanded={opened === definition.viewType}
-                    aria-controls={
-                      opened === definition.viewType ? `zone-detail-${report.sessionId}` : undefined
-                    }
-                    onClick={() =>
-                      setOpened(opened === definition.viewType ? null : definition.viewType)
-                    }
-                    className={`flex min-h-[94px] flex-col items-center justify-center gap-1 rounded-[16px] px-0.5 py-1 transition-colors ${group === 'OUTER' && definition.viewType === 'OUTER_RIGHT' ? 'col-start-2' : ''} ${active ? 'text-primary hover:bg-[#F4F8FF]' : 'text-[#8A99AD]'}`}
-                  >
-                    <span className="text-[12px] font-semibold leading-tight">
-                      {definition.label
-                        .replace('오른쪽 ', '우 ')
-                        .replace('왼쪽 ', '좌 ')
-                        .replace('송곳니 쪽', '송곳니')}
-                    </span>
-                    <ReportTooth
-                      selected={opened === definition.viewType}
-                      outlined={!active}
-                      color={active ? '#C8DEFB' : '#F0F3F8'}
-                    >
-                      {active ? (item.zoneScore ?? '—') : '—'}
-                    </ReportTooth>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        ))}
-      </div>
+      <ZoneScoreMap
+        zones={report.zones}
+        surface={surface}
+        onSurfaceChange={setSurface}
+        opened={opened}
+        onZoneClick={(zone) => setOpened(opened === zone ? null : zone)}
+      />
       <p className="mb-0 mt-3 text-[12px] text-[#62758E]">
         미촬영 구역과 점수가 없는 구역은 종합 점수에 포함되지 않아요.
       </p>
@@ -588,7 +481,6 @@ export default function ZoneReportSection({
             zone={zone}
             selected={selected}
             onSelect={onSelect}
-            sessionId={report.sessionId}
           />
         </div>
       )}

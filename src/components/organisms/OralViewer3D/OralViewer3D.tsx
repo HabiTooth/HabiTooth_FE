@@ -17,6 +17,8 @@ interface OralViewer3DProps {
   calibrationMode?: boolean;
   minimal?: boolean;
   zoom?: number;
+  fitToViewport?: boolean;
+  resolutionScale?: number;
   visibleMarkers?: MarkerVisibility;
   initialPose?: 'front' | 'inside';
   focusSurface?: SurfaceType | null;
@@ -33,6 +35,8 @@ export default function OralViewer3D({
   calibrationMode = false,
   minimal,
   zoom,
+  fitToViewport,
+  resolutionScale,
   visibleMarkers,
   initialPose,
   focusSurface,
@@ -55,6 +59,8 @@ export default function OralViewer3D({
         calibrationMode={calibrationMode}
         minimal={minimal}
         zoom={zoom}
+        fitToViewport={fitToViewport}
+        resolutionScale={resolutionScale}
         visibleMarkers={visibleMarkers}
         initialPose={initialPose}
         focusSurface={focusSurface}

@@ -17,6 +17,7 @@ import {
   RefreshCw,
   CalendarCheck,
   SprayCan,
+  ArrowUp,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import NavBar from '@/components/organisms/NavBar';
@@ -26,9 +27,9 @@ import { focusText } from '@/components/organisms/ReportSummary/ReportSummary';
 import LLMGuideSection from '@/components/organisms/LLMGuideSection';
 import CareGuideSection from '@/components/organisms/CareGuideSection';
 import TrendChartSection from '@/components/organisms/TrendChartSection';
-import ChangeSummary from '@/components/organisms/ChangeSummary';
 import NextStepsSection from '@/components/organisms/NextStepsSection';
 import HabitSummarySection from '@/components/organisms/HabitSummarySection';
+import ScrollTopButton from '@/components/atoms/ScrollTopButton';
 import ScoreExplanation from '@/components/organisms/ScoreExplanation';
 import ZoneReportSection from '@/components/organisms/ZoneReportSection';
 import type { ToothAnalysisResult } from '@/components/organisms/OralViewer3D/ThreeScene';
@@ -50,9 +51,9 @@ import { countToothStates } from '@/lib/lesionState';
 import { buildToothDetail, focusOrder } from '@/lib/toothDetail';
 import { RISK_MODEL_FILL } from '@/lib/riskColors';
 import type { FocusChip } from '@/lib/toothDetail';
-import { teethInZones } from '@/lib/scanCoverage';
+import { keepCapturedLesions, keepCapturedTeeth, teethInZones } from '@/lib/scanCoverage';
 import { scanApi, type ViewType } from '@/lib/api/scan';
-import { compareTeeth } from '@/lib/compare';
+import { compareSummary, compareTeeth } from '@/lib/compare';
 import { useSessionIndex } from '@/hooks/useSessionIndex';
 import type { RiskLevel } from '@/lib/api/common';
 
@@ -288,11 +289,14 @@ export default function ReportPage() {
   }, [previousId]);
 
   const scannedTeeth = useMemo(() => teethInZones(capturedZones), [capturedZones]);
-  const viewerLesions = useMemo(() => excludeMissingTeeth(lesions, missing), [lesions, missing]);
+  const viewerLesions = useMemo(
+    () => keepCapturedLesions(excludeMissingTeeth(lesions, missing), capturedZones),
+    [lesions, missing, capturedZones],
+  );
 
   const teeth = useMemo(
-    () => excludeMissingTeeth(report?.toothStatuses ?? [], missing),
-    [report, missing],
+    () => keepCapturedTeeth(excludeMissingTeeth(report?.toothStatuses ?? [], missing), capturedZones),
+    [report, missing, capturedZones],
   );
   const prevTeeth = useMemo(
     () => excludeMissingTeeth(previous?.toothStatuses ?? [], missing),
@@ -437,6 +441,13 @@ export default function ReportPage() {
         }
         prevScore={llm?.score ? (llm.score.prevTotal ?? undefined) : prevScore}
         scoreDelta={llm?.score ? llm.score.delta : undefined}
+        coverage={
+          llm?.score
+            ? { captured: llm.score.capturedZoneCount, total: llm.score.totalZoneCount }
+            : zoneReport
+              ? { captured: zoneReport.capturedZoneCount, total: zoneReport.totalZoneCount }
+              : null
+        }
         message={heroMessage}
         counts={toothCounts}
         analysisResults={analysisResults}
@@ -460,19 +471,23 @@ export default function ReportPage() {
             에서 결손치 등록이 맞는지 확인해 주세요.
           </p>
         )}
-        {zoneReport && (
-          <ZoneReportSection
-            report={zoneReport}
-            selected={selected}
-            onSelect={focusTooth}
-            focusTeeth={focusTeeth}
-            coverage={
-              llm?.score
-                ? { captured: llm.score.capturedZoneCount, total: llm.score.totalZoneCount }
-                : undefined
-            }
-          />
-        )}
+        <TrendChartSection
+          data={trend.map((t) => ({ date: formatShortDate(t.date), score: t.score }))}
+          change={
+            previous !== null && report !== null
+              ? {
+                  delta: isV2 ? (llm?.score?.delta ?? null) : report.totalScore - previous.totalScore,
+                  previousDate: formatShortDate(previousRef?.scannedAt ?? ''),
+                  improved: diff.improved.length,
+                  worsened: diff.worsened.length,
+                  summary: compareSummary(
+                    diff,
+                    isV2 ? null : report.totalScore - previous.totalScore,
+                  ),
+                }
+              : null
+          }
+        />
 
         {isV2 && llm ? (
           <ScoreExplanation report={llm} section="score" />
@@ -490,20 +505,22 @@ export default function ReportPage() {
 
         {!isV2 && careGuideItems.length > 0 && <CareGuideSection items={careGuideItems} />}
 
-        <TrendChartSection
-          data={trend.map((t) => ({ date: formatShortDate(t.date), score: t.score }))}
-        />
+        {isV2 && llm && <ScoreExplanation report={llm} section="actions" />}
 
-        {previous !== null && report !== null && (
-          <ChangeSummary
-            result={diff}
-            scoreDelta={isV2 ? null : report.totalScore - previous.totalScore}
-            previousDate={formatDate(previousRef?.scannedAt)}
-            onToothClick={focusTooth}
+        {zoneReport && (
+          <ZoneReportSection
+            report={zoneReport}
+            selected={selected}
+            onSelect={focusTooth}
+            focusTeeth={focusTeeth}
+            coverage={
+              llm?.score
+                ? { captured: llm.score.capturedZoneCount, total: llm.score.totalZoneCount }
+                : undefined
+            }
           />
         )}
 
-        {isV2 && llm && <ScoreExplanation report={llm} section="actions" />}
         <NextStepsSection categories={riskCategories} />
         <HabitSummarySection variant="report" />
         {llm?.disclaimer && (
@@ -512,6 +529,7 @@ export default function ReportPage() {
           </p>
         )}
       </main>
+      <ScrollTopButton label="3D 모형으로" icon={ArrowUp} />
       <NavBar activeTab="history" />
     </PageShell>
   );
