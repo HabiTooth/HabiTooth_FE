@@ -177,13 +177,7 @@ export const SCREEN_CHECKS: ScreenCheck[] = [
     label: '분석 리포트',
     path: '/report/1',
     needsParam: true,
-    expectText: [
-      '위험 부위 분석',
-      '촬영한 구역',
-      'AI 가이드',
-      '이 결과로 할 수 있는 것',
-      '점수 변화 추이',
-    ],
+    expectText: ['점수 변화 추이'],
     points: [
       '제목에 날짜가 붙는지 ("최근 분석 결과"로만 뜨면 안 됨)',
       '치아 분포 칩 개수가 3D 모형 색과 맞는지',

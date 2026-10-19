@@ -28,6 +28,27 @@ export default function ScoreExplanation({
         { label: '치태 감점', value: score.plaqueDeduction, color: '#D8BE86' },
       ]
     : [];
+  // 같은 숫자가 두 번 보이지 않게, 회복할 점수 없는 항목은 생략
+  const expectations = score
+    ? [
+        score.recoverableByBrushing > 0
+          ? {
+              label: '칫솔질로 치태를 관리하면',
+              value: score.ceilingByBrushing,
+              hint: `치태 감점 중 ${score.recoverableByBrushing}점 회복 가능`,
+              color: '#869BC9',
+            }
+          : null,
+        score.ceilingAfterScaling > score.total
+          ? {
+              label: '스케일링으로 치석을 제거하면',
+              value: score.ceilingAfterScaling,
+              hint: '치석을 제거했을 때의 예상 점수예요.',
+              color: '#C394A7',
+            }
+          : null,
+      ].filter((item): item is NonNullable<typeof item> => item !== null)
+    : [];
   return (
     <>
       {section !== 'actions' && score && (
@@ -52,7 +73,7 @@ export default function ScoreExplanation({
           </div>
           <ul
             aria-label="점수 막대 범례"
-            className="mb-5 mt-0 flex list-none flex-wrap gap-x-4 gap-y-2 p-0"
+            className="mb-0 mt-0 flex list-none flex-wrap gap-x-4 gap-y-2 p-0"
           >
             {segments.map((segment) => (
               <li
@@ -64,66 +85,22 @@ export default function ScoreExplanation({
               </li>
             ))}
           </ul>
-          <div className="grid grid-cols-2 divide-x divide-hairline">
-            {[
-              {
-                label: '치석',
-                count: score.calculusToothCount,
-                deduction: score.calculusDeduction,
-                hint: '스케일링으로만 회복',
-                color: '#A76F85',
-              },
-              {
-                label: '치태',
-                count: score.plaqueToothCount,
-                deduction: score.plaqueDeduction,
-                hint: '칫솔질로 회복',
-                color: '#967D48',
-              },
-            ].map((item, i) => (
-              <div key={item.label} className={i === 0 ? 'pr-3' : 'pl-4'}>
-                <p className="m-0 text-[13px] font-semibold text-[#4E607B]">
-                  {item.label} · 치아 {item.count}개
-                </p>
-                <p
-                  className="mb-2 mt-2 text-[32px] font-bold leading-none tracking-[-1px] tabular-nums"
-                  style={{ color: item.color }}
-                >
-                  −{item.deduction}
-                  <span className="ml-1 text-[13px] tracking-normal">점</span>
-                </p>
-                <p className="m-0 text-[13px] font-medium leading-relaxed text-[#4E607B]">
-                  {item.hint}
-                </p>
-              </div>
-            ))}
-          </div>
           {!!report.interpretation?.length && (
-            <div className="relative mt-6 overflow-hidden rounded-[16px] border border-[#E2E8F1] bg-[#EDF2FC] px-4 pb-4 pt-5">
-              <span
-                className="absolute inset-x-5 top-0 h-1 rounded-b-full bg-[#D5E2F5]"
-                aria-hidden
-              />
-              <h3 className="mb-3 mt-0 flex items-center gap-2 text-[14px] font-bold text-[#4A7DBD]">
-                <span
-                  className="rounded-md bg-[#EAF0F9] px-1.5 py-1 text-[10px] font-bold tracking-wide text-[#4C7EC8]"
-                  aria-hidden
-                >
-                  AI
-                </span>
-                AI 가이드
-              </h3>
+            <div className="-mx-5 mt-5 bg-[#FBF6EC] px-5 py-4">
+              <span className="inline-flex items-center rounded-full bg-[#F0E4C8] px-2.5 py-1 text-[12px] font-bold text-[#7A5A1E]">
+                AI 해석
+              </span>
               <div
-                className="border-l border-[#E1C9D0] pl-3.5"
+                className="mt-2"
                 style={{
                   backgroundImage:
-                    'repeating-linear-gradient(to bottom, transparent 0, transparent 27px, #E5EBF5 27px, #E5EBF5 28px)',
+                    'repeating-linear-gradient(to bottom, transparent 0, transparent 27px, #ECE2CC 27px, #ECE2CC 28px)',
                 }}
               >
                 {report.interpretation.slice(0, 3).map((text, i) => (
                   <p
                     key={i}
-                    className="m-0 pb-7 last:pb-0 break-keep text-[14px] font-medium leading-7 text-content"
+                    className="m-0 break-keep text-[14px] font-medium leading-7 text-content"
                   >
                     {text}
                   </p>
@@ -131,55 +108,41 @@ export default function ScoreExplanation({
               </div>
             </div>
           )}
-          <div className="mt-5 space-y-4 rounded-[18px] bg-[#F4F7FB] p-4">
-            <p className="m-0 text-[14px] font-bold text-[#405A80]">관리 후 기대할 수 있는 변화</p>
-            {[
-              {
-                label: '칫솔질로 치태를 관리하면',
-                value: score.ceilingByBrushing,
-                hint:
-                  score.recoverableByBrushing > 0
-                    ? `치태 감점 중 ${score.recoverableByBrushing}점 회복 가능`
-                    : '치태 감점이 없어 칫솔질로 회복할 점수는 없어요.',
-                color: '#869BC9',
-              },
-              {
-                label: '스케일링으로 치석을 제거하면',
-                value: score.ceilingAfterScaling,
-                hint: '치석을 제거했을 때의 예상 점수예요.',
-                color: '#C394A7',
-              },
-            ].map((item) => (
-              <div key={item.label}>
-                <p className="m-0 text-[13px] font-semibold text-[#4E607B]">{item.label}</p>
-                <p className="mb-0 mt-1.5 flex items-baseline gap-1.5 text-[14px] font-semibold tabular-nums text-[#4E607B]">
-                  {score.total}
-                  <span className="text-[#8FA5C3]">→</span>
-                  <strong className="text-[28px] font-bold leading-none tracking-[-0.5px] text-[#4C7EC8]">
-                    {item.value}
-                  </strong>
-                </p>
-                <div
-                  className="mt-2 flex h-1.5 overflow-hidden rounded-full bg-[#E2E8F2]"
-                  aria-hidden
-                >
-                  <span style={{ width: `${score.total}%`, backgroundColor: '#BAC8DF' }} />
-                  <span
-                    style={{
-                      width: `${Math.max(0, item.value - score.total)}%`,
-                      backgroundColor: item.color,
-                    }}
-                  />
+          {expectations.length > 0 && (
+            <div className="mt-5 space-y-4">
+              <p className="m-0 text-[14px] font-bold text-[#405A80]">관리 후 기대할 수 있는 변화</p>
+              {expectations.map((item) => (
+                <div key={item.label}>
+                  <p className="m-0 text-[13px] font-semibold text-[#4E607B]">{item.label}</p>
+                  <p className="mb-0 mt-1.5 flex items-baseline gap-1.5 text-[14px] font-semibold tabular-nums text-[#4E607B]">
+                    {score.total}
+                    <span className="text-[#8FA5C3]">→</span>
+                    <strong className="text-[28px] font-bold leading-none tracking-[-0.5px] text-[#4C7EC8]">
+                      {item.value}
+                    </strong>
+                  </p>
+                  <div
+                    className="mt-2 flex h-1.5 overflow-hidden rounded-full bg-[#E2E8F2]"
+                    aria-hidden
+                  >
+                    <span style={{ width: `${score.total}%`, backgroundColor: '#BAC8DF' }} />
+                    <span
+                      style={{
+                        width: `${Math.max(0, item.value - score.total)}%`,
+                        backgroundColor: item.color,
+                      }}
+                    />
+                  </div>
+                  <p className="mb-0 mt-1.5 text-[13px] leading-relaxed text-[#4E607B]">
+                    {item.hint}
+                  </p>
                 </div>
-                <p className="mb-0 mt-1.5 text-[13px] leading-relaxed text-[#4E607B]">
-                  {item.hint}
-                </p>
-              </div>
-            ))}
-          </div>
-          <p className="mb-0 mt-2 px-1 text-[12px] leading-relaxed text-[#62718A]">
-            이번 촬영 구역의 감점을 기준으로 한 예상이며, 다음 측정 결과와 다를 수 있어요.
-          </p>
+              ))}
+              <p className="mb-0 mt-2 text-[12px] leading-relaxed text-[#62718A]">
+                이번 촬영 구역의 감점을 기준으로 한 예상이며, 다음 측정 결과와 다를 수 있어요.
+              </p>
+            </div>
+          )}
         </section>
       )}
       {section !== 'score' && !!report.actions?.length && (

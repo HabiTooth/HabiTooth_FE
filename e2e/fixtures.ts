@@ -102,8 +102,8 @@ export async function mockApi(page: Page) {
       return route.fulfill({
         json: ok({
           sessionId: 42,
-          uploadedImageCount: 11,
-          capturedZoneCount: 11,
+          uploadedImageCount: 13,
+          capturedZoneCount: 13,
           totalZoneCount: 13,
           canAnalyze: true,
           capturedZones: [
@@ -111,7 +111,7 @@ export async function mockApi(page: Page) {
             'UPPER_LEFT_PREMOLAR', 'UPPER_LEFT_MOLAR',
             'LOWER_RIGHT_MOLAR', 'LOWER_RIGHT_PREMOLAR', 'LOWER_FRONT',
             'LOWER_LEFT_PREMOLAR', 'LOWER_LEFT_MOLAR',
-            'OUTER_CENTER',
+            'OUTER_RIGHT', 'OUTER_CENTER', 'OUTER_LEFT',
           ].map((viewType, i) => ({ scanImageId: i + 1, viewType, lightType: 'WHITE_LIGHT' })),
         }),
       });

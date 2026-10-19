@@ -18,7 +18,7 @@ test('report uses final model, analysis data and reversible inside view', async 
   expect((await asset).status()).toBe(200);
   const button = page.getByRole('button', { name: '안쪽 보기', exact: true });
   await expect(button).toBeVisible();
-  await expect(page.getByText('위험 부위 분석', { exact: true })).toBeVisible();
+  await expect(page.getByText('점수 변화 추이', { exact: true })).toBeVisible();
   expect(logs.some((line) => line.includes('32개 FDI 인식'))).toBe(true);
   expect(logs.some((line) => line.includes('GLB에 Tooth_'))).toBe(false);
   await mkdir('e2e/screenshots', { recursive: true });
