@@ -47,6 +47,8 @@ interface ThreeSceneProps {
   calibrationMode?: boolean;
   minimal?: boolean;
   zoom?: number;
+  fitToViewport?: boolean;
+  resolutionScale?: number;
   visibleMarkers?: MarkerVisibility;
   initialPose?: PoseName;
   // 볼 면. 없으면 병변 위치로 결정
@@ -232,6 +234,8 @@ export default function ThreeScene({
   calibrationMode = false,
   minimal = false,
   zoom = 1,
+  fitToViewport = false,
+  resolutionScale = 1,
   visibleMarkers,
   initialPose = 'front',
   focusSurface = null,
@@ -315,7 +319,7 @@ export default function ThreeScene({
     const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio * resolutionScale, 3));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     // 1.05면 잇몸이 떠 보임
@@ -406,6 +410,33 @@ export default function ThreeScene({
     function fitDistance() {
       const vFov = THREE.MathUtils.degToRad(camera.fov);
       const hFov = 2 * Math.atan(Math.tan(vFov / 2) * camera.aspect);
+      if (fitToViewport && modelRoot) {
+        const target = modelSphere.center.clone();
+        target.y -= modelSphere.radius * IDLE_LIFT;
+        const direction = VIEW_DIR.clone().normalize();
+        const right = new THREE.Vector3().crossVectors(camera.up, direction).normalize();
+        const up = new THREE.Vector3().crossVectors(direction, right).normalize();
+        let distance = 0;
+        modelRoot.updateWorldMatrix(true, true);
+        modelRoot.traverse((object) => {
+          if (!(object instanceof THREE.Mesh) || !object.visible) return;
+          const positions = object.geometry.getAttribute('position');
+          if (!positions) return;
+          const offset = new THREE.Vector3();
+          for (let i = 0; i < positions.count; i++) {
+            offset.fromBufferAttribute(positions, i).applyMatrix4(object.matrixWorld).sub(target);
+            distance = Math.max(
+              distance,
+              offset.dot(direction) +
+                Math.max(
+                  Math.abs(offset.dot(right)) / (Math.tan(hFov / 2) * 0.94),
+                  Math.abs(offset.dot(up)) / (Math.tan(vFov / 2) * 0.94),
+                ),
+            );
+          }
+        });
+        return distance;
+      }
       return (
         (modelSphere.radius / Math.sin(Math.min(vFov, hFov) / 2)) *
         (FIT_MARGIN / THREE.MathUtils.lerp(zoom, Math.min(zoom, 1.12), pose))
@@ -482,6 +513,8 @@ export default function ThreeScene({
       const h = mount.clientHeight;
       if (w === 0 || h === 0) return;
       camera.aspect = w / h;
+      const displayScale = mount.getBoundingClientRect().width / w;
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio * displayScale * resolutionScale, 3));
       renderer.setSize(w, h);
       // 무대 높이 전환 중이면 이어서
       placeCamera(!cameraTransition);
@@ -860,7 +893,7 @@ export default function ThreeScene({
       renderer.dispose();
       mount.removeChild(renderer.domElement);
     };
-  }, [calibrationMode, zoom, initialPose, idleMarkers]);
+  }, [calibrationMode, zoom, initialPose, idleMarkers, fitToViewport, resolutionScale]);
 
   const legend: Array<{ type: LesionType; label: string; count: number }> = [
     { type: 'CALCULUS', label: LESION_LABEL.CALCULUS, count: counts.calculus },

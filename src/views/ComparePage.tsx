@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import {
   ArrowRight,
   ChevronLeft,
@@ -312,107 +313,124 @@ export default function ComparePage() {
             </div>
           )}
 
-          <div className="relative -mt-1 overflow-hidden bg-[linear-gradient(170deg,#1F5F8F_0%,#2690A0_55%,#3FB4A8_100%)] pb-7 text-white">
+          <div className="relative isolate -mt-1 overflow-hidden bg-[#155974] pb-7 text-white">
             <div
               aria-hidden
-              className="pointer-events-none absolute -right-16 -top-10 h-56 w-56 rounded-full bg-[#67E8F9] opacity-35 blur-3xl"
-            />
-            <div
-              aria-hidden
-              className="pointer-events-none absolute -left-16 bottom-10 h-56 w-56 rounded-full bg-[#4BC8A0] opacity-30 blur-3xl"
-            />
-            <div className="relative flex items-end gap-2 px-5 pb-3 pt-5">
-              <Select value={beforeId} onChange={setBeforeId} label="기준" />
-              <ArrowRight size={16} className="mb-3 flex-shrink-0 text-white/70" />
-              <Select value={afterId} onChange={setAfterId} label="비교" />
-            </div>
-            <div className={`relative ${selected ? 'h-[420px] sm:h-[340px]' : 'h-[360px] sm:h-[300px]'}`}>
-              <OralViewer3D
-                analysisResults={viewerResults}
-                lesions={viewerLesions}
-                minimal
-                zoom={1.25}
-                idleMarkers={false}
-                toothColors={toothColors}
-                selectedTooth={selected}
-                onToothSelect={setSelected}
+              className="pointer-events-none absolute -inset-2 z-0 overflow-hidden blur-[4px]"
+            >
+              <Image
+                src="/images/dashboard/compare-blue-studio.webp"
+                alt=""
+                fill
+                priority
+                sizes="100vw"
+                className="object-cover object-center"
               />
-              {selected && (
-                <div className="pointer-events-none absolute left-4 top-3 flex items-center gap-2">
-                  <span className="rounded-full bg-white/70 px-3 py-1.5 text-[13px] font-semibold text-content shadow-card backdrop-blur-sm">
-                    {toothName(Number(selected))} · {selected}번
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setSelected(null)}
-                    aria-label="전체 보기"
-                    className="pointer-events-auto flex h-8 w-8 items-center justify-center rounded-full bg-white/70 shadow-card backdrop-blur-sm"
-                  >
-                    <X size={14} className="text-content" />
-                  </button>
-                </div>
-              )}
             </div>
-
-            <div className="mx-5 mt-4">
-              <div className="flex items-center justify-between text-[12.5px] font-semibold">
-                <span className={blend < 0.5 ? 'text-white' : 'text-white/80'}>
-                  기준 {label(beforeId)}
-                  {before && <span className="ml-1 tabular-nums">{before.totalScore}점</span>}
-                </span>
-                <span className={blend >= 0.5 ? 'text-white' : 'text-white/80'}>
-                  비교 {label(afterId)}
-                  {after && <span className="ml-1 tabular-nums">{after.totalScore}점</span>}
-                </span>
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-[42%] bg-gradient-to-t from-[#123D59]/45 via-[#123D59]/15 to-transparent"
+            />
+            <div className="relative z-10 isolate [filter:none]">
+              <div className="relative flex items-end gap-2 px-5 pb-3 pt-5">
+                <Select value={beforeId} onChange={setBeforeId} label="기준" />
+                <ArrowRight size={16} className="mb-3 flex-shrink-0 text-white/70" />
+                <Select value={afterId} onChange={setAfterId} label="비교" />
               </div>
-              <input
-                type="range"
-                min={0}
-                max={100}
-                value={Math.round(blend * 100)}
-                onChange={(e) => setBlend(Number(e.target.value) / 100)}
-                onPointerUp={snap}
-                onKeyUp={snap}
-                onTouchEnd={snap}
-                aria-label="기준 스캔과 비교 스캔 사이"
-                className="compare-range compare-range-dark mt-1 w-full"
-              />
-              <p className="m-0 mt-1 text-center text-[12px] text-white/90">
-                {blend === 1
-                  ? '비교 스캔이에요. 왼쪽으로 끌면 기준 스캔으로 돌아가요'
-                  : blend === 0
-                    ? '기준 스캔이에요. 오른쪽으로 끌면 비교 스캔으로 바뀌어요'
-                    : '두 스캔 사이를 섞어 보는 중이에요'}
-              </p>
-            </div>
-            {ready && (
-              <div className="px-5 pt-4 text-center">
-                <div className="flex items-end justify-center gap-2">
-                  <span className="text-[22px] font-bold text-white/80 tabular-nums leading-none">
-                    {before.totalScore}
-                  </span>
-                  <ArrowRight size={16} className="mb-1 text-white/60" />
-                  <span className="text-[56px] font-bold text-white tabular-nums leading-none tracking-[-2px]">
-                    {liveScore}
-                  </span>
-                  <span className="mb-1 text-sm text-white/85">점</span>
-                  {scoreDelta !== null && scoreDelta !== 0 && (
-                    <span
-                      className={`mb-2 ml-1 flex items-center gap-0.5 rounded-full px-2 py-1 text-xs font-bold ${
-                        scoreDelta > 0 ? 'bg-success text-white' : 'bg-danger text-white'
-                      }`}
-                    >
-                      {scoreDelta > 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-                      {scoreDelta > 0 ? '+' : ''}
-                      {scoreDelta}
+              <div
+                className={`relative ${selected ? 'h-[420px] sm:h-[340px]' : 'h-[360px] sm:h-[300px]'}`}
+              >
+                <OralViewer3D
+                  analysisResults={viewerResults}
+                  lesions={viewerLesions}
+                  minimal
+                  zoom={1.25}
+                  fitToViewport
+                  resolutionScale={1.5}
+                  idleMarkers={false}
+                  toothColors={toothColors}
+                  selectedTooth={selected}
+                  onToothSelect={setSelected}
+                />
+                {selected && (
+                  <div className="pointer-events-none absolute left-4 top-3 flex items-center gap-2">
+                    <span className="rounded-full bg-white/70 px-3 py-1.5 text-[13px] font-semibold text-content shadow-card backdrop-blur-sm">
+                      {toothName(Number(selected))} · {selected}번
                     </span>
-                  )}
-                </div>
-                <p className="m-0 mt-2.5 text-[14px] font-semibold leading-relaxed text-white">
-                  {compareSummary(diff, scoreDelta)}
-                </p>
+                    <button
+                      type="button"
+                      onClick={() => setSelected(null)}
+                      aria-label="전체 보기"
+                      className="pointer-events-auto flex h-8 w-8 items-center justify-center rounded-full bg-white/70 shadow-card backdrop-blur-sm"
+                    >
+                      <X size={14} className="text-content" />
+                    </button>
+                  </div>
+                )}
               </div>
-            )}
+
+              <div className="relative mx-3 mt-4 px-2 pb-4 pt-3">
+                <div className="mx-2">
+                  <div className="flex items-center justify-between text-[12.5px] font-semibold">
+                    <span className={blend < 0.5 ? 'text-white' : 'text-white/80'}>
+                      기준 {label(beforeId)}
+                      {before && <span className="ml-1 tabular-nums">{before.totalScore}점</span>}
+                    </span>
+                    <span className={blend >= 0.5 ? 'text-white' : 'text-white/80'}>
+                      비교 {label(afterId)}
+                      {after && <span className="ml-1 tabular-nums">{after.totalScore}점</span>}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    value={Math.round(blend * 100)}
+                    onChange={(e) => setBlend(Number(e.target.value) / 100)}
+                    onPointerUp={snap}
+                    onKeyUp={snap}
+                    onTouchEnd={snap}
+                    aria-label="기준 스캔과 비교 스캔 사이"
+                    className="compare-range compare-range-dark mt-1 w-full"
+                  />
+                  <p className="m-0 mt-1 text-center text-[12px] text-white/90">
+                    {blend === 1
+                      ? '비교 스캔이에요. 왼쪽으로 끌면 기준 스캔으로 돌아가요'
+                      : blend === 0
+                        ? '기준 스캔이에요. 오른쪽으로 끌면 비교 스캔으로 바뀌어요'
+                        : '두 스캔 사이를 섞어 보는 중이에요'}
+                  </p>
+                </div>
+                {ready && (
+                  <div className="px-5 pt-4 text-center">
+                    <div className="flex items-end justify-center gap-2">
+                      <span className="text-[22px] font-bold text-white/80 tabular-nums leading-none">
+                        {before.totalScore}
+                      </span>
+                      <ArrowRight size={16} className="mb-1 text-white/60" />
+                      <span className="text-[56px] font-bold text-white tabular-nums leading-none tracking-[-2px]">
+                        {liveScore}
+                      </span>
+                      <span className="mb-1 text-sm text-white/85">점</span>
+                      {scoreDelta !== null && scoreDelta !== 0 && (
+                        <span
+                          className={`mb-2 ml-1 flex items-center gap-0.5 rounded-full px-2 py-1 text-xs font-bold ${
+                            scoreDelta > 0 ? 'bg-success text-white' : 'bg-danger text-white'
+                          }`}
+                        >
+                          {scoreDelta > 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+                          {scoreDelta > 0 ? '+' : ''}
+                          {scoreDelta}
+                        </span>
+                      )}
+                    </div>
+                    <p className="m-0 mt-2.5 text-[14px] font-semibold leading-relaxed text-white">
+                      {compareSummary(diff, scoreDelta)}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
           {ready && changes.length === 0 && (

@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, type PointerEvent } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import OralViewer3D from '@/components/organisms/OralViewer3D';
 import type { ToothAnalysisResult } from '@/components/organisms/OralViewer3D/ThreeScene';
@@ -32,9 +33,6 @@ interface ReportHeroProps {
   onSelect: (fdi: string | null) => void;
   onBack: () => void;
 }
-
-// 포인터 추적 빛. 멀수록 적게 이동
-const FOLLOW = { glow: 220, aurora1: 90, aurora2: -110 };
 
 const CHANGE_LABEL = { better: '좋아짐', worse: '나빠짐', same: '그대로', first: '첫 기록' };
 const SURFACE_LABEL: Record<SurfaceType, string> = { OUTER: '바깥쪽', INNER: '안쪽' };
@@ -133,29 +131,6 @@ export default function ReportHero({
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
-  const glowRef = useRef<HTMLDivElement>(null);
-  const aurora1Ref = useRef<HTMLSpanElement>(null);
-  const aurora2Ref = useRef<HTMLSpanElement>(null);
-
-  // 리렌더 없이 빛 이동. 가운데 0, 가장자리 ±0.5
-  const follow = (x: number, y: number) => {
-    const move = (el: HTMLElement | null, amount: number) => {
-      if (el) el.style.transform = `translate(${x * amount}px, ${y * amount}px)`;
-    };
-    move(glowRef.current, FOLLOW.glow);
-    move(aurora1Ref.current, FOLLOW.aurora1);
-    move(aurora2Ref.current, FOLLOW.aurora2);
-  };
-  const handlePointerMove = (event: PointerEvent<HTMLElement>) => {
-    const rect = sectionRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    follow(
-      (event.clientX - rect.left) / rect.width - 0.5,
-      (event.clientY - rect.top) / rect.height - 0.5,
-    );
-  };
-  const release = () => follow(0, 0);
-
   const diff =
     scoreDelta !== undefined
       ? scoreDelta
@@ -187,38 +162,15 @@ export default function ReportHero({
   return (
     <section
       ref={sectionRef}
-      onPointerMove={handlePointerMove}
-      onPointerLeave={release}
-      onPointerCancel={release}
-      className="relative overflow-hidden rounded-b-[28px] bg-[linear-gradient(170deg,#3F7BD1_0%,#4A86D9_45%,#5C97E4_100%)] text-white"
+      className="relative overflow-hidden rounded-b-[28px] bg-[#68A8F2] text-white"
     >
-      {/* 오로라 배경. 안쪽 span이 포인터 추적 */}
-      <span
-        aria-hidden
-        className="hero-aurora-1 pointer-events-none absolute -left-20 top-4 block h-80 w-80"
-      >
-        <span
-          ref={aurora1Ref}
-          className="block h-full w-full rounded-full bg-[#67E8F9] opacity-50 blur-3xl transition-transform duration-700 ease-out"
-        />
-      </span>
-      <span
-        aria-hidden
-        className="hero-aurora-2 pointer-events-none absolute -right-24 bottom-16 block h-96 w-96"
-      >
-        <span
-          ref={aurora2Ref}
-          className="block h-full w-full rounded-full bg-[#A78BFA] opacity-50 blur-3xl transition-transform duration-700 ease-out"
-        />
-      </span>
-      <div
-        ref={glowRef}
-        aria-hidden
-        className="pointer-events-none absolute left-1/2 top-[38%] h-[420px] w-[420px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.18)_0%,rgba(255,255,255,0)_62%)] transition-transform duration-500 ease-out"
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-[linear-gradient(180deg,rgba(255,255,255,0.1)_0%,rgba(255,255,255,0)_100%)]"
+      <Image
+        src="/images/dashboard/report-blue-studio.webp"
+        alt=""
+        fill
+        priority
+        sizes="100vw"
+        className="pointer-events-none object-cover object-center"
       />
 
       {!detail && (
@@ -250,6 +202,8 @@ export default function ReportHero({
             scannedTeeth={scannedTeeth}
             minimal
             zoom={1.22}
+            fitToViewport
+            resolutionScale={1.5}
             idleMarkers={false}
             selectedTooth={selected}
             focusSurface={activeView?.surface ?? null}
@@ -421,7 +375,7 @@ export default function ReportHero({
 
       {detail ? null : (
         <>
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[46%] bg-gradient-to-t from-[#17213F]/60 via-[#17213F]/25 to-transparent" />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[46%] bg-gradient-to-t from-[#27528B]/65 via-[#27528B]/20 to-transparent" />
           {message && (
             <p className="relative z-10 mx-auto mt-3 w-fit max-w-[88%] rounded-full bg-[#173A73]/60 px-4 py-2 text-center text-[13.5px] font-medium leading-snug">
               {message}
