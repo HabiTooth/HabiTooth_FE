@@ -33,8 +33,8 @@ export default function ReportSummary({
   status,
   date,
   reportId,
-  plaqueScore,
-  calculusScore,
+  plaque,
+  calculus,
   plaqueRisk,
   calculusRisk,
   teeth,
@@ -124,13 +124,19 @@ export default function ReportSummary({
         </div>
       )}
 
-      {(plaqueScore !== undefined || calculusScore !== undefined) && (
+      {(plaque !== undefined || calculus !== undefined) && (
         <div className="mt-5 pt-4 border-t border-[#EDF1F7]">
-          <h4 className="m-0 text-[13px] font-bold text-content mb-3">위험도 요약</h4>
-          <div className="grid grid-cols-2 gap-3">
-            {plaqueScore !== undefined && plaqueRisk && <ToothStatusItem label="치태" score={plaqueScore} riskLevel={plaqueRisk} />}
-            {calculusScore !== undefined && calculusRisk && <ToothStatusItem label="치석" score={calculusScore} riskLevel={calculusRisk} />}
-          </div>
+          <h4 className="m-0 text-[13px] font-bold text-content mb-3">항목별 점수</h4>
+          {plaque || calculus ? (
+            <div className="grid grid-cols-2 gap-3">
+              <ToothStatusItem label="치태" value={plaque ?? null} />
+              <ToothStatusItem label="치석" value={calculus ?? null} />
+            </div>
+          ) : (
+            <p className="m-0 rounded-2xl bg-[#F4F7FB] py-5 text-center text-[13px] text-[#687B94]">
+              스캔 후 확인할 수 있어요
+            </p>
+          )}
         </div>
       )}
     </div>
