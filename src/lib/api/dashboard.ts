@@ -20,10 +20,14 @@ export interface DashboardReport {
 
 export interface DashboardRisk {
   sessionId: number;
+  // 완료된 세션 없으면 빈 배열. 한 광원만 찍었으면 그 항목만
   categories: Array<{
     lesionType: LesionType;
     riskLevel: RiskLevel;
-    affectedRatio: number;
+    score: number;
+    affectedTeeth?: number;
+    detectedTeeth?: number;
+    affectedRatio?: number;
   }>;
 }
 

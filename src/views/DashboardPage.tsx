@@ -30,18 +30,35 @@ export default function DashboardPage() {
       dashboardApi.getReport(),
       dashboardApi.getRisk(),
     ]).then(([s, r, k]) => {
-      if (s.status === 'fulfilled') setScore(s.value.data.result);
+      // 신규 사용자는 result가 비어서 옴
+      if (s.status === 'fulfilled') setScore(s.value.data.result ?? null);
       setScoreState(s.status === 'fulfilled' ? 'ready' : 'error');
-      if (r.status === 'fulfilled') setReport(r.value.data.result);
-      if (k.status === 'fulfilled') setRisk(k.value.data.result);
+      if (r.status === 'fulfilled') setReport(r.value.data.result ?? null);
+      if (k.status === 'fulfilled') setRisk(k.value.data.result ?? null);
     });
   }, []);
 
-  const plaque = risk?.categories.find((c) => c.lesionType === 'PLAQUE');
-  const calculus = risk?.categories.find((c) => c.lesionType === 'CALCULUS');
+  const plaque = risk?.categories?.find((c) => c.lesionType === 'PLAQUE');
+  const calculus = risk?.categories?.find((c) => c.lesionType === 'CALCULUS');
+  // 응답 없으면 섹션 숨김, 항목 없으면 미측정
+  const lesionScore = (c: typeof plaque) =>
+    risk === null
+      ? undefined
+      : c
+        ? {
+            riskLevel: c.riskLevel,
+            score: typeof c.score === 'number' ? c.score : null,
+            affectedTeeth: c.affectedTeeth,
+            detectedTeeth: c.detectedTeeth,
+          }
+        : null;
 
-  const hasScore = score !== null && score.date.slice(0, 10) === toKey(new Date());
-  const hasReport = report !== null && report.sessionId !== null;
+  const hasScore =
+    typeof score?.date === 'string' &&
+    typeof score.score === 'number' &&
+    score.date.slice(0, 10) === toKey(new Date());
+  const hasReport =
+    report !== null && report.sessionId != null && typeof report.averageScore === 'number';
 
   return (
     <PageShell withNav>
@@ -56,7 +73,7 @@ export default function DashboardPage() {
           state={scoreState}
           score={hasScore ? score!.score! : null}
           prevScore={
-            hasScore && score!.scoreDiff !== null ? score!.score! - score!.scoreDiff! : undefined
+            hasScore && score!.scoreDiff != null ? score!.score! - score!.scoreDiff : undefined
           }
         />
         </div>
@@ -70,8 +87,8 @@ export default function DashboardPage() {
             status={scoreStatus(report!.averageScore)}
             date={formatDateTime(report!.scannedAt)}
             reportId={String(report!.sessionId)}
-            plaqueScore={plaque?.affectedRatio}
-            calculusScore={calculus?.affectedRatio}
+            plaque={lesionScore(plaque)}
+            calculus={lesionScore(calculus)}
             plaqueRisk={plaque && toSummaryRisk(plaque.riskLevel)}
             calculusRisk={calculus && toSummaryRisk(calculus.riskLevel)}
           />

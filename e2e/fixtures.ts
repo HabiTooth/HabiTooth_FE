@@ -56,8 +56,8 @@ const BODIES: Record<string, unknown> = {
   'dashboard/risk': ok({
     sessionId: 42,
     categories: [
-      { lesionType: 'PLAQUE', riskLevel: 'MEDIUM', affectedRatio: 19 },
-      { lesionType: 'CALCULUS', riskLevel: 'HIGH', affectedRatio: 28 },
+      { lesionType: 'PLAQUE', riskLevel: 'MEDIUM', score: 81, affectedTeeth: 4, detectedTeeth: 16, affectedRatio: 19 },
+      { lesionType: 'CALCULUS', riskLevel: 'HIGH', score: 72, affectedTeeth: 7, detectedTeeth: 16, affectedRatio: 28 },
     ],
   }),
   'history/today': ok({

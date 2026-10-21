@@ -67,7 +67,10 @@ export default function HistoryListPage() {
     setIsLoading(true);
     historyApi
       .getList({ period, scoreFilter, page, size: 20 })
-      .then((res) => setData(res.data.result))
+      .then((res) => {
+        const result = res.data.result;
+        setData(result && Array.isArray(result.items) ? result : null);
+      })
       .catch(() => setData(null))
       .finally(() => setIsLoading(false));
   }, [period, scoreFilter, page, reloadKey]);

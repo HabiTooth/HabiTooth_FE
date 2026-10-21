@@ -37,12 +37,15 @@ export default function StreakPage() {
   useEffect(() => {
     historyApi
       .getList({ period: 'ALL', size: 200 })
-      .then((res) => setDates((res.data.result?.items ?? []).map((i) => i.date)))
+      .then((res) => {
+        const items = res.data.result?.items;
+        setDates(Array.isArray(items) ? items.map((i) => i.date) : []);
+      })
       .catch(() => {});
 
     historyApi
       .getRecords()
-      .then((res) => setRecords(res.data.result ?? []))
+      .then((res) => setRecords(Array.isArray(res.data.result) ? res.data.result : []))
       .catch(() => {});
   }, []);
 
