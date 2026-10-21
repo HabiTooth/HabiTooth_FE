@@ -26,7 +26,7 @@ export default function HabitsPage() {
     hydrate();
     historyApi
       .getScoreTrend()
-      .then((res) => setScans(res.data.result ?? []))
+      .then((res) => setScans(Array.isArray(res.data.result) ? res.data.result : []))
       .catch(() => {});
   }, [hydrate]);
 
