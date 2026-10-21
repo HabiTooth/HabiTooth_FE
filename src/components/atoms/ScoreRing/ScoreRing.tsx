@@ -2,7 +2,15 @@
 
 import type { ScoreRingProps } from './ScoreRing.types';
 
-export default function ScoreRing({ score, color, size = 80, strokeWidth = 8, className }: ScoreRingProps) {
+export default function ScoreRing({
+  score,
+  color,
+  size = 80,
+  strokeWidth = 8,
+  className,
+  label,
+  unit = '%',
+}: ScoreRingProps) {
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (score / 100) * circumference;
@@ -31,8 +39,9 @@ export default function ScoreRing({ score, color, size = 80, strokeWidth = 8, cl
           transform={`rotate(-90 ${size / 2} ${size / 2})`}
         />
       </svg>
-      <span className="absolute text-sm font-bold" style={{ color }}>
-        {score}%
+      <span className="absolute flex items-baseline text-[18px] font-bold tabular-nums" style={{ color }}>
+        {label ?? score}
+        {unit && <span className="ml-0.5 text-[11px] font-semibold">{unit}</span>}
       </span>
     </div>
   );
