@@ -922,7 +922,7 @@ export default function ScanPage() {
   );
 
   // 기기 셔터 컷도 같은 확인 화면
-  useHardwareShutter({
+  const { ready: shutterReady } = useHardwareShutter({
     host: cameraMode === 'esp32' && scannerAddress ? controlHost(scannerAddress) : null,
     enabled: step === 2 && !pending && !isCapturing,
     onError: setShutterNotice,
@@ -936,8 +936,11 @@ export default function ScanPage() {
     },
   });
 
+  // 기기 기준 seq 확정 전엔 촬영 대기. 빼면 연결 직후 첫 컷이 기준으로 흡수됨
+  const deviceConnecting = cameraMode === 'esp32' && Boolean(scannerAddress) && !shutterReady;
+
   const handleCapture = useCallback(async () => {
-    if (isCapturing || !isReady || !currentZone || pending) return;
+    if (isCapturing || !isReady || !currentZone || pending || deviceConnecting) return;
     setIsCapturing(true);
     setCaptureError(null);
     try {
@@ -953,7 +956,7 @@ export default function ScanPage() {
     } finally {
       setIsCapturing(false);
     }
-  }, [isCapturing, isReady, currentZone, pending, captureShot, acceptShot, restartStream]);
+  }, [isCapturing, isReady, currentZone, pending, deviceConnecting, captureShot, acceptShot, restartStream]);
 
   // 스트림은 촬영 시점에 재연결됨. 여기서 또 붙이면 화면 멈춤
   const handleRetake = useCallback(() => {
@@ -1172,7 +1175,9 @@ export default function ScanPage() {
           isReady={isReady}
           cameraError={cameraError}
           captureError={captureError}
-          shutterNotice={shutterNotice}
+          shutterNotice={
+            deviceConnecting ? '기기 연결 중이에요. 연결되면 셔터를 눌러 주세요.' : shutterNotice
+          }
           cameraMode={cameraMode}
           status={detectedStatus}
           ledMode={ledMode}
@@ -1186,7 +1191,7 @@ export default function ScanPage() {
           onExit={() => setShowExitModal(true)}
           onHelp={() => setShowHelp(true)}
           onCapture={handleCapture}
-          isCapturing={isCapturing}
+          isCapturing={isCapturing || deviceConnecting}
           onLedToggle={toggleLed}
           onFinish={() => setStep(3)}
           onRetry={() => {

@@ -1,12 +1,16 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { devicePend, devicePending } from '@/lib/deviceClient';
 
 // 너무 잦으면 스트림 끊김
 const POLL_MS = 3000;
 // 촬영 직후는 응답 실패가 잦아 간격 확대
 const MAX_POLL_MS = 9600;
+// 첫 요청은 mDNS 이름 풀이가 끼어 느림
+const BASELINE_TIMEOUT = 5000;
+const BASELINE_RETRY_MS = 1000;
+const POLL_TIMEOUT = 3000;
 
 interface Pending {
   seq: number;
@@ -17,7 +21,14 @@ export interface HardwareShot {
   uv: Blob | null;
 }
 
-// 기기 셔터 감시 기능. seq 증가 시 컷 수집. 안 가져가면 스트림 멈춤
+const readSeq = async (res: Response) => {
+  if (!res.ok) throw new Error(`셔터 상태 수신 실패: ${res.status}`);
+  const { seq } = (await res.json()) as Pending;
+  if (typeof seq !== 'number') throw new Error('셔터 상태 형식 오류');
+  return seq;
+};
+
+// 기기 셔터 감시 기능. 기준 seq는 기기당 한 번만 확정. 안 가져가면 스트림 멈춤
 export function useHardwareShutter({
   host,
   enabled,
@@ -28,23 +39,53 @@ export function useHardwareShutter({
   enabled: boolean;
   onCapture: (shot: HardwareShot) => void | Promise<void>;
   onError?: (message: string | null) => void;
-}) {
+}): { ready: boolean } {
   const lastSeq = useRef<number | null>(null);
   const lastHost = useRef<string | null>(null);
   const onCaptureRef = useRef(onCapture);
   const onErrorRef = useRef(onError);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     onCaptureRef.current = onCapture;
     onErrorRef.current = onError;
   });
 
+  // 기준 seq. 성공할 때까지 재시도. 폴링 실패로는 리셋 안 함
   useEffect(() => {
-    if (!host || !enabled) return;
+    if (!host) return;
     if (lastHost.current !== host) {
       lastHost.current = host;
       lastSeq.current = null;
+      setReady(false);
     }
+    if (lastSeq.current !== null) {
+      setReady(true);
+      return;
+    }
+
+    let alive = true;
+    let timer: ReturnType<typeof setTimeout>;
+    const attempt = async () => {
+      try {
+        const seq = await readSeq(await devicePending(host, BASELINE_TIMEOUT));
+        if (!alive) return;
+        lastSeq.current = seq;
+        setReady(true);
+      } catch {
+        if (alive) timer = setTimeout(attempt, BASELINE_RETRY_MS);
+      }
+    };
+    attempt();
+
+    return () => {
+      alive = false;
+      clearTimeout(timer);
+    };
+  }, [host]);
+
+  useEffect(() => {
+    if (!host || !enabled || !ready) return;
 
     let alive = true;
     let busy = false;
@@ -62,27 +103,18 @@ export function useHardwareShutter({
       if (busy) return;
       busy = true;
       try {
-        const res = await devicePending(host);
-        if (!res.ok) {
-          throw new Error(`셔터 상태 수신 실패: ${res.status}`);
-        }
+        const seq = await readSeq(await devicePending(host, POLL_TIMEOUT));
         wait = POLL_MS;
+        const base = lastSeq.current;
+        if (base === null) return;
 
-        const { seq } = (await res.json()) as Pending;
-        if (typeof seq !== 'number') return;
-
-        // 첫 값은 기준점. 이전 컷 오인 방지
-        if (lastSeq.current === null) {
-          lastSeq.current = seq;
-          onErrorRef.current?.(null);
-          return;
-        }
-        if (seq < lastSeq.current) {
+        // 기기 재부팅으로 카운터 초기화
+        if (seq < base) {
           lastSeq.current = seq;
           transferring = null;
           return;
         }
-        if (seq === lastSeq.current) {
+        if (seq === base) {
           onErrorRef.current?.(null);
           return;
         }
@@ -125,5 +157,7 @@ export function useHardwareShutter({
       alive = false;
       clearTimeout(timer);
     };
-  }, [host, enabled]);
+  }, [host, enabled, ready]);
+
+  return { ready };
 }

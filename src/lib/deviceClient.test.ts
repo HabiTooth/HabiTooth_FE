@@ -46,3 +46,22 @@ describe('deviceFetch', () => {
     expect(String(fetcher.mock.calls[2][0])).toBe('http://scanner.local/pending');
   });
 });
+
+describe('deviceFetch 시간 초과', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('기기가 느리면 프록시로 넘기지 않고 실패', async () => {
+    const fetcher = vi.fn(
+      (_url: string, init?: RequestInit) =>
+        new Promise<Response>((_, reject) => {
+          init?.signal?.addEventListener('abort', () =>
+            reject(new DOMException('aborted', 'AbortError')),
+          );
+        }),
+    );
+    vi.stubGlobal('fetch', fetcher);
+    const { devicePending } = await load();
+    await expect(devicePending('scanner.local', 20)).rejects.toThrow();
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+});

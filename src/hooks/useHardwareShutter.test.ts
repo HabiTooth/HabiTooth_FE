@@ -111,3 +111,89 @@ describe('hardware shutter transfer', () => {
     expect(onCapture).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('shutter baseline', () => {
+  let root: Root;
+  let container: HTMLDivElement;
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
+    container = document.createElement('div');
+    root = createRoot(container);
+  });
+  afterEach(async () => {
+    await act(async () => root.unmount());
+    container.remove();
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+  const json = (seq: number) => Response.json({ seq });
+  const image = () => new Response('jpeg', { headers: { 'Content-Type': 'image/jpeg' } });
+  const advance = async (ms: number) => {
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(ms);
+    });
+  };
+
+  async function render(fetcher: ReturnType<typeof vi.fn>, enabled = true) {
+    vi.stubGlobal('fetch', fetcher);
+    const onCapture = vi.fn();
+    const states: boolean[] = [];
+    function Probe({ on }: { on: boolean }) {
+      const { ready } = useHardwareShutter({ host: 'scanner.test', enabled: on, onCapture });
+      states.push(ready);
+      return null;
+    }
+    await act(async () => root.render(createElement(Probe, { on: enabled })));
+    const rerender = (on: boolean) => act(async () => root.render(createElement(Probe, { on })));
+    return { onCapture, states, rerender };
+  }
+
+  it('기준 요청이 성공할 때까지 연결 중으로 두고 재시도', async () => {
+    const fetcher = vi
+      .fn()
+      .mockRejectedValueOnce(new TypeError('blocked'))
+      .mockResolvedValueOnce(new Response(null, { status: 502 }))
+      .mockResolvedValue(json(28));
+    const { states, onCapture } = await render(fetcher);
+    expect(states.at(-1)).toBe(false);
+    // 프록시 경유 여부는 모듈 상태라 재시도 두 번까지 허용
+    await advance(2000);
+    expect(states.at(-1)).toBe(true);
+    await advance(3000);
+    expect(onCapture).not.toHaveBeenCalled();
+  });
+
+  it('폴링이 실패해도 기준을 다시 잡지 않음', async () => {
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(json(27))
+      .mockRejectedValueOnce(new TypeError('timeout'))
+      .mockRejectedValueOnce(new TypeError('timeout'))
+      .mockResolvedValueOnce(json(28))
+      .mockResolvedValueOnce(image())
+      .mockResolvedValueOnce(image())
+      .mockResolvedValue(json(28));
+    const { onCapture } = await render(fetcher);
+    await advance(20_000);
+    expect(onCapture).toHaveBeenCalledTimes(1);
+  });
+
+  it('촬영 확인 화면을 닫고 다시 켜도 기준 유지', async () => {
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(json(27))
+      .mockResolvedValueOnce(json(27))
+      .mockResolvedValueOnce(json(28))
+      .mockResolvedValueOnce(image())
+      .mockResolvedValueOnce(image())
+      .mockResolvedValue(json(28));
+    const { onCapture, rerender } = await render(fetcher);
+    await advance(0);
+    await rerender(false);
+    await advance(5000);
+    await rerender(true);
+    await advance(0);
+    expect(onCapture).toHaveBeenCalledTimes(1);
+  });
+});

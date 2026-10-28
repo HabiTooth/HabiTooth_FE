@@ -18,7 +18,7 @@ const withTimeout = async (url: string, timeoutMs: number) => {
   }
 };
 
-// 기기에 직접 요청하고 안 되면 서버 프록시로 재시도. 배포 서버는 기기 네트워크 밖이라 직접 요청이 필요
+// 기기에 직접 요청. 브라우저가 막은 경우만 서버 프록시로 재시도. 시간 초과는 기기가 느린 것이라 프록시로 안 넘김
 export async function deviceFetch(
   host: string,
   path: string,
@@ -32,7 +32,9 @@ export async function deviceFetch(
       const res = await withTimeout(`http://${controlHost(host)}${path}`, timeoutMs);
       lastRoute = 'direct';
       return res;
-    } catch {}
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') throw error;
+    }
   }
   const res = await withTimeout(proxy, timeoutMs + 2000);
   lastRoute = 'proxy';
@@ -40,8 +42,8 @@ export async function deviceFetch(
   return res;
 }
 
-export const devicePending = (host: string) =>
-  deviceFetch(host, '/pending', `/api/camera/pending?ip=${encodeURIComponent(host)}`, 1500);
+export const devicePending = (host: string, timeoutMs = 3000) =>
+  deviceFetch(host, '/pending', `/api/camera/pending?ip=${encodeURIComponent(host)}`, timeoutMs);
 
 export const devicePend = (host: string, i: 0 | 1) =>
   deviceFetch(
