@@ -183,6 +183,8 @@ test('new report shows server scores, authenticated photos, overlay fallback and
   await expect(page.getByRole('button', { name: '원본 보기' })).toBeVisible();
   await page.getByRole('button', { name: 'UV · 치태', exact: true }).click();
   await expect(page.getByAltText('UV · 치태 검출 영역 표시 사진')).toBeVisible();
+  await expect(page.getByRole('note').filter({ hasText: '치석으로 잡힌 자리는 빼고' })).toBeVisible();
+  await page.getByRole('note').filter({ hasText: '치석으로 잡힌 자리는 빼고' }).screenshot({ path: testInfo.outputPath('uv-note.png') });
   await expect(page.getByAltText('백색광 · 치석 촬영 원본')).toHaveCount(0);
   await page.getByRole('button', { name: '아랫니 오른쪽 가운데 앞니 · 주의', exact: true }).click();
   await expect(

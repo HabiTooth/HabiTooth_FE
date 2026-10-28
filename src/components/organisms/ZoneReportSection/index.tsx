@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Camera, Check, ChevronRight, X, Loader2 } from 'lucide-react';
+import { Camera, Check, ChevronRight, Info, X, Loader2 } from 'lucide-react';
 import {
   reportApi,
   type SessionZoneReport,
@@ -248,7 +248,19 @@ function ZoneDetail({
           />
         )}
         {light === 'uv' && zone.uvScanImageId !== null && (
-          <ScanPhoto key={`uv-${zone.uvScanImageId}`} id={zone.uvScanImageId} label="UV · 치태" />
+          <>
+            <ScanPhoto key={`uv-${zone.uvScanImageId}`} id={zone.uvScanImageId} label="UV · 치태" />
+            <div
+              role="note"
+              className="mt-2 flex gap-2 rounded-[14px] bg-white px-3 py-2.5 text-[12px] leading-relaxed text-[#4E607B]"
+            >
+              <Info size={14} className="mt-0.5 shrink-0 text-primary" aria-hidden />
+              <p className="m-0">
+                UV에서는 치석도 붉게 빛날 수 있어요. 그래서 백색광에서 치석으로 잡힌 자리는 빼고,
+                나머지 붉은 부위만 치태로 판정해요.
+              </p>
+            </div>
+          </>
         )}
       </div>
       {loading && (
