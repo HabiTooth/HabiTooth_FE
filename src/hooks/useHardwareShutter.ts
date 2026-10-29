@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { devicePend, devicePending } from '@/lib/deviceClient';
 
 // 너무 잦으면 스트림 끊김
@@ -39,17 +39,35 @@ export function useHardwareShutter({
   enabled: boolean;
   onCapture: (shot: HardwareShot) => void | Promise<void>;
   onError?: (message: string | null) => void;
-}): { ready: boolean } {
+}): { ready: boolean; settle: () => Promise<void> } {
   const lastSeq = useRef<number | null>(null);
   const lastHost = useRef<string | null>(null);
   const onCaptureRef = useRef(onCapture);
   const onErrorRef = useRef(onError);
+  const hostRef = useRef(host);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
     onCaptureRef.current = onCapture;
     onErrorRef.current = onError;
+    hostRef.current = host;
   });
+
+  // 웹 촬영 직후 정리용. 펌웨어가 /snap에도 seq를 올리면 대기 컷을 받아 비우고 기준만 옮김
+  // 빼면 다음 폴링이 웹 촬영 사진을 셔터 컷으로 착각해 확인 화면이 한 번 더 뜸
+  const settle = useCallback(async () => {
+    const h = hostRef.current;
+    if (!h) return;
+    try {
+      const seq = await readSeq(await devicePending(h, BASELINE_TIMEOUT));
+      const base = lastSeq.current;
+      if (base !== null && seq > base) {
+        await devicePend(h, 0).catch(() => null);
+        await devicePend(h, 1).catch(() => null);
+      }
+      lastSeq.current = seq;
+    } catch {}
+  }, []);
 
   // 기준 seq. 성공할 때까지 재시도. 폴링 실패로는 리셋 안 함
   useEffect(() => {
@@ -159,5 +177,5 @@ export function useHardwareShutter({
     };
   }, [host, enabled, ready]);
 
-  return { ready };
+  return { ready, settle };
 }
