@@ -197,3 +197,53 @@ describe('shutter baseline', () => {
     expect(onCapture).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('웹 촬영 뒤 정리', () => {
+  let root: Root;
+  let container: HTMLDivElement;
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
+    container = document.createElement('div');
+    root = createRoot(container);
+  });
+  afterEach(async () => {
+    await act(async () => root.unmount());
+    container.remove();
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  it('snap이 올린 seq는 셔터 컷으로 받지 않고 대기 컷만 비움', async () => {
+    const json = (seq: number) => Response.json({ seq });
+    const image = () => new Response('jpeg', { headers: { 'Content-Type': 'image/jpeg' } });
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(json(27))
+      .mockResolvedValueOnce(json(27))
+      .mockResolvedValueOnce(json(28))
+      .mockResolvedValueOnce(image())
+      .mockResolvedValueOnce(image())
+      .mockResolvedValue(json(28));
+    vi.stubGlobal('fetch', fetcher);
+    const onCapture = vi.fn();
+    let settle: () => Promise<void> = async () => {};
+    function Probe() {
+      settle = useHardwareShutter({ host: 'scanner.test', enabled: true, onCapture }).settle;
+      return null;
+    }
+    await act(async () => root.render(createElement(Probe)));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    await act(async () => {
+      await settle();
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10_000);
+    });
+    expect(onCapture).not.toHaveBeenCalled();
+    // 직접·프록시 어느 경로든 사진 요청은 i=0, i=1
+    expect(fetcher.mock.calls.filter(([url]) => /[?&]i=[01](&|$)/.test(String(url)))).toHaveLength(2);
+  });
+});

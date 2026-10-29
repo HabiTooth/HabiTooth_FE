@@ -922,7 +922,7 @@ export default function ScanPage() {
   );
 
   // 기기 셔터 컷도 같은 확인 화면
-  const { ready: shutterReady } = useHardwareShutter({
+  const { ready: shutterReady, settle: settleShutter } = useHardwareShutter({
     host: cameraMode === 'esp32' && scannerAddress ? controlHost(scannerAddress) : null,
     enabled: step === 2 && !pending && !isCapturing,
     onError: setShutterNotice,
@@ -944,7 +944,9 @@ export default function ScanPage() {
     setIsCapturing(true);
     setCaptureError(null);
     try {
-      await acceptShot(await captureShot(currentZone));
+      const shot = await captureShot(currentZone);
+      if (cameraMode === 'esp32') await settleShutter();
+      await acceptShot(shot);
       restartStream();
     } catch (e) {
       const detail = e instanceof Error ? e.message : '';
@@ -956,7 +958,7 @@ export default function ScanPage() {
     } finally {
       setIsCapturing(false);
     }
-  }, [isCapturing, isReady, currentZone, pending, deviceConnecting, captureShot, acceptShot, restartStream]);
+  }, [isCapturing, isReady, currentZone, pending, deviceConnecting, cameraMode, captureShot, settleShutter, acceptShot, restartStream]);
 
   // 스트림은 촬영 시점에 재연결됨. 여기서 또 붙이면 화면 멈춤
   const handleRetake = useCallback(() => {
