@@ -116,10 +116,11 @@ export const scanApi = {
   getCaptureStatus: (sessionId: number) =>
     apiClient.get<ApiResponse<ScanCaptureStatus>>(`/api/scan-sessions/${sessionId}/capture-status`),
 
+  // 13구역 전체면 10~15분. 화면은 결과를 따로 확인해서 이 요청이 끊겨도 됨
   analyzeSession: (sessionId: number, target?: LesionType) =>
     apiClient.post<ApiResponse<SessionAnalyzeResult>>(
       `/api/scan-sessions/${sessionId}/analyze`,
       null,
-      target ? { params: { target } } : undefined,
+      { timeout: 20 * 60_000, ...(target ? { params: { target } } : {}) },
     ),
 };

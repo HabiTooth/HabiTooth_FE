@@ -1,6 +1,7 @@
 'use client';
 
 import axios from 'axios';
+import { reportApi } from '@/lib/api/report';
 import { useState, useEffect, useRef, useCallback, useMemo, type RefObject } from 'react';
 import { useRouter } from 'next/navigation';
 import { X, HelpCircle, Check, Loader2, AlertTriangle, Sun, Camera, Bell, User, Smile, ChevronRight, ChevronDown, Info } from 'lucide-react';
@@ -49,6 +50,10 @@ const ANALYZE_STEPS = [
   '구강 건강 지수 계산',
   '맞춤 리포트 생성',
 ];
+
+// 13구역 전체 분석이 10~15분. 구역당 약 1분
+const ANALYZE_MS_PER_ZONE = 65_000;
+const ANALYZE_POLL_MS = 10_000;
 
 const DEV_SESSION_ID = -1;
 const isDev = process.env.NODE_ENV === 'development';
@@ -575,14 +580,18 @@ function ScanStateHeading({ label, title, description, tone, role }: {
 function Step3({
   analyzeStep,
   analyzeProgress,
+  analyzeInfo,
   analyzeError,
   onRetry,
   onReset,
   onUseMock,
+  onLeave,
 }: {
   analyzeStep: number;
   analyzeProgress: number;
+  analyzeInfo: string | null;
   analyzeError: string | null;
+  onLeave: () => void;
   onRetry: () => void;
   onReset: () => void;
   onUseMock: () => void;
@@ -644,6 +653,7 @@ function Step3({
           <div role="progressbar" aria-label="분석 진행률" aria-valuemin={0} aria-valuemax={100} aria-valuenow={analyzeProgress} className="h-2.5 bg-[#DFEEE5] rounded-full overflow-hidden">
             <div className="h-full bg-gradient-to-r from-[#35977F] to-[#85CBB0] rounded-full transition-[width] duration-500" style={{ width: `${analyzeProgress}%` }} />
           </div>
+          {analyzeInfo && <p className="m-0 mt-2.5 text-[12.5px] font-semibold text-[#4E7A69] tabular-nums">{analyzeInfo}</p>}
         </div>
         <ol className="m-0 p-0 list-none flex flex-col gap-3 px-1">
           {ANALYZE_STEPS.map((label, i) => {
@@ -657,7 +667,14 @@ function Step3({
             </li>;
           })}
         </ol>
-        <p className="m-0 mt-auto pt-2 text-[13px] font-medium leading-relaxed text-[#648575] text-center">완료되면 자동으로 다음 화면으로 이동해요</p>
+        <div className="mt-auto pt-2 flex flex-col items-center gap-2">
+          <p className="m-0 text-[13px] font-medium leading-relaxed text-[#648575] text-center break-keep">
+            분석은 서버에서 계속돼요. 다른 화면으로 가도 괜찮고, 끝나면 기록에서 리포트를 볼 수 있어요.
+          </p>
+          <button type="button" onClick={onLeave} className="h-11 px-5 rounded-[14px] bg-white/80 border border-[#CDE8DC] text-[14px] font-semibold text-[#287D68]">
+            홈에서 기다리기
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -744,6 +761,7 @@ export default function ScanPage() {
   const [showHelp, setShowHelp] = useState(false);
   const [analyzeStep, setAnalyzeStep] = useState(0);
   const [analyzeProgress, setAnalyzeProgress] = useState(0);
+  const [analyzeInfo, setAnalyzeInfo] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<number | null>(null);
   const [analysisResult, setAnalysisResult] = useState<SessionAnalyzeResult | null>(null);
   const refreshNotifications = useNotificationStore((s) => s.refresh);
@@ -1036,37 +1054,115 @@ export default function ScanPage() {
 
   useEffect(() => {
     if (step !== 3 || !sessionId) return;
-    let n = 0;
+    let alive = true;
+    let settled = false;
+    const startedAt = Date.now();
+    const total = Math.max(capturedZones.length, 1);
+    const expectedMs = total * ANALYZE_MS_PER_ZONE;
+    let done = 0;
     setAnalyzeStep(1);
     setAnalyzeProgress(0);
     setAnalyzeError(null);
+    setAnalyzeInfo(null);
 
-    const t = setInterval(() => {
-      n++;
-      setAnalyzeStep(n + 1);
-      setAnalyzeProgress(Math.round((n / ANALYZE_STEPS.length) * 100));
-      if (n >= ANALYZE_STEPS.length) clearInterval(t);
-    }, 2000);
+    // 실제 끝난 구역 수와 예상 시간 중 앞선 쪽으로 진행률 표시
+    const render = () => {
+      const elapsed = Date.now() - startedAt;
+      const ratio = Math.max(Math.min(elapsed / expectedMs, 0.95), Math.min(done / total, 0.99));
+      setAnalyzeProgress(Math.round(ratio * 100));
+      setAnalyzeStep(Math.min(ANALYZE_STEPS.length, Math.floor(ratio * ANALYZE_STEPS.length) + 1));
+      const left = Math.ceil((expectedMs - elapsed) / 60_000);
+      setAnalyzeInfo(
+        `${done}/${total}구역 분석 완료 · ${left > 0 ? `약 ${left}분 남음` : '거의 다 됐어요'}`,
+      );
+    };
+
+    const stop = () => {
+      clearInterval(ticker);
+      clearInterval(poller);
+      clearTimeout(giveUp);
+    };
+
+    const finish = (result: SessionAnalyzeResult) => {
+      if (settled || !alive) return;
+      settled = true;
+      stop();
+      setAnalysisResult(result);
+      // 분석 직후 생성된 알림 표시
+      void refreshNotifications({ popNew: true });
+      setAnalyzeStep(ANALYZE_STEPS.length + 1);
+      setAnalyzeProgress(100);
+      setTimeout(() => setStep(4), 800);
+    };
+
+    const fail = (message: string) => {
+      if (settled || !alive) return;
+      settled = true;
+      stop();
+      setAnalyzeError(message);
+    };
+
+    // 분석 요청 응답과 별개로 서버 결과 확인. 긴 요청이 중간에 끊겨도 결과를 받음
+    const poll = async () => {
+      try {
+        const zone = (await reportApi.getZoneReport(sessionId)).data.result;
+        if (!zone || !alive) return;
+        const captured = zone.zones.filter((z) => z.captured);
+        done = captured.filter((z) => z.zoneScore !== null).length;
+        const settledZones = captured.filter((z) => z.zoneScore !== null || !z.zoneValid).length;
+        if (zone.sessionScore !== null && captured.length > 0 && settledZones === captured.length) {
+          finish({
+            sessionId,
+            sessionScore: zone.sessionScore,
+            validZoneCount: zone.validZoneCount,
+            totalZoneCount: zone.totalZoneCount,
+            invalidZones: captured.filter((z) => !z.zoneValid).map((z) => z.viewType),
+            failedCount: 0,
+            analysisResults: [],
+          });
+        }
+      } catch {}
+    };
+
+    const ticker = setInterval(render, 1000);
+    const poller = setInterval(poll, ANALYZE_POLL_MS);
+    const giveUp = setTimeout(
+      () =>
+        fail(
+          '분석이 오래 걸리고 있어요.\n분석은 서버에서 계속될 수 있으니 잠시 뒤 기록에서 리포트를 확인해 주세요.',
+        ),
+      Math.min(Math.max(expectedMs * 2, 10 * 60_000), 30 * 60_000),
+    );
+    render();
 
     scanApi
       .analyzeSession(sessionId)
-      .then((res: { data: { result: SessionAnalyzeResult } }) => {
-        setAnalysisResult(res.data.result);
-        // 분석 직후 생성된 알림 표시
-        void refreshNotifications({ popNew: true });
-        clearInterval(t);
-        setAnalyzeStep(ANALYZE_STEPS.length + 1);
-        setAnalyzeProgress(100);
-        setTimeout(() => setStep(4), 800);
-      })
-      .catch(() => {
-        clearInterval(t);
-        setAnalyzeError(
-          '분석 서버가 응답하지 않았어요.\n찍은 사진은 그대로 있으니 다시 시도하면 돼요.',
+      .then((res: { data: { result: SessionAnalyzeResult } }) => finish(res.data.result))
+      .catch((e) => {
+        const status = axios.isAxiosError(e) ? e.response?.status : undefined;
+        const timedOut =
+          axios.isAxiosError(e) && (e.code === 'ECONNABORTED' || e.code === 'ETIMEDOUT');
+        const cutOff = status === 502 || status === 503 || status === 504;
+        const lateDrop = status === undefined && Date.now() - startedAt > 10_000;
+        // 중간 연결이 끊긴 경우는 서버가 계속 분석 중일 수 있어 결과 확인을 이어감
+        if (timedOut || cutOff || lateDrop) {
+          void poll();
+          return;
+        }
+        const body = axios.isAxiosError(e)
+          ? (e.response?.data as { message?: string; code?: string } | undefined)
+          : undefined;
+        fail(
+          status === undefined
+            ? '분석 서버에 연결하지 못했어요.\n네트워크를 확인하고 다시 시도해 주세요.'
+            : `분석에 실패했어요.${body?.message ? `\n${body.message}` : ''}\n(${body?.code ?? `HTTP ${status}`})`,
         );
       });
 
-    return () => clearInterval(t);
+    return () => {
+      alive = false;
+      stop();
+    };
   }, [step, sessionId, analyzeKey, capturedZones, refreshNotifications]);
 
   const handleReset = () => {
@@ -1211,7 +1307,9 @@ export default function ScanPage() {
         <Step3
           analyzeStep={analyzeStep}
           analyzeProgress={analyzeProgress}
+          analyzeInfo={analyzeInfo}
           analyzeError={analyzeError}
+          onLeave={() => router.push('/dashboard')}
           onRetry={() => {
             setAnalyzeError(null);
             setAnalyzeStep(0);
