@@ -54,6 +54,8 @@ const ANALYZE_STEPS = [
 // 13구역 전체 분석이 10~15분. 구역당 약 1분
 const ANALYZE_MS_PER_ZONE = 65_000;
 const ANALYZE_POLL_MS = 10_000;
+// 분석 요청이 끊긴 뒤엔 결과만 기다리는 중이라 더 자주 확인
+const ANALYZE_RETRY_POLL_MS = 3_000;
 
 const DEV_SESSION_ID = -1;
 const isDev = process.env.NODE_ENV === 'development';
@@ -1058,7 +1060,7 @@ export default function ScanPage() {
     let settled = false;
     const startedAt = Date.now();
     const total = Math.max(capturedZones.length, 1);
-    const expectedMs = total * ANALYZE_MS_PER_ZONE;
+    let expectedMs = total * ANALYZE_MS_PER_ZONE;
     let done = 0;
     setAnalyzeStep(1);
     setAnalyzeProgress(0);
@@ -1108,7 +1110,12 @@ export default function ScanPage() {
         const zone = (await reportApi.getZoneReport(sessionId)).data.result;
         if (!zone || !alive) return;
         const captured = zone.zones.filter((z) => z.captured);
-        done = captured.filter((z) => z.zoneScore !== null).length;
+        const next = captured.filter((z) => z.zoneScore !== null).length;
+        // 끝난 구역이 늘면 실제 속도로 예상 시간 재계산. 고정 65초면 서버가 빨라도 바가 느림
+        if (next > done) {
+          done = next;
+          expectedMs = ((Date.now() - startedAt) / done) * total;
+        }
         const settledZones = captured.filter((z) => z.zoneScore !== null || !z.zoneValid).length;
         if (zone.sessionScore !== null && captured.length > 0 && settledZones === captured.length) {
           finish({
@@ -1125,7 +1132,7 @@ export default function ScanPage() {
     };
 
     const ticker = setInterval(render, 1000);
-    const poller = setInterval(poll, ANALYZE_POLL_MS);
+    let poller = setInterval(poll, ANALYZE_POLL_MS);
     const giveUp = setTimeout(
       () =>
         fail(
@@ -1146,6 +1153,9 @@ export default function ScanPage() {
         const lateDrop = status === undefined && Date.now() - startedAt > 10_000;
         // 중간 연결이 끊긴 경우는 서버가 계속 분석 중일 수 있어 결과 확인을 이어감
         if (timedOut || cutOff || lateDrop) {
+          if (!alive || settled) return;
+          clearInterval(poller);
+          poller = setInterval(poll, ANALYZE_RETRY_POLL_MS);
           void poll();
           return;
         }
